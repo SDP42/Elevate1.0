@@ -10,42 +10,61 @@ const PRIZES = [
   { place: "3rd place", amount: "₹20,000" },
 ];
 
-// the finale schedule, exactly as issued; blank times stay unlabelled
-const DAY_ONE = [
-  ["9–10 AM", "Registration and Check-In"],
-  ["10–11 AM", "PS Selection and Opening Ceremony"],
-  ["11:00", "Flight Take Off"],
-  ["13:00", "Lunch"],
-  ["15:00", "In-Flight Security Check 1 Begins"],
-  ["17:00", "High Tea"],
-  ["20:00", "Dinner"],
-  ["", "Mentoring Session"],
-  ["", "Jamming Session + Midnight Snacks"],
-];
-
-const DAY_TWO = [
-  ["07:00", "Breakfast"],
-  ["11:00", "Flight Landing + Luggage Collection"],
-  ["11:30", "Immigration Check (Judging Round 1)"],
-  ["12:00", "Lunch + 15 Min Window for Result Declaration"],
-  ["13:30", "Currency Exchange (Final Judging Round)"],
-  ["16:00", "Award Ceremony"],
+// the road to the finale, exactly as issued
+const TIMELINE = [
+  ["16 Sep", "", "Registration starts"],
+  ["17 Sep", "", "Online PS round"],
+  ["30 Sep", "11:59 PM", "Registration deadline"],
+  ["1 Oct", "11:59 PM", "Submission deadline"],
+  ["3 Oct", "12:21 PM", "Shortlisted teams announced"],
+  ["10 Oct", "", "Hackathon starts"],
+  ["11 Oct", "", "Hackathon ends"],
 ];
 
 function Schedule({ rows, phase }) {
   return (
     <ol className="jx-sched" data-phase={phase}>
-      {rows.map(([time, what]) => (
+      {rows.map(([date, time, what]) => (
         <li className="jx-sched__row" key={what}>
           <div className="jx-line-h jx-line-h--ink" />
           <div className="jx-u12" />
           <div className="jx-sched__line">
-            <span className={`jx-sched__time ${time ? "" : "jx-sched__time--tba"}`}>
-              {time || "Night"}
+            <span className="jx-sched__time">{date}</span>
+            <span className="jx-sched__what">
+              {what}
+              {time && <em className="jx-sched__at">{time}</em>}
             </span>
-            <span className="jx-sched__what">{what}</span>
           </div>
           <div className="jx-u12" />
+        </li>
+      ))}
+    </ol>
+  );
+}
+
+/* Runways stand in for tracks until they are announced: painted strips with
+   threshold bars and a dashed centreline, marked "to be announced". */
+function Runways() {
+  return (
+    <ol className="jx-sched jx-runways" data-phase="2">
+      {[0, 1, 2].map((i) => (
+        <li className="jx-sched__row jx-runway" key={i}>
+          <svg viewBox="0 0 320 44" className="jx-runway__strip" aria-hidden="true">
+            <rect x="0" y="4" width="320" height="36" rx="4" fill="#3a3230" />
+            {[0, 1, 2, 3].map((k) => (
+              <rect key={k} x={10} y={9 + k * 7.5} width="18" height="4" fill="#efe6da" />
+            ))}
+            {[0, 1, 2, 3].map((k) => (
+              <rect key={`e${k}`} x={292} y={9 + k * 7.5} width="18" height="4" fill="#efe6da" />
+            ))}
+            {Array.from({ length: 9 }).map((_, k) => (
+              <rect key={`c${k}`} x={44 + k * 26} y="20.5" width="14" height="3" fill="#efe6da" opacity="0.8" />
+            ))}
+          </svg>
+          <div className="jx-runway__label">
+            <span className="jx-l1">RWY {String(i + 1).padStart(2, "0")}</span>
+            <span className="jx-l1 jx-gray">Track to be announced</span>
+          </div>
         </li>
       ))}
     </ol>
@@ -161,12 +180,12 @@ export default function JetSection() {
           phase(2, at("85% bottom", "95% bottom", { scrub: true }));
 
           cabinReveal(at("85% bottom", "bottom bottom", { scrub: true }));
-          gsap.fromTo(badge, { opacity: 0, y: 20 }, {
-            opacity: 1,
-            y: 0,
-            ease: "Out",
-            scrollTrigger: at("76% bottom", "84% bottom", { scrub: true }),
-          });
+          // streaks in sideways under a directional (horizontal-only) motion blur
+          const blur = $("[data-dirblur]");
+          const badgeIn = gsap.timeline({ scrollTrigger: at("74% bottom", "84% bottom", { scrub: true }) });
+          badgeIn
+            .fromTo(badge, { opacity: 0, xPercent: -60 }, { opacity: 1, xPercent: -50, ease: "Out", duration: 1 }, 0)
+            .fromTo(blur, { attr: { stdDeviation: "48 0" } }, { attr: { stdDeviation: "0 0" }, ease: "Out", duration: 1 }, 0);
         });
 
         mm.add(`(max-width: ${BREAKPOINT - 1}px)`, () => {
@@ -270,23 +289,21 @@ export default function JetSection() {
                 <div className="jx-spec-s__col jx-spec-s__col--l">
                   <div className="jx-spec-day" data-phase-day="1">
                     <div className="jx-u12" />
-                    <div className="jx-p5">Phase 01 · Take-off</div>
+                    <div className="jx-p5">Flight plan</div>
                     <div className="jx-u24" />
-                    <div className="jx-h2 jx-ink">10 Oct</div>
-                    <div className="jx-u24" />
-                    <div className="jx-ps">
-                      <span className="jx-l1 jx-gray">Problem statements</span>
-                      <span className="jx-ps__tag jx-l1">
-                        <i /> Revealed soon
-                      </span>
-                    </div>
+                    <div className="jx-h2 jx-ink">Timeline</div>
                   </div>
                   <div className="jx-sched-wrap">
-                    <Schedule rows={DAY_ONE} phase="1" />
+                    <Schedule rows={TIMELINE} phase="1" />
                   </div>
                 </div>
 
                 <div className="jx-spec-s__center">
+                  <svg className="jx-svg-defs" aria-hidden="true">
+                    <filter id="jx-dirblur" x="-50%" y="-50%" width="200%" height="200%">
+                      <feGaussianBlur data-dirblur stdDeviation="0 0" />
+                    </filter>
+                  </svg>
                   <div className="jx-seat-badge" data-seat-badge>
                     <div className="jx-l1 jx-gray">Finale cabin · On campus</div>
                     <div className="jx-u12" />
@@ -302,17 +319,19 @@ export default function JetSection() {
                 <div className="jx-spec-s__col jx-spec-s__col--r">
                   <div className="jx-spec-day" data-phase-day="2">
                     <div className="jx-u12" />
-                    <div className="jx-p5">Phase 02 · Landing</div>
+                    <div className="jx-p5">Runways</div>
                     <div className="jx-u24" />
-                    <div className="jx-h2 jx-ink">11 Oct</div>
+                    <div className="jx-h2 jx-ink">Tracks</div>
                     <div className="jx-u24" />
                     <div className="jx-ps">
-                      <span className="jx-l1 jx-gray">Finale</span>
-                      <span className="jx-p7">Two judging rounds, results, then the award ceremony.</span>
+                      <span className="jx-l1 jx-gray">Problem statements &amp; tracks</span>
+                      <span className="jx-ps__tag jx-l1">
+                        <i /> Revealed soon
+                      </span>
                     </div>
                   </div>
                   <div className="jx-sched-wrap">
-                    <Schedule rows={DAY_TWO} phase="2" />
+                    <Runways />
                   </div>
                 </div>
               </div>

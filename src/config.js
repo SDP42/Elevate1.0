@@ -8,6 +8,7 @@ export const EVENT = {
   format: "24-hour hackathon",
   dates: "10 & 11 October",
   organiser: "DJS NSDC",
+  partner: "Infomatrix",
   department: "Department of Artificial Intelligence & Data Science",
   college: "Dwarkadas J. Sanghvi College of Engineering",
   city: "Mumbai",

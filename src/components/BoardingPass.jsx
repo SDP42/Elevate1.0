@@ -1,196 +1,120 @@
 import { useEffect, useState } from "react";
 import useInView, { prefersReducedMotion } from "../hooks/useInView";
 import { cue } from "../audio/bus";
-import RegisterButton from "./RegisterButton";
-import { EVENT, EVENT_START, FEES, registrationOpen } from "../config";
+import { EVENT, ORGANISER } from "../config";
+import { NSDC_QR } from "./nsdcQr";
 
 const ROWS = [
-  { k: "Flight", v: "EL · 100" },
-  { k: "Date", v: "10 OCT" },
-  { k: "Boarding", v: "09:00" },
-  { k: "Gate", v: "DJSCE" },
+  { k: "Passenger", v: "Your team" },
+  { k: "Seat", v: "?/30" },
+  { k: "Terminal", v: "DJSCE" },
+  { k: "Gate", v: EVENT.city },
+  { k: "Boarding", v: "10 Oct" },
 ];
 
-// the three steps between this page and a seat in the finale
-const STEPS = [
-  { n: "01", title: "Check in", body: `Register your crew of two to four on Unstop. Online round fare: ${FEES.online} per team.` },
-  { n: "02", title: "Clear security", body: "Submit in the online qualifier round." },
-  { n: "03", title: "Board", body: `The top thirty teams are called to campus on 10 October. Offline finale fare: ${FEES.offline} per team.` },
-];
-
-function useCountdown(target) {
-  const [now, setNow] = useState(() => Date.now());
-  useEffect(() => {
-    const id = setInterval(() => setNow(Date.now()), 1000);
-    return () => clearInterval(id);
-  }, []);
-  const left = Math.max(target.getTime() - now, 0);
-  const d = Math.floor(left / 86400000);
-  const h = Math.floor((left % 86400000) / 3600000);
-  const m = Math.floor((left % 3600000) / 60000);
-  const s = Math.floor((left % 60000) / 1000);
-  return { done: left === 0, parts: [["Days", d], ["Hrs", h], ["Min", m], ["Sec", s]] };
-}
-
-/* After "30 of 30 seats remaining", the pass: it prints out of the slot when
-   it scrolls into view and takes a stamp that says what it is — a seat held
-   until the qualifier is cleared. Registration lives here, once. */
+/* The boarding pass on its own: a white ticket with the DJS NSDC QR on the
+   left, the route across the middle and a dark stub on the right that tears
+   away along its perforation once the pass is on screen. */
 export default function BoardingPass() {
-  const [ref, seen] = useInView(0.35);
-  const [stamped, setStamped] = useState(false);
-  const countdown = useCountdown(EVENT_START);
+  const [ref, seen] = useInView(0.45);
+  const [torn, setTorn] = useState(false);
 
   useEffect(() => {
-    // off screen: re-arm, so the pass prints again on the way back
+    // off screen: re-attach the stub so it tears again on the way back
     if (!seen) {
-      setStamped(false);
+      setTorn(false);
       return;
     }
-    cue("flap", 10);
     const id = setTimeout(
       () => {
-        setStamped(true);
+        setTorn(true);
         cue("stamp");
       },
-      prefersReducedMotion() ? 0 : 1700
+      prefersReducedMotion() ? 0 : 900
     );
     return () => clearTimeout(id);
   }, [seen]);
 
   return (
-    <section id="register" data-label="Boarding pass" className="pass">
+    <section id="register" data-label="Boarding pass" className="pass bp-section">
       <div className="pass__sky" aria-hidden="true">
         <span className="lab__cloud lab__cloud--a" />
         <span className="lab__cloud lab__cloud--b" />
       </div>
-      <div className="container pass__grid">
-        <div className="pass__intro" data-reveal>
-          <span className="eyebrow">Claim a seat</span>
-          <h2 className="pass__title">Thirty seats. One has your name on it.</h2>
-          <p className="pass__copy">
-            Every team starts with the same pass. Clear the qualifier and it gets
-            you a desk on the {EVENT.dates} flight.
-          </p>
 
-          <ol className="pass__steps">
-            {STEPS.map((s) => (
-              <li key={s.n}>
-                <span className="pass__stepN">{s.n}</span>
-                <div>
-                  <strong>{s.title}</strong>
-                  <span>{s.body}</span>
-                </div>
-              </li>
-            ))}
-          </ol>
+      <div className="container bp-wrap">
+        <div ref={ref} className={`bp ${seen ? "is-in" : ""} ${torn ? "is-torn" : ""}`}>
+          <div className="bp__ticket">
+            <a
+              className="bp__qr"
+              href={ORGANISER.instagram}
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-label={`Open ${ORGANISER.handle} on Instagram`}
+            >
+              <svg viewBox={NSDC_QR.viewBox} shapeRendering="crispEdges" aria-hidden="true">
+                <path d={NSDC_QR.d} fill="none" stroke="#0b1b3a" strokeWidth="1" />
+              </svg>
+              <span className="bp__qrLabel">Scan · {ORGANISER.handle}</span>
+            </a>
 
-          <div className="pass__cta">
-            <RegisterButton className="pass__register">Register your team</RegisterButton>
-            <span className="pass__note">
-              {registrationOpen()
-                ? "Opens Unstop in a new tab."
-                : "The Unstop link goes live shortly."}
-            </span>
-          </div>
-        </div>
+            <div className="bp__perf" aria-hidden="true" />
 
-        <div className="pass__side">
-          <div ref={ref} className={`pass__printer ${seen ? "is-printing" : ""}`}>
-            <div className="pass__slot" aria-hidden="true">
-              <span className="pass__slotLight" />
-            </div>
-
-            <div className="pass__paper">
-              <div className="pass__card">
-                <div className="pass__main">
-                  <div className="pass__brand">
-                    <span>Elevate Airways</span>
-                    <strong>BOARDING PASS</strong>
-                  </div>
-
-                  <div className="pass__passenger">
-                    <span>Passenger</span>
-                    <strong>Your team · 2–4 crew</strong>
-                  </div>
-
-                  <div className="pass__route">
-                    <div>
-                      <span className="pass__code">IDEA</span>
-                      <span className="pass__place">First commit</span>
-                    </div>
-                    <svg viewBox="0 0 60 24" className="pass__plane" aria-hidden="true">
-                      <path
-                        d="M4 12 H40 L34 4 H39 L50 12 L39 20 H34 L40 12"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="1.6"
-                        strokeLinejoin="round"
-                      />
-                    </svg>
-                    <div className="pass__to">
-                      <span className="pass__code">DEMO</span>
-                      <span className="pass__place">Award ceremony</span>
-                    </div>
-                  </div>
-
-                  <dl className="pass__rows">
-                    {ROWS.map((r) => (
-                      <div key={r.k}>
-                        <dt>{r.k}</dt>
-                        <dd>{r.v}</dd>
-                      </div>
-                    ))}
-                  </dl>
-
-                  <div
-                    className={`pass__stamp ${stamped ? "is-stamped" : ""}`}
-                    aria-hidden="true"
-                  >
-                    <span>Seat held</span>
-                    <small>Pending qualifier</small>
-                  </div>
+            <div className="bp__main">
+              <div className="bp__route">
+                <div className="bp__place">
+                  <span className="bp__city">
+                    Your idea,
+                    <br />
+                    anywhere
+                  </span>
+                  <strong className="bp__code">IDEA</strong>
+                  <span className="bp__when">
+                    Sat, 10 October
+                    <br />
+                    Hackathon starts
+                  </span>
                 </div>
 
-                <div className="pass__stub">
-                  <span className="pass__stubLabel">Seat</span>
-                  <strong className="pass__seat">?/30</strong>
-                  <div className="pass__barcode" aria-hidden="true">
-                    {Array.from({ length: 22 }).map((_, i) => (
-                      <i key={i} style={{ width: `${(i % 4) + 1}px` }} />
-                    ))}
-                  </div>
+                <div className="bp__path" aria-hidden="true">
+                  <span />
+                  <svg viewBox="0 0 24 24">
+                    <path d="M21 16v-2l-8-5V3.5a1.5 1.5 0 0 0-3 0V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5z" fill="currentColor" transform="rotate(90 12 12)" />
+                  </svg>
+                  <span />
+                </div>
+
+                <div className="bp__place bp__place--to">
+                  <span className="bp__city">
+                    DJSCE,
+                    <br />
+                    {EVENT.city}
+                  </span>
+                  <strong className="bp__code">DEMO</strong>
+                  <span className="bp__when">
+                    Sun, 11 October
+                    <br />
+                    Hackathon ends
+                  </span>
                 </div>
               </div>
+
+              <dl className="bp__rows">
+                {ROWS.map((r) => (
+                  <div key={r.k}>
+                    <dt>{r.k}</dt>
+                    <dd>{r.v}</dd>
+                  </div>
+                ))}
+              </dl>
             </div>
           </div>
 
-          <dl className="pass__fare">
-            <div className="pass__fareHead">
-              <dt>Fare</dt>
-              <dd>per team</dd>
-            </div>
-            <div>
-              <dt>Online round</dt>
-              <dd>{FEES.online}</dd>
-            </div>
-            <div>
-              <dt>Offline finale · if selected</dt>
-              <dd>{FEES.offline}</dd>
-            </div>
-          </dl>
-
-          <div className="pass__countdown" aria-live="off">
-            <span className="pass__countLabel">
-              {countdown.done ? "Gates are open" : "Gates open in"}
+          <div className="bp__stub">
+            <span className="bp__stubTitle">Boarding Pass</span>
+            <span className="bp__stubBrand">
+              ELEVATE <em>1.0</em>
             </span>
-            <div className="pass__countParts">
-              {countdown.parts.map(([label, value]) => (
-                <div key={label}>
-                  <strong>{String(value).padStart(2, "0")}</strong>
-                  <span>{label}</span>
-                </div>
-              ))}
-            </div>
           </div>
         </div>
       </div>

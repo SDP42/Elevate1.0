@@ -12,15 +12,41 @@ export const JET_H = 2400;
 const C = JET_W / 2;
 const FUSE = 95; // half-width of the painted fuselage
 
+/* Wing planform for one side (1 = right, -1 = left), in plate units:
+   swept leading edge, a kinked trailing edge, short tip chord and a winglet. */
 function wing(side) {
-  const s = side; // 1 = right, -1 = left
-  const x = (dx) => C + dx * s;
+  const x = (dx) => C + dx * side;
+  const P = {
+    rootLE: [x(FUSE - 8), 900],
+    tipLE: [x(880), 1628],
+    tipTE: [x(905), 1688],
+    kinkTE: [x(360), 1560],
+    rootTE: [x(FUSE - 8), 1500],
+  };
+  const pt = ([px, py]) => `${px} ${py}`;
   return {
-    front: `M ${x(FUSE - 10)} 902 L ${x(885)} 1640 L ${x(898)} 1665 L ${x(FUSE - 8)} 1200 Z`,
-    rear: `M ${x(FUSE - 8)} 1200 L ${x(898)} 1665 L ${x(910)} 1690 L ${x(FUSE - 12)} 1512 Z`,
-    flap: `M ${x(FUSE + 40)} 1440 L ${x(760)} 1650`,
+    P,
+    outline: `M ${pt(P.rootLE)} L ${pt(P.tipLE)} L ${pt(P.tipTE)} L ${pt(P.kinkTE)} L ${pt(P.rootTE)} Z`,
+    // leading-edge slat: a bright strip along the front of the wing
+    slat: `M ${pt(P.rootLE)} L ${pt(P.tipLE)} L ${x(872)} ${1652} L ${x(FUSE + 14)} ${948} Z`,
+    winglet: `M ${x(876)} 1622 L ${x(930)} 1636 L ${x(942)} 1700 L ${x(904)} 1692 Z`,
+    // hinge line of the flaps and ailerons, parallel to the trailing edge
+    hinge: `M ${x(FUSE + 24)} 1448 L ${x(360)} 1506 L ${x(868)} 1652`,
+    flapSplit: `M ${x(360)} 1506 L ${x(360)} 1560`,
+    aileronSplit: `M ${x(640)} 1586 L ${x(646)} 1624`,
+    spoilers: [0.3, 0.45, 0.6].map((t) => {
+      const sx = FUSE + 60 + t * 520;
+      const sy = 1300 + t * 250;
+      return `M ${x(sx)} ${sy} L ${x(sx + 70)} ${sy + 22}`;
+    }),
+    fairing: `M ${x(FUSE - 30)} 880 C ${x(FUSE + 40)} 1040, ${x(FUSE + 46)} 1420, ${x(FUSE - 30)} 1560 Z`,
+    navLight: [x(934), 1668],
     stab: `M ${x(20)} 1960 L ${x(315)} 2322 L ${x(322)} 2352 L ${x(18)} 2300 Z`,
+    stabHinge: `M ${x(40)} 2262 L ${x(300)} 2330`,
     pod: x(130),
+    // gradient runs across the chord, from leading edge toward the trailing edge
+    chord: { x1: x(480), y1: 1262, x2: x(290), y2: 1492 },
+    span: { x1: x(FUSE), y1: 1200, x2: x(900), y2: 1660 },
   };
 }
 
@@ -52,18 +78,62 @@ function JetShape({ shadow = false }) {
 
   return (
     <g>
-      {/* wings */}
-      {[L, R].map((w, i) => (
-        <g key={i}>
-          <path d={w.front} fill={fill("jj-wing-front")} />
-          <path d={w.rear} fill={fill("jj-wing-rear")} />
-          {!shadow && <path d={w.flap} stroke="#9c7a62" strokeWidth="4" opacity="0.6" />}
+      {!shadow && (
+        <defs>
+          {[
+            ["L", L],
+            ["R", R],
+          ].map(([k, w]) => (
+            <g key={k}>
+              <linearGradient id={`jj-chord-${k}`} gradientUnits="userSpaceOnUse" {...w.chord}>
+                <stop offset="0" stopColor="#e9e4dc" />
+                <stop offset="0.18" stopColor="#d9c7b2" />
+                <stop offset="0.62" stopColor="#c9b098" />
+                <stop offset="1" stopColor="#a88f78" />
+              </linearGradient>
+              <linearGradient id={`jj-span-${k}`} gradientUnits="userSpaceOnUse" {...w.span}>
+                <stop offset="0" stopColor="#6f86a3" stopOpacity="0.42" />
+                <stop offset="0.55" stopColor="#9fb3c8" stopOpacity="0.16" />
+                <stop offset="1" stopColor="#ffffff" stopOpacity="0.1" />
+              </linearGradient>
+            </g>
+          ))}
+        </defs>
+      )}
+
+      {/* wings: painted skin, sky reflection, bright slat, control surfaces */}
+      {[
+        ["L", L],
+        ["R", R],
+      ].map(([k, w]) => (
+        <g key={k}>
+          <path d={w.outline} fill={shadow ? "#3a2c22" : `url(#jj-chord-${k})`} />
+          <path d={w.winglet} fill={shadow ? "#3a2c22" : "#b9a590"} />
+          {!shadow && (
+            <>
+              <path d={w.outline} fill={`url(#jj-span-${k})`} />
+              <path d={w.slat} fill="#eef0f2" opacity="0.85" />
+              <path d={w.slat} fill="none" stroke="#ffffff" strokeWidth="3" opacity="0.7" />
+              <path d={w.hinge} fill="none" stroke="#7d6452" strokeWidth="3" opacity="0.55" />
+              <path d={w.flapSplit} stroke="#7d6452" strokeWidth="3" opacity="0.5" />
+              <path d={w.aileronSplit} stroke="#7d6452" strokeWidth="3" opacity="0.5" />
+              {w.spoilers.map((d, i) => (
+                <path key={i} d={d} stroke="#8a705c" strokeWidth="2.5" opacity="0.4" />
+              ))}
+              <path d={w.outline} fill="none" stroke="#6d5746" strokeWidth="2" opacity="0.35" />
+              <circle cx={w.navLight[0]} cy={w.navLight[1]} r="9" fill={k === "L" ? "#e0453a" : "#3fbf6e"} />
+            </>
+          )}
+          <path d={w.fairing} fill={fill("jj-fuse")} />
         </g>
       ))}
 
       {/* tailplane */}
       {[L, R].map((w, i) => (
-        <path key={`s${i}`} d={w.stab} fill={fill("jj-wing-rear")} />
+        <g key={`s${i}`}>
+          <path d={w.stab} fill={fill("jj-wing-rear")} />
+          {!shadow && <path d={w.stabHinge} stroke="#7d6452" strokeWidth="2.5" opacity="0.5" />}
+        </g>
       ))}
 
       {/* engines on pylons beside the rear fuselage */}

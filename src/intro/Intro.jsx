@@ -4,7 +4,7 @@ import { gsap, ScrollTrigger, SplitText, BREAKPOINT, charReveal, lineReveal, chi
 import { BackPlate, FrontPlate, FrontOverPlate, Knob } from "./CabinWindow";
 import { paintSky } from "./skyPainter";
 import { prefersReducedMotion } from "../hooks/useInView";
-import { EVENT, FEES } from "../config";
+import { EVENT } from "../config";
 
 const VISITED = "elevate-intro-seen";
 
@@ -21,10 +21,7 @@ const FEATURES = [
     title: ["Crews of", "two to four"],
     body: "Form your team before you register. Mixed skill sets tend to land the most complete demos.",
   },
-  {
-    title: ["Fare,", "per team"],
-    body: `${FEES.online} per team for the online round. Teams selected for the offline finale pay ${FEES.offline} per team.`,
-  },
+
 ]
 
 /* Plate sizes follow the viewport's shape so the painted sky is never
@@ -167,7 +164,7 @@ export default function Intro() {
       const scrub = { trigger: heroArea, start: "top top", end: "bottom bottom", scrub: true };
 
       // wordmark drops out of the window and settles into the header
-      gsap.fromTo(logo, { y: "44vh", scale: 1.25 }, { y: "0vh", scale: 1, ease: "ease", scrollTrigger: scrub });
+      gsap.fromTo(logo, { y: "44vh", scale: 2.1 }, { y: "0vh", scale: 1, ease: "ease", scrollTrigger: scrub });
 
       const mm = gsap.matchMedia();
       mm.add(
@@ -178,7 +175,6 @@ export default function Intro() {
           // 2D transforms (force3D off) so the browser re-rasterises the zoom at
           // the scale actually on screen instead of holding the deepest one
           tl.fromTo($("[data-hero-bg]"), { scale: 1, xPercent: 0 }, { scale: 6.5, xPercent: -2, ease: "none", duration: 1, force3D: false }, 0);
-          tl.fromTo($("[data-hero-copy]"), { scale: 1 }, { scale: 8, ease: "none", duration: 1, force3D: false }, 0);
           if (!conditions.desktop) {
             // phones: the brief flows normally, each block blurs in as it arrives
             el.querySelectorAll("[data-scroll-reveal]").forEach((block) => {
@@ -195,8 +191,6 @@ export default function Intro() {
             return;
           }
 
-          tl.fromTo($("[data-title-l]"), { x: "0vw" }, { x: "-50vw", ease: "none", duration: 1 }, 0);
-          tl.fromTo($("[data-title-r]"), { x: "0vw" }, { x: "50vw", ease: "none", duration: 1 }, 0);
 
           // the sky drifts at half the scroll speed behind the window
           gsap.fromTo($("[data-sky-hero]"), { y: "0vh" }, { y: "100vh", ease: "none", scrollTrigger: scrub });
@@ -207,14 +201,6 @@ export default function Intro() {
             ease: "none",
             scrollTrigger: { trigger: aboutW, start: "top bottom", end: "bottom top", scrub: true },
           });
-
-          // the brief brightens character by character as it passes
-          const lead = $("[data-highlight]");
-          const split = new SplitText(lead, { type: "words,chars", wordsClass: "jx-word", charsClass: "jx-char" });
-          gsap.set(split.words, { display: "inline-block", whiteSpace: "nowrap" });
-          gsap.timeline({
-            scrollTrigger: { trigger: lead, start: "top 75%", end: "bottom 75%", scrub: true },
-          }).from(split.chars, { opacity: 0.15, duration: 0.6, ease: "Out", stagger: { each: 0.04 } });
 
           el.querySelectorAll("[data-scroll-reveal]").forEach((block) => {
             gsap.set(block, { visibility: "visible" });
@@ -229,9 +215,22 @@ export default function Intro() {
             });
           });
 
-          return () => split.revert();
         }
       );
+
+      // the pencil circle draws itself round the name as the brief arrives
+      const pencil = $("[data-pencil]");
+      if (pencil) {
+        const len = pencil.getTotalLength();
+        gsap.set(pencil, { strokeDasharray: len, strokeDashoffset: len });
+        gsap.to(pencil, {
+          strokeDashoffset: 0,
+          duration: 1.4,
+          delay: 0.5,
+          ease: "InOut",
+          scrollTrigger: { trigger: $("[data-circled]"), start: "top 85%", toggleActions: "play none none reverse" },
+        });
+      }
 
       // hide the rest of the site's floating chrome while the intro plays
       // starts before the page top so it is still active when scrolled back to 0
@@ -287,65 +286,7 @@ export default function Intro() {
         {/* ---------------- cabin window ---------------- */}
         <section className="jx-hero-area" id="top" data-label="Cabin" data-hero-area>
           <div className="jx-hero-w">
-            <div className="jx-hero-s" data-hero-copy>
-              <div className="jx-u156" />
-              <div className="jx-grid jx-hero-s__titles">
-                <div className="jx-hero-s__l" data-title-l>
-                  <h1 className="jx-h2" data-char-reveal>
-                    Ideas in <br />
-                    motion
-                  </h1>
-                </div>
-                <div className="jx-hero-s__r" data-title-r>
-                  <h2 className="jx-h2 jx-right" data-char-reveal>
-                    Built in <br />
-                    24 hours
-                  </h2>
-                </div>
-              </div>
-              <div className="jx-u216" />
-
-              <div className="jx-hero-s__bot jx-desktop">
-                <div className="jx-grid">
-                  <div className="jx-bot-desc">
-                    <div className="jx-grid jx-grid--6">
-                      <h2 className="jx-p5 jx-bot-desc__title" data-line-reveal>
-                        Your seat on <br />
-                        the 24-hour flight
-                      </h2>
-                    </div>
-                    <div className="jx-divider" data-div-reveal>
-                      <div className="jx-u24" />
-                      <div className="jx-divider__line" />
-                      <div className="jx-u24" />
-                    </div>
-                    <div className="jx-grid jx-grid--6">
-                      <p className="jx-p7 jx-bot-desc__text" data-line-reveal>
-                        An online qualifier, then twenty-four hours on campus for the thirty teams
-                        that make it — you bring the idea, we keep the lights on.
-                      </p>
-                    </div>
-                  </div>
-                  <div className="jx-bot-scroll">
-                    <div className="jx-line-h" />
-                    <div className="jx-u24" />
-                    <div className="jx-bot-scroll__row">
-                      <div className="jx-bot-scroll__item">
-                        <span className="jx-scroll-ico" aria-hidden="true">
-                          <i />
-                        </span>
-                        <a className="jx-l1 jx-link" href="#brief">
-                          Scroll down
-                        </a>
-                      </div>
-                      <div className="jx-l1">To begin boarding</div>
-                    </div>
-                  </div>
-                </div>
-                <div className="jx-u96" />
-              </div>
-            </div>
-
+            {/* landing shows only the window and the wordmark */}
             <div className="jx-hero-bg" data-hero-bg aria-hidden="true">
               <div className="jx-hero-bg__overlay" />
               <div className="jx-plate jx-plate--front-over" data-front-over>
@@ -390,25 +331,28 @@ export default function Intro() {
             <div className="jx-u96" />
             <div className="jx-about-s__lead" data-scroll-reveal>
               <div>
-                <h2 className="jx-p2" data-highlight>
-                  {EVENT.name} is a {EVENT.format} by {EVENT.organiser}, run in two rounds.
-                  Everyone starts online; the thirty teams that qualify come to campus in{" "}
-                  {EVENT.city} and build, without stopping, until something runs.
-                </h2>
-              </div>
-            </div>
-            <div className="jx-u96" />
-            <div className="jx-about-s__mark" data-scroll-reveal>
-              <svg className="jx-mark-globe" viewBox="0 0 32 32" aria-hidden="true">
-                <circle cx="16" cy="16" r="14.5" fill="none" stroke="currentColor" strokeWidth="1.2" />
-                <ellipse cx="16" cy="16" rx="6.5" ry="14.5" fill="none" stroke="currentColor" strokeWidth="1.2" />
-                <path d="M1.5 16h29M4 8.5h24M4 23.5h24" fill="none" stroke="currentColor" strokeWidth="1.2" />
-              </svg>
-              <span className="jx-mark-word">E1.0</span>
-              <div className="jx-l1-item">
-                <div className="jx-l1">{EVENT.organiser}</div>
-                <div className="jx-l1">
-                  <strong>AI &amp; Data Science</strong>
+                <p className="jx-brief">
+                  <span className="jx-circled" data-circled>
+                    {EVENT.name}
+                    <svg className="jx-circled__pencil" viewBox="0 0 300 110" preserveAspectRatio="none" aria-hidden="true">
+                      <path
+                        data-pencil
+                        d="M168 12 C 96 4, 22 20, 12 52 C 2 86, 78 104, 162 100 C 246 96, 296 78, 290 48 C 284 18, 214 4, 138 10 C 112 12, 94 16, 80 22"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="3.2"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      />
+                    </svg>
+                  </span>{" "}
+                  is a {EVENT.format} for builders from every college, year and department. Form a
+                  crew, pick a problem, and ship something real before the flight lands at{" "}
+                  {EVENT.college.split(" of ")[0]}, {EVENT.city}.
+                </p>
+                <div className="jx-u24" />
+                <div className="jx-l1 jx-brief__org">
+                  Organised by {EVENT.organiser} × {EVENT.partner}
                 </div>
               </div>
             </div>

@@ -79,17 +79,6 @@ export default function CabinLab3D() {
         <span className="lab__cloud lab__cloud--b" />
         <span className="lab__cloud lab__cloud--c" />
       </div>
-      <div className="container lab__content">
-        <div className="section-head" data-reveal>
-          <span className="eyebrow">Onboard · after take-off</span>
-          <h2 className="section-title">The cabin becomes the build bay.</h2>
-          <p className="lab__copy">
-            From 11:00 on 10 October, your crew gets a table in the cabin for
-            twenty-four hours. Bring your own laptops and chargers. Drag or keep
-            scrolling to look around.
-          </p>
-        </div>
-      </div>
       <div className="lab__stage">
         <canvas ref={canvasRef} />
       </div>

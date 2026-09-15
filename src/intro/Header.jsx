@@ -4,8 +4,6 @@ import { EVENT, ORGANISER } from "../config";
 const LINKS = [
   { href: "#brief", label: "About" },
   { href: "#prizes", label: "Prizes" },
-  { href: "#schedule", label: "Schedule" },
-  { href: "#perks", label: "Perks" },
 ];
 
 /* Label rolls up to a duplicate and a soft plate rises behind it on hover. */
@@ -75,7 +73,7 @@ export default function Header() {
           </a>
         </div>
         <div className="jx-header__cta jx-desktop">
-          <NavItem href="#schedule">{EVENT.dates}</NavItem>
+          <NavItem href="#schedule">Schedule</NavItem>
           <NavItem href={ORGANISER.instagram} target="_blank" rel="noopener noreferrer">
             {ORGANISER.handle}
           </NavItem>

@@ -1112,11 +1112,18 @@ html.in-jet .sound {
 }
 
 /* ---------- finale cabin badge ---------- */
+.jx-svg-defs {
+  position: absolute;
+  width: 0;
+  height: 0;
+}
+
 .jx-seat-badge {
   position: absolute;
   left: 50%;
   top: calc(18 * var(--u));
   transform: translateX(-50%);
+  filter: url(#jx-dirblur);
   text-align: center;
   white-space: nowrap;
   z-index: 2;
@@ -1344,5 +1351,106 @@ html.in-jet .sound {
     font-size: clamp(28px, 7.4vw, 44px);
     line-height: 1.05;
     letter-spacing: -0.06em !important;
+  }
+}
+
+/* ---------- timeline + runways ---------- */
+.jx-sched__time {
+  min-width: max(58px, calc(66 * var(--u)));
+  text-align: center;
+}
+
+.jx-sched__what {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  column-gap: calc(10 * var(--u));
+}
+
+.jx-sched__at {
+  font-style: normal;
+  font-size: max(10px, calc(11 * var(--u)));
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: rgba(49, 39, 38, 0.5);
+}
+
+.jx-runways {
+  display: grid;
+  gap: calc(14 * var(--u));
+}
+
+.jx-runway {
+  display: grid;
+  gap: calc(8 * var(--u));
+}
+
+.jx-runway__strip {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.jx-runway__label {
+  display: flex;
+  justify-content: space-between;
+}
+
+/* ---------- wordmark: the only copy on the landing screen ---------- */
+.jx-logo {
+  color: #ffffff;
+  text-shadow: 0 2px 6px rgba(0, 0, 0, 0.35), 0 8px 30px rgba(0, 0, 0, 0.35), 0 0 42px rgba(255, 255, 255, 0.35);
+}
+
+.jx-header--ink .jx-logo,
+.jx-header--light-bg .jx-logo {
+  text-shadow: none;
+}
+
+/* ---------- brief: short, justified, name circled in pencil ---------- */
+.jx-brief {
+  margin: 0;
+  max-width: 60rem;
+  font-size: max(22px, calc(40 * var(--u)));
+  font-weight: 500;
+  line-height: 1.22;
+  letter-spacing: -0.04em;
+  text-align: justify;
+  text-align-last: left;
+  hyphens: auto;
+}
+
+.jx-circled {
+  position: relative;
+  display: inline-block;
+  white-space: nowrap;
+  padding-inline: 0.12em;
+}
+
+.jx-circled__pencil {
+  position: absolute;
+  left: -14%;
+  top: -34%;
+  width: 128%;
+  height: 168%;
+  color: #ffe9a8;
+  overflow: visible;
+  pointer-events: none;
+  filter: drop-shadow(0 1px 0 rgba(0, 0, 0, 0.15));
+}
+
+.jx-brief__org {
+  opacity: 0.85;
+}
+
+@media (min-width: 1200px) {
+  .jx-features {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 991px) {
+  .jx-brief {
+    font-size: clamp(20px, 5.6vw, 30px);
   }
 }
