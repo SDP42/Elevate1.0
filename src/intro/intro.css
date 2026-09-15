@@ -106,11 +106,9 @@ html.lenis {
   text-align: right;
 }
 
-/* split-text pieces: blur needs a box of its own */
-.jx-char,
-.jx-line {
-  will-change: filter, opacity;
-}
+/* split-text pieces are not pinned to their own GPU layers: there are
+   hundreds of them, and pinned layers outlive the reveal and starve the
+   rest of the page of tile memory */
 
 /* ---------- spacers (design units) ---------- */
 .jx-u12 { height: calc(12 * var(--u)); }
@@ -227,7 +225,6 @@ html.lenis {
   display: flex;
   flex-direction: column;
   padding-inline: var(--jx-pad);
-  will-change: transform;
 }
 
 .jx-hero-s__titles {
@@ -338,7 +335,9 @@ html.lenis {
   position: absolute;
   inset: 0;
   z-index: 0;
-  will-change: transform;
+  /* no will-change: a pinned layer keeps the raster scale it reached at the
+     8× zoom, and redrawing the whole screen at that scale on the way back up
+     exhausts tile memory, leaving unpainted chunks */
 }
 
 .jx-hero-bg__overlay {

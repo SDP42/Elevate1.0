@@ -26,6 +26,8 @@ export function charReveal(el, vars = {}) {
     delay: 0.3,
     stagger: 0.05,
     ease: "Out",
+    // drop the finished blur so no filter layer is left behind per piece
+    clearProps: "filter",
     ...vars,
   });
 }
@@ -41,6 +43,8 @@ export function lineReveal(el, vars = {}) {
     delay: 0.3,
     stagger: 0.1,
     ease: "Out",
+    // drop the finished blur so no filter layer is left behind per piece
+    clearProps: "filter",
     ...vars,
   });
 }
@@ -56,6 +60,8 @@ export function childReveal(el, vars = {}) {
     delay: 0.3,
     stagger: 0.1,
     ease: "Out",
+    // drop the finished blur so no filter layer is left behind per piece
+    clearProps: "filter",
     ...vars,
   });
 }

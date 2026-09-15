@@ -175,8 +175,10 @@ export default function Intro() {
         ({ conditions }) => {
           const tl = gsap.timeline({ scrollTrigger: scrub });
           // camera pushes through the window: wall 6.5×, copy 8×
-          tl.fromTo($("[data-hero-bg]"), { scale: 1, xPercent: 0 }, { scale: 6.5, xPercent: -2, ease: "none", duration: 1 }, 0);
-          tl.fromTo($("[data-hero-copy]"), { scale: 1 }, { scale: 8, ease: "none", duration: 1 }, 0);
+          // 2D transforms (force3D off) so the browser re-rasterises the zoom at
+          // the scale actually on screen instead of holding the deepest one
+          tl.fromTo($("[data-hero-bg]"), { scale: 1, xPercent: 0 }, { scale: 6.5, xPercent: -2, ease: "none", duration: 1, force3D: false }, 0);
+          tl.fromTo($("[data-hero-copy]"), { scale: 1 }, { scale: 8, ease: "none", duration: 1, force3D: false }, 0);
           if (!conditions.desktop) {
             // phones: the brief flows normally, each block blurs in as it arrives
             el.querySelectorAll("[data-scroll-reveal]").forEach((block) => {
@@ -232,9 +234,10 @@ export default function Intro() {
       );
 
       // hide the rest of the site's floating chrome while the intro plays
+      // starts before the page top so it is still active when scrolled back to 0
       ScrollTrigger.create({
         trigger: el,
-        start: "top top",
+        start: "top bottom",
         end: "bottom 60%",
         onToggle: (self) => html.classList.toggle("in-intro", self.isActive),
       });
