@@ -119,14 +119,18 @@
   position: relative;
 }
 
-/* ease out of the dark passenger list into the open sky */
-.pass::before {
-  content: "";
+/* one continuous sky: black where Who flies ends, the Onboard blue where it begins */
+.pass {
+  overflow: hidden;
+  color: #f3f8fc;
+  background: linear-gradient(180deg, #050403 0%, #0f2c47 12%, #1d5489 36%, #2f72b3 68%, #3f86c6 100%);
+}
+
+.pass__sky {
   position: absolute;
-  inset: 0 0 auto;
-  height: clamp(50px, 6vw, 90px);
-  background: linear-gradient(#050403, rgba(5, 4, 3, 0));
+  inset: 0;
   pointer-events: none;
+  opacity: 0.55;
 }
 
 .pass__grid {
@@ -136,6 +140,7 @@
 
 .pass__title {
   max-width: 15ch;
+  color: #fff;
 }
 
 .pass__steps {
@@ -194,8 +199,8 @@
   border: 0;
   border-radius: 999px;
   padding: 1rem 1.7rem;
-  background: #12202b;
-  color: #f3ede2;
+  background: #fff;
+  color: #12202b;
   font: inherit;
   font-size: 0.92rem;
   font-weight: 600;
@@ -217,7 +222,7 @@
 
 .pass__note {
   font-size: 0.85rem;
-  color: #24414f;
+  color: #cfe2f0;
 }
 
 .pass__side {
@@ -358,8 +363,8 @@
 .lab {
   position: relative;
   overflow: hidden;
-  background: linear-gradient(180deg, #3f86c6 0%, #6aa7d8 38%, #a9cde9 72%, #d9ebf6 100%);
-  padding-bottom: clamp(4rem, 8vw, 7rem);
+  background: linear-gradient(180deg, #3f86c6 0%, #6aa7d8 34%, #a9cde9 62%, #7f9fb6 82%, #121110 100%);
+  padding-bottom: clamp(7rem, 12vw, 10rem);
   color: #0f2433;
 }
 
@@ -428,21 +433,19 @@
 }
 
 .lab__stage {
-  width: min(1240px, 90vw);
-  margin: 3rem auto 0;
-  border-radius: 28px;
-  overflow: hidden;
-  border: 10px solid rgba(255, 255, 255, 0.85);
-  box-shadow: 0 30px 60px rgba(15, 45, 70, 0.28), inset 0 0 0 1px rgba(0, 0, 0, 0.05);
+  width: min(1320px, 96vw);
+  margin: 2rem auto 0;
+  -webkit-mask-image: radial-gradient(ellipse 72% 78% at 50% 48%, #000 58%, transparent 100%);
+  mask-image: radial-gradient(ellipse 72% 78% at 50% 48%, #000 58%, transparent 100%);
 }
 
-/* hand the sky back to the dark perks section */
+/* the sky darkens slowly into the perks section instead of stopping at a line */
 .lab::after {
   content: "";
   position: absolute;
   inset: auto 0 0;
-  height: clamp(60px, 9vw, 120px);
-  background: linear-gradient(rgba(18, 17, 16, 0), var(--bg-alt));
+  height: 42%;
+  background: linear-gradient(rgba(18, 17, 16, 0) 0%, rgba(18, 17, 16, 0.35) 45%, #121110 100%);
   pointer-events: none;
 }
 
@@ -522,15 +525,8 @@
   background: rgba(255, 255, 255, 0.7);
 }
 
-.pass__title {
-  text-shadow: 0 1px 18px rgba(255, 255, 255, 0.55);
-}
-
-/* the fixed backdrop is busy behind running copy: give the copy a veil */
 .pass__copy {
-  padding: 0.2rem 0;
-  color: #12202b;
-  text-shadow: 0 1px 12px rgba(255, 255, 255, 0.8);
+  color: #dcebf6;
 }
 
 /* stamp lands in the clear space beside the passenger line, not over any data */
@@ -560,5 +556,114 @@
     bottom: 0.9rem;
     right: auto;
     left: 1rem;
+  }
+}
+
+/* ---------- fare ---------- */
+.pass__fare {
+  margin: 0;
+  display: grid;
+  border-radius: 14px;
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.92);
+  color: #12202b;
+  box-shadow: 0 14px 30px rgba(8, 26, 40, 0.18);
+}
+
+.pass__fare > div {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 1rem;
+  padding: 0.85rem 1.2rem;
+  border-top: 1px solid rgba(18, 32, 43, 0.08);
+}
+
+.pass__fare > .pass__fareHead {
+  border-top: 0;
+  padding-bottom: 0.4rem;
+}
+
+.pass__fare dt {
+  font-size: 0.92rem;
+  font-weight: 600;
+}
+
+.pass__fare dd {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 1.25rem;
+  font-weight: 700;
+}
+
+.pass__fareHead dt,
+.pass__fareHead dd {
+  font-family: var(--font-body);
+  font-size: 0.68rem;
+  font-weight: 600;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: #2f5c78;
+}
+
+/* ---------- perks hand over to the cream briefing ---------- */
+.experience {
+  position: relative;
+  padding-bottom: calc(var(--section-y) + clamp(80px, 12vw, 180px));
+}
+
+.experience::after {
+  content: "";
+  position: absolute;
+  inset: auto 0 0;
+  height: clamp(120px, 16vw, 240px);
+  background: linear-gradient(rgba(243, 237, 226, 0), #f3ede2);
+  pointer-events: none;
+}
+
+/* ---------- footer contacts and social ---------- */
+.footer__social {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  margin-top: 1.2rem;
+}
+
+.footer__social .footer__ig {
+  margin-top: 0;
+}
+
+.footer__contact {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  margin-bottom: 0.7rem;
+}
+
+.footer__contact .footer__person {
+  color: var(--cream);
+}
+
+.footer__phone {
+  font-size: 0.85rem;
+  color: var(--gold);
+  font-variant-numeric: tabular-nums;
+}
+
+.footer__contact:hover .footer__phone {
+  text-decoration: underline;
+}
+
+/* the ticket keeps its printed ink on the light-text sky */
+.pass__card {
+  color: #12202b;
+}
+
+@media (min-width: 521px) {
+  .pass__stamp {
+    right: 0.5rem;
+  }
+  .pass__stamp.is-stamped {
+    transform: rotate(-12deg) scale(0.82);
   }
 }
