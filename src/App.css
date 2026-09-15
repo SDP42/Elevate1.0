@@ -2773,27 +2773,19 @@ main,
   mix-blend-mode: screen;
 }
 
-.land__scene {
+.land__scene3d {
   position: absolute;
   inset: 0;
-  perspective: 1150px;
-  perspective-origin: 50% 12%;
   pointer-events: none;
   /* the far ground dissolves into the sky instead of ending on a hard line */
   -webkit-mask-image: linear-gradient(180deg, transparent 0%, transparent 10%, #000 34%);
   mask-image: linear-gradient(180deg, transparent 0%, transparent 10%, #000 34%);
 }
 
-/* ground plane tilted away from the camera, pivoting on the near edge */
-.land__ground {
-  position: absolute;
-  left: 50%;
-  bottom: -2vh;
-  transform-origin: 50% 100%;
-  transform: rotateX(77deg);
-  transform-style: preserve-3d;
-  /* transparent: this layer only carries runways and aircraft */
-  background: transparent;
+.land__scene3d canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
 }
 
 .land__grass {
@@ -2806,107 +2798,6 @@ main,
   -webkit-mask-image: linear-gradient(180deg, transparent 0%, #000 22%);
   mask-image: linear-gradient(180deg, transparent 0%, #000 22%);
   pointer-events: none;
-}
-
-.land__rwWrap {
-  position: absolute;
-  transform: translateZ(1px);
-}
-
-.land__runway {
-  display: block;
-}
-
-.land__approachWrap {
-  position: absolute;
-  width: 0;
-  transform: translateZ(2px);
-}
-
-.land__approach span {
-  position: absolute;
-  left: -60px;
-  width: 120px;
-  height: 10px;
-  border-radius: 5px;
-  background: radial-gradient(closest-side, #fffbe8, rgba(255, 230, 160, 0.4) 60%, transparent);
-  opacity: 0.25;
-  animation: rabbit 1.1s linear infinite;
-}
-
-@keyframes rabbit {
-  0%, 8% { opacity: 1; }
-  22%, 100% { opacity: 0.2; }
-}
-
-.land__shadow,
-.land__plane,
-.land__puff {
-  position: absolute;
-}
-
-.land__shadow {
-  transform: translateZ(2px);
-}
-
-.land__shadow .jet,
-.land__plane .jet {
-  width: 100%;
-  height: 100%;
-  display: block;
-}
-
-.land__plane {
-  transform-style: preserve-3d;
-  will-change: transform;
-  filter: drop-shadow(0 18px 22px rgba(0, 0, 0, 0.25));
-}
-
-.land__lamp {
-  position: absolute;
-  left: 50%;
-  top: -6%;
-  width: 60%;
-  height: 22%;
-  transform: translateX(-50%);
-  border-radius: 50%;
-  background: radial-gradient(closest-side, rgba(255, 250, 230, 0.95), rgba(255, 240, 200, 0.25) 55%, transparent);
-  pointer-events: none;
-}
-
-.land__nav {
-  position: absolute;
-  top: 64%;
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
-  animation: navblink 1.2s steps(1) infinite;
-}
-
-.land__nav--port {
-  left: 9%;
-  background: #ff4d4d;
-  box-shadow: 0 0 14px 4px rgba(255, 77, 77, 0.8);
-}
-
-.land__nav--star {
-  right: 9%;
-  background: #3dff8c;
-  box-shadow: 0 0 14px 4px rgba(61, 255, 140, 0.8);
-  animation-delay: 0.6s;
-}
-
-@keyframes navblink {
-  0% { opacity: 1; }
-  50% { opacity: 0.25; }
-}
-
-.land__puff {
-  width: 180px;
-  height: 140px;
-  border-radius: 50%;
-  background: radial-gradient(closest-side, rgba(235, 235, 235, 0.9), rgba(220, 220, 220, 0.35) 60%, transparent);
-  filter: blur(6px);
 }
 
 .land__haze {
@@ -3774,26 +3665,6 @@ main,
   .dep__clock b {
     animation: none;
   }
-}
-
-/* ---------- Landing: podium glow ---------- */
-.land__podium {
-  position: absolute;
-  border-radius: 50%;
-  transform: translateZ(1.5px);
-  pointer-events: none;
-}
-
-.land__podium--gold {
-  background: radial-gradient(closest-side, rgba(240, 200, 110, 0.7), rgba(240, 200, 110, 0.18) 55%, transparent);
-}
-
-.land__podium--silver {
-  background: radial-gradient(closest-side, rgba(220, 230, 240, 0.6), rgba(220, 230, 240, 0.14) 55%, transparent);
-}
-
-.land__podium--bronze {
-  background: radial-gradient(closest-side, rgba(220, 150, 100, 0.6), rgba(220, 150, 100, 0.15) 55%, transparent);
 }
 
 .land__amount {

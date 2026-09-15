@@ -9,26 +9,65 @@ import { codeScreenTexture } from "./textures";
 const SEAT_Z = [-0.72, 0.72];
 const SEAT_X = [-0.82, 0.82];
 
-function buildChair(facing) {
+/* Built in a canonical local frame: backrest always at -Z, the open seating
+   side (where a person's knees go, under the table) always at +Z. Left/right
+   placement is handled entirely by the caller's rotation.y, so this never
+   needs to know which side of the table it's on — one shape, one meaning,
+   impossible to mirror incorrectly. */
+function buildChair() {
   const group = new THREE.Group();
-  const frame = new THREE.MeshStandardMaterial({ color: 0x1c1712, roughness: 0.55, metalness: 0.25 });
-  const cushion = new THREE.MeshStandardMaterial({ color: 0x3a2f22, roughness: 0.75 });
+  const frame = new THREE.MeshStandardMaterial({ color: 0x2a2118, roughness: 0.45, metalness: 0.35 });
+  const cushion = new THREE.MeshStandardMaterial({ color: 0x4a3826, roughness: 0.7 });
 
-  const seat = new THREE.Mesh(new THREE.BoxGeometry(0.46, 0.07, 0.44), cushion);
+  // seat pan, very slightly dished by stacking a thin rim under the cushion
+  const seat = new THREE.Mesh(new THREE.BoxGeometry(0.46, 0.07, 0.46), cushion);
   seat.position.y = 0.46;
   group.add(seat);
+  const seatRim = new THREE.Mesh(new THREE.BoxGeometry(0.48, 0.02, 0.48), frame);
+  seatRim.position.y = 0.42;
+  group.add(seatRim);
 
-  const back = new THREE.Mesh(new THREE.BoxGeometry(0.46, 0.5, 0.07), cushion);
-  back.position.set(0, 0.73, -0.19 * facing);
+  // tall backrest, reclined slightly away from the seat — unmistakably the
+  // back of the chair, opposite the open (table-facing) side
+  const back = new THREE.Mesh(new THREE.BoxGeometry(0.42, 0.56, 0.08), cushion);
+  back.position.set(0, 0.76, -0.22);
+  back.rotation.x = 0.1;
   group.add(back);
+  const backFrame = new THREE.Mesh(new THREE.BoxGeometry(0.46, 0.6, 0.03), frame);
+  backFrame.position.set(0, 0.76, -0.255);
+  backFrame.rotation.x = 0.1;
+  group.add(backFrame);
 
-  const post = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.035, 0.42, 10), frame);
-  post.position.y = 0.24;
+  // armrests bridge the seat front to the backrest, reinforcing which way
+  // the chair opens
+  for (const side of [-1, 1]) {
+    const arm = new THREE.Mesh(new THREE.BoxGeometry(0.045, 0.05, 0.4), frame);
+    arm.position.set(side * 0.245, 0.58, -0.02);
+    group.add(arm);
+    const armPost = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.025, 0.14, 8), frame);
+    armPost.position.set(side * 0.245, 0.5, 0.14);
+    group.add(armPost);
+  }
+
+  const post = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.035, 0.4, 10), frame);
+  post.position.y = 0.23;
   group.add(post);
 
-  const base = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.22, 0.03, 5), frame);
-  base.position.y = 0.03;
-  group.add(base);
+  const hub = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 0.04, 10), frame);
+  hub.position.y = 0.045;
+  group.add(hub);
+
+  // five-star base with casters
+  for (let i = 0; i < 5; i++) {
+    const a = (i / 5) * Math.PI * 2;
+    const leg = new THREE.Mesh(new THREE.BoxGeometry(0.28, 0.025, 0.045), frame);
+    leg.position.set(Math.cos(a) * 0.14, 0.03, Math.sin(a) * 0.14);
+    leg.rotation.y = a;
+    group.add(leg);
+    const wheel = new THREE.Mesh(new THREE.SphereGeometry(0.026, 8, 8), frame);
+    wheel.position.set(Math.cos(a) * 0.27, 0.02, Math.sin(a) * 0.27);
+    group.add(wheel);
+  }
 
   return group;
 }
@@ -168,15 +207,18 @@ export function createLabScene(canvas) {
   const laptopMats = [];
   SEAT_Z.forEach((z) => {
     SEAT_X.forEach((x) => {
-      const facing = x < 0 ? 1 : -1;
-      const chair = buildChair(facing);
-      chair.position.set(x * 1.55, 0, z);
-      chair.rotation.y = x < 0 ? Math.PI / 2 : -Math.PI / 2;
+      // chair's local +Z (the open, seating side) rotates to face the
+      // table centre on both sides — see buildChair's canonical frame
+      const facingRotation = x < 0 ? Math.PI / 2 : -Math.PI / 2;
+
+      const chair = buildChair();
+      chair.position.set(x * 1.28, 0, z);
+      chair.rotation.y = facingRotation;
       scene.add(chair);
 
       const laptop = buildLaptop(codeScreenTexture());
       laptop.position.set(x * 0.66, 0.745, z);
-      laptop.rotation.y = x < 0 ? Math.PI / 2 : -Math.PI / 2;
+      laptop.rotation.y = facingRotation;
       scene.add(laptop);
       laptopMats.push(laptop.userData.screenMat);
     });
