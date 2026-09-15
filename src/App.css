@@ -348,20 +348,27 @@
   }
 
   .hero__meta {
-    flex-direction: row;
-    flex-wrap: wrap;
-    justify-content: center;
-    gap: 0.5rem 1rem;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem 1.4rem;
     margin-bottom: 0.6rem;
   }
 
   .hero__meta li {
     align-items: center;
-    padding-right: 0.7rem;
+    padding-right: 0;
+    padding-bottom: 0.5rem;
+    border-right: none;
+    border-bottom: 2px solid var(--gold);
+  }
+
+  .hero__meta span {
+    font-size: 0.62rem;
   }
 
   .hero__meta strong {
-    font-size: 1rem;
+    font-size: 1.15rem;
+    white-space: nowrap;
   }
 }
 
@@ -2911,15 +2918,20 @@ main,
 
 @media (max-width: 760px) {
   .land__labels {
-    gap: 0.5rem;
+    gap: 0.4rem;
   }
 
   .land__label {
-    padding: 0.5rem 0.7rem;
+    padding: 0.5rem 0.55rem;
   }
 
   .land__place {
-    font-size: 0.56rem;
+    font-size: 0.52rem;
+    letter-spacing: 0.1em;
+  }
+
+  .land__amount {
+    font-size: 1.15rem;
   }
 }
 
