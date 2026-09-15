@@ -16,13 +16,25 @@ const LANES = [
   { key: "third", x: 1.55, size: 0.86, metal: 0xcf9a6b },
 ];
 
-function runwayTexture(designator) {
+/* Deterministic pseudo-random so the weathering is stable across renders
+   without needing to store the texture. */
+function makeRand(seed) {
+  let s = seed;
+  return () => {
+    s = (s * 9301 + 49297) % 233280;
+    return s / 233280;
+  };
+}
+
+function runwayTexture(designator, seed) {
   const w = 128;
   const h = 1024;
   const c = document.createElement("canvas");
   c.width = w;
   c.height = h;
   const ctx = c.getContext("2d");
+  const rand = makeRand(seed);
+
   const g = ctx.createLinearGradient(0, 0, w, 0);
   g.addColorStop(0, "#0d0e10");
   g.addColorStop(0.12, "#282b2f");
@@ -31,6 +43,28 @@ function runwayTexture(designator) {
   g.addColorStop(1, "#0d0e10");
   ctx.fillStyle = g;
   ctx.fillRect(0, 0, w, h);
+
+  // resurfacing patches and asphalt grain — real runway asphalt is never a
+  // flat tone
+  for (let i = 0; i < 26; i++) {
+    ctx.fillStyle = `rgba(${20 + rand() * 20},${20 + rand() * 20},${22 + rand() * 20},${0.15 + rand() * 0.2})`;
+    const pw = 14 + rand() * 40;
+    const ph = 30 + rand() * 90;
+    ctx.fillRect(rand() * (w - pw), rand() * h, pw, ph);
+  }
+  for (let i = 0; i < 400; i++) {
+    ctx.fillStyle = `rgba(0,0,0,${rand() * 0.12})`;
+    ctx.fillRect(rand() * w, rand() * h, 1, 1);
+  }
+
+  // tyre rubber deposits in the touchdown zone (near, high-y end)
+  ctx.fillStyle = "rgba(6,7,8,0.4)";
+  ctx.beginPath();
+  ctx.ellipse(38, h - 380, 10, 130, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.beginPath();
+  ctx.ellipse(w - 38, h - 380, 10, 130, 0, 0, Math.PI * 2);
+  ctx.fill();
 
   ctx.fillStyle = "rgba(216,220,224,0.5)";
   ctx.fillRect(6, 0, 3, h);
@@ -53,7 +87,43 @@ function runwayTexture(designator) {
   ctx.fillText(designator, 0, 0);
   ctx.restore();
 
+  // length-wise wear: darkest at the touchdown zone, fading toward the
+  // far end where it dissolves into haze
+  const wear = ctx.createLinearGradient(0, 0, 0, h);
+  wear.addColorStop(0, "rgba(0,0,0,0.3)");
+  wear.addColorStop(0.55, "rgba(0,0,0,0)");
+  wear.addColorStop(0.82, "rgba(0,0,0,0)");
+  wear.addColorStop(1, "rgba(0,0,0,0.35)");
+  ctx.fillStyle = wear;
+  ctx.fillRect(0, 0, w, h);
+
   const tex = new THREE.CanvasTexture(c);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  tex.needsUpdate = true;
+  return tex;
+}
+
+function grassTexture() {
+  const s = 256;
+  const c = document.createElement("canvas");
+  c.width = c.height = s;
+  const ctx = c.getContext("2d");
+  const g = ctx.createLinearGradient(0, 0, 0, s);
+  g.addColorStop(0, "#556b41");
+  g.addColorStop(1, "#3c4d2e");
+  ctx.fillStyle = g;
+  ctx.fillRect(0, 0, s, s);
+  const rand = makeRand(11);
+  for (let i = 0; i < 2200; i++) {
+    const shade = rand() * 40 - 20;
+    ctx.fillStyle = `rgba(${74 + shade},${94 + shade},${58 + shade},${0.25 + rand() * 0.35})`;
+    const x = rand() * s;
+    const y = rand() * s;
+    ctx.fillRect(x, y, 1.4, 4 + rand() * 5);
+  }
+  const tex = new THREE.CanvasTexture(c);
+  tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+  tex.repeat.set(9, 12);
   tex.colorSpace = THREE.SRGBColorSpace;
   tex.needsUpdate = true;
   return tex;
@@ -98,6 +168,27 @@ function buildPlane(metalColor) {
     engine.position.set(side * 0.52, -0.16, -0.02);
     group.add(engine);
   }
+
+  // cabin windows: a row of small dark ovals along each side, the detail
+  // that reads as "real aircraft" rather than a toy silhouette
+  const windowMat = new THREE.MeshStandardMaterial({ color: 0x10171c, roughness: 0.25, metalness: 0.1 });
+  for (let i = 0; i < 7; i++) {
+    for (const side of [-1, 1]) {
+      const win = new THREE.Mesh(new THREE.CircleGeometry(0.02, 8), windowMat);
+      win.position.set(side * 0.158, 0.05, 0.32 - i * 0.13);
+      win.rotation.y = side < 0 ? Math.PI / 2 : -Math.PI / 2;
+      group.add(win);
+    }
+  }
+
+  // anti-collision beacon on top of the fuselage
+  const beacon = new THREE.Mesh(
+    new THREE.SphereGeometry(0.018, 6, 6),
+    new THREE.MeshStandardMaterial({ color: 0xff3b3b, emissive: 0xff3b3b, emissiveIntensity: 2.4 })
+  );
+  beacon.position.set(0, 0.17, -0.1);
+  group.add(beacon);
+  group.userData.beacon = beacon.material;
 
   // gear, only meaningful near the ground — cheap enough to always draw
   const strutMat = new THREE.MeshStandardMaterial({ color: 0x100e0c, roughness: 0.6 });
@@ -150,6 +241,7 @@ export function createRunwayScene(canvas) {
   renderer.toneMappingExposure = 1.15;
 
   const scene = new THREE.Scene();
+  scene.fog = new THREE.Fog(0x9fb894, 10, 34);
   const camera = new THREE.PerspectiveCamera(45, 1, 0.1, 60);
 
   scene.add(new THREE.HemisphereLight(0xbfe0f4, 0x2a3a24, 1.0));
@@ -157,7 +249,7 @@ export function createRunwayScene(canvas) {
   sun.position.set(-4, 6, 3);
   scene.add(sun);
 
-  const groundMat = new THREE.MeshStandardMaterial({ color: 0x445236, roughness: 1 });
+  const groundMat = new THREE.MeshStandardMaterial({ map: grassTexture(), roughness: 1 });
   const ground = new THREE.Mesh(new THREE.PlaneGeometry(30, 40), groundMat);
   ground.rotation.x = -Math.PI / 2;
   ground.position.y = -0.02;
@@ -168,7 +260,8 @@ export function createRunwayScene(canvas) {
     g.position.x = lane.x;
     scene.add(g);
 
-    const rwMat = new THREE.MeshStandardMaterial({ map: runwayTexture(lane.key === "first" ? "24C" : lane.key === "second" ? "24L" : "24R"), roughness: 0.9 });
+    const designator = lane.key === "first" ? "24C" : lane.key === "second" ? "24L" : "24R";
+    const rwMat = new THREE.MeshStandardMaterial({ map: runwayTexture(designator, Math.abs(lane.x * 1000) + 7), roughness: 0.9 });
     const runway = new THREE.Mesh(new THREE.PlaneGeometry(0.85, 18), rwMat);
     runway.rotation.x = -Math.PI / 2;
     runway.position.set(0, 0, -8);
@@ -186,6 +279,12 @@ export function createRunwayScene(canvas) {
       }
     }
 
+    const shadowMat = new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.45, depthWrite: false });
+    const shadow = new THREE.Mesh(new THREE.CircleGeometry(0.5 * lane.size, 24), shadowMat);
+    shadow.rotation.x = -Math.PI / 2;
+    shadow.position.y = 0.005;
+    g.add(shadow);
+
     const plane = buildPlane(lane.metal);
     plane.scale.setScalar(lane.size);
     g.add(plane);
@@ -202,7 +301,7 @@ export function createRunwayScene(canvas) {
     puff.scale.setScalar(0.9);
     g.add(puff);
 
-    return { plane, lamps, podiumMat, puffMat, size: lane.size };
+    return { plane, lamps, podiumMat, puffMat, shadow, shadowMat, size: lane.size };
   });
 
   let state = { t: 0 };
@@ -228,10 +327,16 @@ export function createRunwayScene(canvas) {
     const puffT = range(t, TOUCHDOWN - 0.01, TOUCHDOWN + 0.05) * (1 - range(t, TOUCHDOWN + 0.05, TOUCHDOWN + 0.22));
     const lit = settle;
 
-    lanes.forEach(({ plane, lamps, podiumMat, puffMat, size }) => {
+    const beaconOn = Math.sin(clock.elapsedTime * 6) > 0.3 ? 2.4 : 0.2;
+
+    lanes.forEach(({ plane, lamps, podiumMat, puffMat, shadow, shadowMat, size }) => {
       plane.position.set(0, f.alt * size, f.z);
       plane.rotation.z = THREE.MathUtils.degToRad(roll);
       plane.rotation.x = THREE.MathUtils.degToRad(-f.flare * 7);
+      plane.userData.beacon && (plane.userData.beacon.emissiveIntensity = beaconOn);
+
+      shadow.position.set(0, 0.005, f.z);
+      shadowMat.opacity = THREE.MathUtils.lerp(0.4, 0.05, Math.min(f.alt / 3.4, 1)) * size;
 
       lamps.forEach((lamp, i) => {
         const start = (i / lamps.length) * 0.7;
