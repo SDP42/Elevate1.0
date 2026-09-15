@@ -107,6 +107,147 @@ function buildLaptop(codeTex) {
   return group;
 }
 
+/* Coffee cup — a small prop next to each laptop. */
+function buildCup() {
+  const group = new THREE.Group();
+  const ceramic = new THREE.MeshStandardMaterial({ color: 0xf0ece0, roughness: 0.35 });
+  const coffee = new THREE.MeshStandardMaterial({ color: 0x3d2a1c, roughness: 0.3 });
+
+  const cup = new THREE.Mesh(new THREE.CylinderGeometry(0.028, 0.024, 0.045, 14), ceramic);
+  cup.position.y = 0.0225;
+  group.add(cup);
+  const brew = new THREE.Mesh(new THREE.CylinderGeometry(0.024, 0.024, 0.006, 14), coffee);
+  brew.position.y = 0.046;
+  group.add(brew);
+  const handle = new THREE.Mesh(new THREE.TorusGeometry(0.016, 0.005, 6, 12), ceramic);
+  handle.rotation.x = Math.PI / 2;
+  handle.position.set(0.03, 0.022, 0);
+  group.add(handle);
+
+  return group;
+}
+
+/* A can — stands in for the energy drinks that keep a hackathon table
+   running past 3am. */
+function buildCan(color) {
+  const group = new THREE.Group();
+  const body = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.028, 0.028, 0.1, 16),
+    new THREE.MeshStandardMaterial({ color, roughness: 0.3, metalness: 0.7 })
+  );
+  body.position.y = 0.05;
+  group.add(body);
+  const top = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.026, 0.028, 0.006, 16),
+    new THREE.MeshStandardMaterial({ color: 0xd8d8d8, roughness: 0.3, metalness: 0.8 })
+  );
+  top.position.y = 0.103;
+  group.add(top);
+  return group;
+}
+
+/* Pizza box, lid propped half-open the way it always ends up by hour six. */
+function buildPizzaBox() {
+  const group = new THREE.Group();
+  const card = new THREE.MeshStandardMaterial({ color: 0xcf9a56, roughness: 0.9 });
+
+  const base = new THREE.Mesh(new THREE.BoxGeometry(0.34, 0.025, 0.34), card);
+  base.position.y = 0.0125;
+  group.add(base);
+
+  const lidPivot = new THREE.Group();
+  lidPivot.position.set(-0.17, 0.02, 0);
+  const lid = new THREE.Mesh(new THREE.BoxGeometry(0.34, 0.02, 0.34), card);
+  lid.position.set(0.17, 0, 0);
+  lidPivot.add(lid);
+  lidPivot.rotation.z = 0.75;
+  group.add(lidPivot);
+
+  // a couple of slices left, dark pepperoni specks on pale cheese
+  const sliceMat = new THREE.MeshStandardMaterial({ color: 0xe8c878, roughness: 0.8 });
+  for (const [x, z] of [[-0.06, -0.06], [0.07, 0.08]]) {
+    const slice = new THREE.Mesh(new THREE.CircleGeometry(0.08, 3), sliceMat);
+    slice.rotation.x = -Math.PI / 2;
+    slice.rotation.z = Math.random() * Math.PI;
+    slice.position.set(x, 0.027, z);
+    group.add(slice);
+  }
+
+  return group;
+}
+
+/* Freestanding whiteboard: the problem statement, sketched out. Built as a
+   flat panel on two legs rather than wall-mounted, since the fuselage shell
+   is a continuous curve with nowhere flat to hang it. */
+function buildWhiteboard() {
+  const group = new THREE.Group();
+
+  const c = document.createElement("canvas");
+  c.width = 512;
+  c.height = 320;
+  const ctx = c.getContext("2d");
+  ctx.fillStyle = "#f5f5f0";
+  ctx.fillRect(0, 0, c.width, c.height);
+  ctx.strokeStyle = "#2a6f97";
+  ctx.lineWidth = 4;
+  ctx.strokeRect(24, 24, 140, 70);
+  ctx.strokeRect(230, 30, 150, 60);
+  ctx.beginPath();
+  ctx.moveTo(164, 58);
+  ctx.lineTo(226, 58);
+  ctx.lineTo(214, 50);
+  ctx.moveTo(226, 58);
+  ctx.lineTo(214, 66);
+  ctx.stroke();
+  ctx.strokeStyle = "#c1442d";
+  ctx.beginPath();
+  ctx.moveTo(90, 94);
+  ctx.lineTo(90, 150);
+  ctx.lineTo(305, 150);
+  ctx.stroke();
+  ctx.fillStyle = "#333";
+  ctx.font = "700 26px Arial";
+  ctx.fillText("PS-07 · Elevate 1.0", 28, 200);
+  ctx.font = "16px Arial";
+  ctx.fillStyle = "#555";
+  ctx.fillText("api -> queue -> worker -> db", 28, 232);
+  ctx.fillText("edge cases: retry, backoff, dedupe", 28, 258);
+  ctx.strokeStyle = "#2a9d5c";
+  ctx.lineWidth = 3;
+  for (let i = 0; i < 4; i++) {
+    ctx.beginPath();
+    ctx.arc(360 + i * 30, 220, 9, 0, Math.PI * 2);
+    ctx.stroke();
+  }
+  const tex = new THREE.CanvasTexture(c);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  tex.needsUpdate = true;
+
+  const boardMat = new THREE.MeshStandardMaterial({ map: tex, roughness: 0.6 });
+  const board = new THREE.Mesh(new THREE.PlaneGeometry(1.1, 0.7), boardMat);
+  board.position.y = 1.1;
+  group.add(board);
+
+  const frameMat = new THREE.MeshStandardMaterial({ color: 0xb9ad96, roughness: 0.6, metalness: 0.2 });
+  const frame = new THREE.Mesh(new THREE.BoxGeometry(1.16, 0.76, 0.03), frameMat);
+  frame.position.y = 1.1;
+  frame.position.z = -0.02;
+  group.add(frame);
+
+  const legMat = new THREE.MeshStandardMaterial({ color: 0x8a7f6a, roughness: 0.5, metalness: 0.3 });
+  for (const side of [-1, 1]) {
+    const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 1.35, 8), legMat);
+    leg.position.set(side * 0.48, 0.68, 0);
+    leg.rotation.z = side * 0.06;
+    group.add(leg);
+    const foot = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.16, 0.02, 8), legMat);
+    foot.position.set(side * 0.56, 0.01, 0);
+    group.add(foot);
+  }
+
+  return group;
+}
+
 function buildTable() {
   const group = new THREE.Group();
   const wood = new THREE.MeshStandardMaterial({ color: 0x6b4a30, roughness: 0.5, metalness: 0.05 });
@@ -137,7 +278,7 @@ function buildTable() {
 function buildShell() {
   const group = new THREE.Group();
 
-  const shellMat = new THREE.MeshStandardMaterial({ color: 0xdccdae, roughness: 0.92, side: THREE.BackSide });
+  const shellMat = new THREE.MeshStandardMaterial({ color: 0xece1c8, roughness: 0.9, side: THREE.BackSide });
   const shell = new THREE.Mesh(
     new THREE.CylinderGeometry(4.6, 4.6, 8, 32, 1, true, Math.PI * 0.1, Math.PI * 1.8),
     shellMat
@@ -145,7 +286,7 @@ function buildShell() {
   shell.rotation.z = Math.PI / 2;
   group.add(shell);
 
-  const floorMat = new THREE.MeshStandardMaterial({ color: 0x2a241c, roughness: 0.7, metalness: 0.05 });
+  const floorMat = new THREE.MeshStandardMaterial({ color: 0x9c8f74, roughness: 0.7, metalness: 0.05 });
   const floor = new THREE.Mesh(new THREE.PlaneGeometry(8, 3.6), floorMat);
   floor.rotation.x = -Math.PI / 2;
   floor.position.y = -0.02;
@@ -182,22 +323,24 @@ function buildShell() {
 
 export function createLabScene(canvas) {
   const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
-  renderer.setClearColor(0x14120f, 1);
+  // bright, daylit cabin to match the Hero window — this is the same plane,
+  // just later in the flight, not a moody night scene
+  renderer.setClearColor(0xe9dfc6, 1);
   renderer.outputColorSpace = THREE.SRGBColorSpace;
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
-  renderer.toneMappingExposure = 1.1;
+  renderer.toneMappingExposure = 1.3;
 
   const scene = new THREE.Scene();
   const camera = new THREE.PerspectiveCamera(50, 1, 0.1, 40);
 
-  scene.add(new THREE.HemisphereLight(0xbfe0f4, 0x3a2f1c, 0.85));
-  const warm = new THREE.PointLight(0xffdca0, 9, 12, 2);
+  scene.add(new THREE.HemisphereLight(0xeaf4ff, 0x8a7a5c, 1.5));
+  const warm = new THREE.PointLight(0xfff0d2, 11, 14, 2);
   warm.position.set(0, 2.4, 0);
   scene.add(warm);
-  const key = new THREE.DirectionalLight(0xfff6e6, 0.7);
-  key.position.set(2, 3, 2);
+  const key = new THREE.DirectionalLight(0xfffaf0, 1.3);
+  key.position.set(2, 3.5, 2.4);
   scene.add(key);
-  const rim = new THREE.DirectionalLight(0x9fd0ea, 0.35);
+  const rim = new THREE.DirectionalLight(0xcfe7f5, 0.6);
   rim.position.set(-2, 1.5, -3);
   scene.add(rim);
 
@@ -216,13 +359,39 @@ export function createLabScene(canvas) {
       chair.rotation.y = facingRotation;
       scene.add(chair);
 
+      // the laptop shares the chair's position on the table's radius, but
+      // faces the OPPOSITE way: a laptop's screen looks back at whoever's
+      // sitting behind its keyboard, not out toward the table centre, so
+      // it needs the reverse of the chair's own facing
       const laptop = buildLaptop(codeScreenTexture());
       laptop.position.set(x * 0.66, 0.745, z);
-      laptop.rotation.y = facingRotation;
+      laptop.rotation.y = facingRotation + Math.PI;
       scene.add(laptop);
       laptopMats.push(laptop.userData.screenMat);
+
+      const cup = buildCup();
+      cup.position.set(x * 0.66, 0.745, z + (z < 0 ? -0.14 : 0.14));
+      scene.add(cup);
     });
   });
+
+  // a can at two of the four spots, snacks at the middle of the table —
+  // the table is empty there since the seats and laptops sit further out
+  const canColors = [0xd6473c, 0x2f8f5b];
+  [-0.72, 0.72].forEach((z, i) => {
+    const can = buildCan(canColors[i]);
+    can.position.set(0.16, 0.745, z);
+    scene.add(can);
+  });
+
+  const pizza = buildPizzaBox();
+  pizza.position.set(-0.15, 0.745, 0);
+  pizza.rotation.y = 0.3;
+  scene.add(pizza);
+
+  const whiteboard = buildWhiteboard();
+  whiteboard.position.set(0, 0, -1.55);
+  scene.add(whiteboard);
 
   // camera: starts near one end of the table at a 3/4 elevated angle so the
   // whole team-of-four layout reads in one shot; scroll pans it down the
