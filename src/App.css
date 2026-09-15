@@ -2466,7 +2466,9 @@ main,
 .board__tiers {
   margin-top: 4rem;
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  /* the champions card carries the biggest number, so it gets more room
+     than an equal split would give it */
+  grid-template-columns: 1fr 1.32fr 1fr;
   gap: 1.6rem;
   align-items: end;
 }
@@ -2520,13 +2522,15 @@ main,
 
 .board__amount {
   font-family: var(--font-display);
-  font-size: clamp(2.2rem, 4vw, 3.3rem);
+  font-size: clamp(2rem, 3.4vw, 2.8rem);
   font-weight: 700;
+  letter-spacing: -0.02em;
   color: #fffaf0;
+  white-space: nowrap;
 }
 
 .board__tier--lead .board__amount {
-  font-size: clamp(2.6rem, 4.8vw, 3.9rem);
+  font-size: clamp(2.3rem, 4vw, 3.3rem);
 }
 
 .board__perks {
