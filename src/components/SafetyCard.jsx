@@ -14,7 +14,7 @@ const CARDS = [
   {
     n: "01",
     title: "Hydrate",
-    note: "Water is on every floor. Use it.",
+    note: "Keep water at your desk. Use it.",
     art: (
       <>
         <path d="M26 16 h12 v6 l4 6 v26 a4 4 0 0 1 -4 4 h-12 a4 4 0 0 1 -4 -4 v-26 l4 -6 z" {...S} />
@@ -66,7 +66,7 @@ const CARDS = [
   {
     n: "05",
     title: "Ask a mentor",
-    note: "Two rounds scheduled. Use both.",
+    note: "The mentoring session runs after dinner. Come prepared.",
     art: (
       <>
         <circle cx="22" cy="22" r="6" {...S} />
@@ -79,7 +79,7 @@ const CARDS = [
   {
     n: "06",
     title: "Ship on time",
-    note: "Submissions close 11:00 on day two.",
+    note: "Tools down at 11:00 on 11 October, flight landing.",
     art: (
       <>
         <circle cx="32" cy="32" r="18" {...S} />
@@ -91,7 +91,7 @@ const CARDS = [
 
 export default function SafetyCard() {
   return (
-    <section id="safety" data-label="Safety briefing" className="safety">
+    <section id="safety" data-label="Safety briefing" className="safety" data-header-ink>
       <div className="container">
         <div className="safety__head" data-reveal>
           <span className="eyebrow">Cabin briefing</span>

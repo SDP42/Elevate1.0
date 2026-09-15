@@ -2,14 +2,44 @@ import { useState } from "react";
 import RegisterButton from "./RegisterButton";
 import { EVENT } from "../config";
 
+/* Paper-plane glyph for the round half of the CTA. */
+const PlaneIcon = () => (
+  <svg viewBox="0 0 20 20" fill="none" aria-hidden="true">
+    <path
+      d="M17.6 2.4 2.9 8.3c-.6.2-.6 1.1 0 1.3l5.4 2 2 5.4c.2.6 1.1.6 1.3 0l5.9-14.7c.2-.5-.4-1.1-.9-.9Z"
+      stroke="currentColor"
+      strokeWidth="1.5"
+      strokeLinejoin="round"
+    />
+    <path d="m8.3 11.6 4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+  </svg>
+);
+
 export default function BookFlight() {
   const [open, setOpen] = useState(false);
 
   return (
     <>
-      <button className="bookfab" onClick={() => setOpen(true)}>
-        Register Now
-      </button>
+      <div className="jx-cta" data-jx-cta>
+        <button className="jx-cta__btn" onClick={() => setOpen(true)}>
+          <span className="jx-cta__label">
+            <span className="jx-cta__pill">
+              <span className="jx-cta__roll">
+                <span className="jx-t7">Register your team</span>
+                <span className="jx-t7 jx-is-2" aria-hidden="true">
+                  Register your team
+                </span>
+              </span>
+            </span>
+            <span className="jx-cta__icon">
+              <span className="jx-cta__roll jx-cta__roll--icon">
+                <PlaneIcon />
+                <PlaneIcon />
+              </span>
+            </span>
+          </span>
+        </button>
+      </div>
 
       {open && (
         <div className="bookmodal" role="dialog" aria-modal="true">

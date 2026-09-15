@@ -80,7 +80,7 @@ const LEAVE = [
 
 export default function Baggage() {
   return (
-    <section id="baggage" data-label="Baggage allowance" className="bag">
+    <section id="baggage" data-label="Baggage allowance" className="bag" data-header-ink>
       <div className="container bag__grid">
         <div className="bag__carry" data-reveal>
           <span className="eyebrow">Baggage allowance</span>

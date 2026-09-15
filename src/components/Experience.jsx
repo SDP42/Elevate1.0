@@ -1,19 +1,20 @@
+/* What the finale includes, taken straight from the event schedule. */
 const PERKS = [
   {
-    title: "Mentors on the floor",
-    desc: "Fifteen mentors rotating through the night across all three tracks.",
+    title: "Fed through the flight",
+    desc: "Lunch, high tea and dinner on day one, midnight snacks, then breakfast and lunch on day two.",
   },
   {
-    title: "Fed for 24 hours",
-    desc: "Dinner, midnight chai, and breakfast — nobody debugs on an empty stomach.",
+    title: "Mentoring session",
+    desc: "Mentors sit with teams after dinner, while there is still a night left to change course.",
   },
   {
-    title: "Hardware bench",
-    desc: "Boards, sensors, and cables available to borrow through the event.",
+    title: "Jamming session",
+    desc: "A late-night break with music and midnight snacks, before the push to landing.",
   },
   {
-    title: "Demo day audience",
-    desc: "Final pitches run in front of judges, faculty, and visiting recruiters.",
+    title: "Certificates & goodies",
+    desc: "Winners take home cash, certificates and goodies. Every finalist team gets a participation certificate.",
   },
 ];
 

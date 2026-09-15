@@ -325,7 +325,7 @@ export function createLabScene(canvas) {
   const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
   // bright, daylit cabin to match the Hero window — this is the same plane,
   // just later in the flight, not a moody night scene
-  renderer.setClearColor(0xe9dfc6, 1);
+  renderer.setClearColor(0xcfe3f1, 1);
   renderer.outputColorSpace = THREE.SRGBColorSpace;
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
   renderer.toneMappingExposure = 1.3;

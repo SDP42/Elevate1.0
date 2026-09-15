@@ -14,3 +14,14 @@ export const EVENT = {
 };
 
 export const registrationOpen = () => UNSTOP_URL.trim().length > 0;
+
+export const ORGANISER = {
+  name: "DJS NSDC",
+  blurb:
+    "Organised by DJS NSDC, the official NSDC Student Chapter of DJSCE's AI & DS department — a community that supports Data Science learners of all ages, backgrounds and skills.",
+  instagram: "https://www.instagram.com/djs.nsdc/",
+  handle: "@djs.nsdc",
+};
+
+// gates open with registration and check-in on day one
+export const EVENT_START = new Date("2026-10-10T09:00:00+05:30");

@@ -1,12 +1,20 @@
-import { EVENT } from "../config";
+import { EVENT, ORGANISER } from "../config";
 
 const TEAM = ["Vrinda Talwar", "Atharva Deo", "Swayam Panchal"];
+
+const InstagramIcon = () => (
+  <svg viewBox="0 0 24 24" aria-hidden="true" className="footer__igIcon">
+    <rect x="3" y="3" width="18" height="18" rx="5" fill="none" stroke="currentColor" strokeWidth="1.8" />
+    <circle cx="12" cy="12" r="4.2" fill="none" stroke="currentColor" strokeWidth="1.8" />
+    <circle cx="17.3" cy="6.7" r="1.2" fill="currentColor" />
+  </svg>
+);
 
 export default function Footer() {
   return (
     <footer className="footer">
       <div className="container footer__grid">
-        <div>
+        <div className="footer__about">
           <div className="footer__brandRow">
             {/* drop the committee logo at public/nsdc-logo.png and it appears
                 here; until the file exists the mark is simply omitted */}
@@ -18,21 +26,27 @@ export default function Footer() {
                 e.currentTarget.style.display = "none";
               }}
             />
-            <div className="nav__brand">
+            <div className="footer__brand">
               ELEVATE <em>1.0</em>
             </div>
           </div>
-          <p className="footer__tag">
-            A 24-hour hackathon by {EVENT.organiser} — {EVENT.department},{" "}
-            {EVENT.college}, {EVENT.city}.
-          </p>
+          <p className="footer__tag">{ORGANISER.blurb}</p>
+          <a
+            className="footer__ig"
+            href={ORGANISER.instagram}
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            <InstagramIcon />
+            <span>Follow {ORGANISER.handle}</span>
+          </a>
         </div>
 
         <div className="footer__col">
           <span className="footer__heading">Event</span>
+          <a href="#brief">About</a>
           <a href="#prizes">Prizes</a>
-          <a href="#timeline">Schedule</a>
-          <a href="#safety">Briefing</a>
+          <a href="#schedule">Schedule</a>
           <a href="#register">Register</a>
         </div>
 
@@ -48,7 +62,7 @@ export default function Footer() {
 
       <div className="container footer__bottom">
         <span>
-          © {new Date().getFullYear()} {EVENT.name} · {EVENT.organiser}
+          © {new Date().getFullYear()} {EVENT.name} · {EVENT.college}, {EVENT.city}
         </span>
       </div>
     </footer>

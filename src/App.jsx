@@ -1,26 +1,18 @@
 import "./App.css";
-import Nav from "./components/Nav";
+import Header from "./intro/Header";
 import SkyBackdrop from "./components/SkyBackdrop";
-import Hero from "./components/Hero";
+import Intro from "./intro/Intro";
+import "./intro/intro.css";
+import "./sections.css";
 import BoardingPass from "./components/BoardingPass";
-import Rounds from "./components/Rounds";
-import DepartureBoard from "./components/DepartureBoard";
-import PrizeFleet from "./components/PrizeFleet";
-import PrizeBoard from "./components/PrizeBoard";
-import StatsBar from "./components/StatsBar";
-import Tracks from "./components/Tracks";
+import JetSection from "./intro/JetSection";
 import SafetyCard from "./components/SafetyCard";
 import Baggage from "./components/Baggage";
-import InstrumentPanel from "./components/InstrumentPanel";
-import SeatMap from "./components/SeatMap";
-import Timeline from "./components/Timeline";
 import RoutesMap from "./components/RoutesMap";
 import Experience from "./components/Experience";
-import Contact from "./components/Contact";
 import Footer from "./components/Footer";
 import BookFlight from "./components/BookFlight";
 import SoundToggle from "./components/SoundToggle";
-import Preloader from "./components/Preloader";
 import CabinLab3D from "./components/CabinLab3D";
 import {
   ScrollFlight,
@@ -37,28 +29,18 @@ export default function App() {
 
   return (
     <>
-      <Preloader />
       <SkyBackdrop />
       <ScrollFlight />
-      <Nav />
+      <Header />
       <main>
-        <Hero />
-        <CabinLab3D />
+        <Intro />
+        <JetSection />
+        <RoutesMap />
         <BoardingPass />
-        <Rounds />
-        <DepartureBoard />
-        <PrizeFleet />
-        <PrizeBoard />
-        <StatsBar />
-        <InstrumentPanel />
-        <Tracks />
-        <Timeline />
+        <CabinLab3D />
+        <Experience />
         <SafetyCard />
         <Baggage />
-        <RoutesMap />
-        <Experience />
-        <SeatMap />
-        <Contact />
       </main>
       <Footer />
       <BookFlight />
