@@ -1,21 +1,26 @@
-const STATS = [
-  { value: "24", label: "Hours on the clock" },
-  { value: "₹1L", label: "Total prize pool" },
-  { value: "30", label: "Finalist teams" },
-  { value: "15", label: "Mentors on site" },
+/* Eligibility, told as the passenger list: who can board, in what crew. */
+
+const BRANCHES = [
+  "Computer Engineering",
+  "Information Technology",
+  "AI & Data Science",
+  "AI & Machine Learning",
+  "Computer Science & Engineering",
+  "Electronics & Telecommunication",
+  "Electronics",
+  "Electrical",
+  "Mechanical",
+  "Civil",
+  "Chemical",
+  "Production",
+  "Biotechnology",
+  "Design",
 ];
 
-const COLLEGES = [
-  "Computer Science",
-  "Information Technology",
-  "Electronics",
-  "Mechanical",
-  "Design",
-  "Data Science",
-  "Electrical",
-  "Civil",
-  "Biotech",
-  "MBA",
+const RULES = [
+  { k: "Branch", v: "Any branch", note: "Engineering or not — every discipline is welcome." },
+  { k: "Year", v: "Any year", note: "First-years fly alongside final-years." },
+  { k: "Crew", v: "2 – 4 members", note: "Cross-branch teams are encouraged." },
 ];
 
 function DotGlobe() {
@@ -43,30 +48,39 @@ function DotGlobe() {
 
 export default function RoutesMap() {
   return (
-    <section id="about" data-label="Who flies" className="routes">
+    <section id="who" data-label="Who flies" className="routes">
       <DotGlobe />
       <div className="container routes__content">
-        <span className="eyebrow">Who flies</span>
-        <h2 className="section-title">Open to every branch.</h2>
-        <p className="routes__copy">
-          You do not need to be a computer science student to build something
-          worth showing. Teams of two to four, any discipline, any year.
-        </p>
-        <div className="routes__stats" data-reveal="stagger">
-          {STATS.map((s) => (
-            <div key={s.label} className="routes__stat">
-              <div className="routes__value">{s.value}</div>
-              <div className="routes__label">{s.label}</div>
-            </div>
-          ))}
+        <div className="routes__head" data-reveal>
+          <span className="eyebrow">Who flies</span>
+          <h2 className="section-title">Open to every branch.</h2>
+          <p className="routes__copy">
+            You do not need to be a computer science student to build something
+            worth showing. If you can bring an idea and a crew, there is a seat
+            for you.
+          </p>
         </div>
 
-        <div className="routes__cities">
-          {COLLEGES.map((c) => (
-            <span key={c} className="routes__city">
-              {c}
-            </span>
+        <ul className="routes__rules" data-reveal="stagger">
+          {RULES.map((r) => (
+            <li key={r.k} className="routes__rule">
+              <span className="routes__ruleK">{r.k}</span>
+              <strong className="routes__ruleV">{r.v}</strong>
+              <span className="routes__ruleNote">{r.note}</span>
+            </li>
           ))}
+        </ul>
+
+        <div className="routes__manifest" data-reveal>
+          <span className="routes__manifestHead">On the passenger list</span>
+          <ul className="routes__cities">
+            {BRANCHES.map((c) => (
+              <li key={c} className="routes__city">
+                {c}
+              </li>
+            ))}
+            <li className="routes__city routes__city--more">+ every other branch</li>
+          </ul>
         </div>
       </div>
     </section>

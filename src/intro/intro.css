@@ -1,0 +1,1349 @@
+/* Intro: boarding screen → cabin window → push through into open sky → brief.
+   Everything is sized in design units of a 1440px-wide layout, so the whole
+   composition scales with the viewport width the way the reference does. */
+
+:root {
+  --u: calc(100vw / 1440);
+  --jx-pad: calc(96 * var(--u));
+  --jx-gap: calc(12 * var(--u));
+  --jx-ink: #312726;
+  --jx-font: "Archivo", "Helvetica Neue", Arial, sans-serif;
+}
+
+@media (max-width: 991px) {
+  :root {
+    --u: calc(100vw / 720);
+    --jx-pad: calc(40 * var(--u));
+  }
+}
+
+@media (max-width: 479px) {
+  :root {
+    --u: calc(100vw / 420);
+    --jx-pad: calc(20 * var(--u));
+  }
+}
+
+/* Lenis drives scrolling; native smooth scrolling would fight it */
+html.lenis,
+html.lenis body {
+  height: auto;
+}
+html.lenis {
+  scroll-behavior: auto;
+}
+.lenis.lenis-stopped {
+  overflow: hidden;
+}
+
+/* ---------- type ---------- */
+.jx,
+.jx-header,
+.jx-cta {
+  font-family: var(--jx-font);
+  font-stretch: 125%;
+  font-weight: 500;
+  color: #fff;
+  -webkit-font-smoothing: antialiased;
+}
+
+.jx h1,
+.jx h2,
+.jx h3 {
+  font-family: inherit;
+  text-transform: none;
+  letter-spacing: normal;
+}
+
+.jx-h2 {
+  margin: 0;
+  font-size: calc(72 * var(--u));
+  font-weight: 500;
+  line-height: 0.88;
+  letter-spacing: -0.08em !important;
+}
+
+.jx-p2 {
+  margin: 0;
+  font-size: calc(64 * var(--u));
+  font-weight: 500;
+  line-height: 1;
+  letter-spacing: -0.08em !important;
+}
+
+.jx-p5 {
+  margin: 0;
+  font-size: calc(24 * var(--u));
+  font-weight: 500;
+  line-height: 1;
+  letter-spacing: -0.064em !important;
+}
+
+.jx-p7,
+.jx-t7 {
+  margin: 0;
+  font-size: max(12.5px, calc(12 * var(--u)));
+  line-height: 1.333;
+  letter-spacing: -0.032em;
+}
+.jx-p7 {
+  font-weight: 500;
+}
+.jx-t7 {
+  font-weight: 700;
+  display: block;
+}
+
+.jx-l1 {
+  font-size: max(10px, calc(10 * var(--u)));
+  font-weight: 700;
+  line-height: 1.2;
+  letter-spacing: -0.032em;
+  text-transform: uppercase;
+}
+
+.jx-right {
+  text-align: right;
+}
+
+/* split-text pieces: blur needs a box of its own */
+.jx-char,
+.jx-line {
+  will-change: filter, opacity;
+}
+
+/* ---------- spacers (design units) ---------- */
+.jx-u12 { height: calc(12 * var(--u)); }
+.jx-u24 { height: calc(24 * var(--u)); }
+.jx-u96 { height: calc(96 * var(--u)); }
+.jx-u156 { height: calc(156 * var(--u)); }
+.jx-u216 { height: calc(216 * var(--u)); }
+
+.jx-grid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  column-gap: var(--jx-gap);
+}
+.jx-grid--6 {
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+}
+
+@media (max-width: 991px) {
+  .jx-desktop {
+    display: none !important;
+  }
+}
+
+/* elements the timeline reveals start hidden so nothing flashes first */
+[data-char-reveal],
+[data-line-reveal],
+[data-div-reveal],
+[data-scroll-reveal],
+.jx-pre__info,
+[data-jx-header],
+[data-jx-cta] {
+  visibility: hidden;
+}
+
+/* ---------- boarding screen ---------- */
+.jx-pre {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  pointer-events: none;
+}
+
+.jx-pre__c {
+  position: relative;
+  z-index: 1;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding-inline: var(--jx-pad);
+}
+
+.jx-pre__info {
+  /* five of twenty-one columns */
+  width: calc((100vw - 2 * var(--jx-pad) - 20 * var(--jx-gap)) / 21 * 5 + 4 * var(--jx-gap));
+  text-align: center;
+}
+
+@media (max-width: 991px) {
+  .jx-pre__info {
+    width: calc(320 * var(--u));
+  }
+}
+
+.jx-pre__bg {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  background: linear-gradient(135deg, #1b1815, #2c231b);
+  /* a 200vh-tall mask: opaque in its top half, a soft dome of transparency
+     rising out of its bottom half. --mask-p runs 0 → 2 and slides it up off
+     the screen, lifting the dark wash off the window from below */
+  --mask-p: 0;
+  --jx-dome: radial-gradient(ellipse 78% 46% at 50% 100%, transparent 0%, transparent 42%, rgba(0, 0, 0, 0.6) 74%, #000 100%);
+  -webkit-mask-image: linear-gradient(#000 0 50.5%, transparent 50.5%), var(--jx-dome);
+  mask-image: linear-gradient(#000 0 50.5%, transparent 50.5%), var(--jx-dome);
+  -webkit-mask-size: 100% 200vh, 100% 100vh;
+  mask-size: 100% 200vh, 100% 100vh;
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  -webkit-mask-position: 0 calc(var(--mask-p) * -100vh), 0 calc((1 - var(--mask-p)) * 100vh);
+  mask-position: 0 calc(var(--mask-p) * -100vh), 0 calc((1 - var(--mask-p)) * 100vh);
+}
+
+/* ---------- intro scroll area ---------- */
+.jx {
+  position: relative;
+  z-index: 2;
+}
+
+.jx-intro {
+  position: relative;
+  overflow: clip;
+  background: #015aa9;
+}
+
+.jx-hero-area {
+  position: relative;
+  z-index: 1;
+  height: 300vh;
+}
+
+.jx-hero-w {
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  overflow: hidden;
+}
+
+.jx-hero-s {
+  position: relative;
+  z-index: 1;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  padding-inline: var(--jx-pad);
+  will-change: transform;
+}
+
+.jx-hero-s__titles {
+  flex: 1;
+  min-height: 0;
+}
+
+.jx-hero-s__l {
+  grid-column: 1 / 5;
+  align-self: start;
+}
+
+.jx-hero-s__r {
+  grid-column: 4 / 8;
+  align-self: end;
+}
+
+.jx-hero-s__bot {
+  position: absolute;
+  left: var(--jx-pad);
+  right: var(--jx-pad);
+  bottom: 0;
+}
+
+.jx-bot-desc {
+  grid-column: 1 / 3;
+}
+
+.jx-bot-desc__title {
+  grid-column: span 3;
+}
+
+.jx-bot-desc__text {
+  grid-column: span 5;
+}
+
+.jx-divider__line {
+  width: calc(24 * var(--u));
+  height: 1px;
+  background: #fff;
+}
+
+.jx-bot-scroll {
+  grid-column: 6 / 8;
+  align-self: end;
+}
+
+.jx-line-h {
+  height: 1px;
+  background: #fff;
+}
+
+.jx-bot-scroll__row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.jx-bot-scroll__item {
+  display: flex;
+  align-items: center;
+  gap: calc(12 * var(--u));
+}
+
+.jx-link {
+  color: #fff;
+}
+
+/* small mouse with a travelling dot */
+.jx-scroll-ico {
+  position: relative;
+  width: calc(12 * var(--u));
+  height: calc(18 * var(--u));
+  margin-block: calc(-5 * var(--u));
+  border: max(1px, calc(1.4 * var(--u))) solid #fff;
+  border-radius: calc(6 * var(--u));
+}
+.jx-scroll-ico i {
+  position: absolute;
+  left: 50%;
+  top: calc(3 * var(--u));
+  width: calc(2 * var(--u));
+  height: calc(4 * var(--u));
+  margin-left: calc(-1 * var(--u));
+  border-radius: 2px;
+  background: #fff;
+  animation: jx-scroll-dot 1.6s cubic-bezier(0.76, 0, 0.24, 1) infinite;
+}
+@keyframes jx-scroll-dot {
+  0% { transform: translateY(0); opacity: 0; }
+  30% { opacity: 1; }
+  100% { transform: translateY(calc(8 * var(--u))); opacity: 0; }
+}
+
+/* mobile: titles stack full width */
+@media (max-width: 991px) {
+  .jx-hero-s__l,
+  .jx-hero-s__r {
+    grid-column: 1 / -1;
+  }
+  .jx-h2 {
+    font-size: calc(64 * var(--u));
+  }
+}
+
+/* ---------- window plates ---------- */
+.jx-hero-bg {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  will-change: transform;
+}
+
+.jx-hero-bg__overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  background: radial-gradient(circle, rgba(0, 0, 0, 0) 25%, rgba(0, 0, 0, 0.4));
+  pointer-events: none;
+}
+
+.jx-plate {
+  position: absolute;
+  inset: 0;
+  transform: scale(1.2857);
+}
+.jx-plate--front-over { z-index: 3; }
+.jx-plate--front { z-index: 2; }
+.jx-plate--window { z-index: 1; }
+.jx-plate--back { z-index: 0; }
+
+/* 2:1 stage, cover-fitted and centred — the same fit a 2:1 photo gets */
+.jx-stage {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: max(100vw, 200vh);
+  aspect-ratio: 2 / 1;
+  transform: translate(-50%, -50%);
+}
+
+.jx-stage__svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+/* the shade's box on the stage: 291.2 × 401.9 at (625, 175) of 1536 × 768 */
+.jx-window-c {
+  position: absolute;
+  left: calc(625 / 1536 * 100%);
+  top: calc(175 / 768 * 100%);
+  width: calc(291.2 / 1536 * 100%);
+  height: calc(401.9 / 768 * 100%);
+}
+
+.jx-shade,
+.jx-knob-c {
+  position: absolute;
+  inset: 0;
+  transform-origin: 50% 100%;
+}
+
+.jx-shade {
+  background: #dbdbdb;
+}
+
+.jx-shade__bg {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(50% 50% at 50% 50%, rgba(255, 255, 255, 0) 0%, rgba(0, 0, 0, 0.2) 80%, rgba(0, 0, 0, 0.35) 100%);
+}
+
+.jx-knob {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: calc(357.8 / 401.9 * 100%);
+  height: calc(52.6 / 401.9 * 100%);
+}
+
+.jx-knob__svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+/* ---------- sky ---------- */
+.jx-sky {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  display: flex;
+  flex-direction: column;
+  pointer-events: none;
+}
+
+.jx-sky__hero {
+  position: relative;
+  /* rides down over the top of the brief's sky as the window zooms, so its
+     blue-faded foot covers the join instead of butting against it */
+  z-index: 1;
+  flex: none;
+  height: 200vh;
+  background: linear-gradient(#579bd8 0%, #cfe0ef 33%, #e9e0eb 36%, #9fbde3 60%, #2f6fb8 100%);
+  will-change: transform;
+}
+
+.jx-sky__img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: fill;
+}
+
+.jx-sky__clouds {
+  position: absolute;
+  z-index: 1;
+  left: 0;
+  right: 0;
+  top: 0;
+  height: 44%;
+  overflow: hidden;
+}
+
+.jx-sky__clouds-list {
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 100%;
+  display: flex;
+  white-space: nowrap;
+  will-change: transform;
+  animation: jx-marquee 48s linear infinite reverse;
+}
+
+.jx-sky__clouds-item {
+  height: 100%;
+  aspect-ratio: 2800 / 380;
+  flex: none;
+  background-size: 100% 100%;
+}
+
+@keyframes jx-marquee {
+  from { transform: translateX(-50%); }
+  to { transform: translateX(0%); }
+}
+
+.jx-sky__hero-grad {
+  position: absolute;
+  z-index: 2;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 37.5%;
+  background: linear-gradient(
+    rgba(1, 90, 169, 0) 0%,
+    rgba(1, 90, 169, 0.01) 11.79%,
+    rgba(1, 90, 169, 0.03) 21.38%,
+    rgba(1, 90, 169, 0.07) 29.12%,
+    rgba(1, 90, 169, 0.12) 35.34%,
+    rgba(1, 90, 169, 0.18) 40.37%,
+    rgba(1, 90, 169, 0.25) 44.56%,
+    rgba(1, 90, 169, 0.33) 48.24%,
+    rgba(1, 90, 169, 0.41) 51.76%,
+    rgba(1, 90, 169, 0.5) 55.44%,
+    rgba(1, 90, 169, 0.59) 59.63%,
+    rgba(1, 90, 169, 0.67) 64.66%,
+    rgba(1, 90, 169, 0.76) 70.88%,
+    rgba(1, 90, 169, 0.85) 78.62%,
+    rgba(1, 90, 169, 0.93) 88.21%,
+    #015aa9 100%
+  );
+}
+
+.jx-sky__about {
+  position: relative;
+  flex: 1;
+}
+
+.jx-sky__img--about {
+  z-index: 1;
+  opacity: 0.75;
+  -webkit-mask-image: linear-gradient(transparent 0, #000 90vh, #000 45%, transparent 80%);
+  mask-image: linear-gradient(transparent 0, #000 90vh, #000 45%, transparent 80%);
+}
+
+.jx-sky__about-grad {
+  position: absolute;
+  z-index: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  top: 0;
+  /* deep blue, through pale sky, into the cream the jet section opens on */
+  background: linear-gradient(#015aa9 0%, #015aa9 33.3%, #8fc2d7 66.6%, #fff8ed 100%);
+}
+
+/* ---------- brief ---------- */
+.jx-about-w {
+  position: relative;
+  z-index: 1;
+  padding-inline: var(--jx-pad);
+}
+
+.jx-about-s {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  will-change: transform;
+}
+
+.jx-u60 { height: calc(60 * var(--u)); }
+
+.jx-about-s__mark {
+  display: flex;
+  align-items: center;
+  gap: calc(12 * var(--u));
+}
+
+.jx-mark-globe {
+  width: max(26px, calc(32 * var(--u)));
+  height: max(26px, calc(32 * var(--u)));
+  color: #fff;
+  flex: none;
+}
+
+.jx-mark-word {
+  font-size: max(18px, calc(22 * var(--u)));
+  font-weight: 300;
+  letter-spacing: 0.02em;
+  line-height: 1;
+  flex: none;
+}
+
+.jx-l1-item strong {
+  font-weight: 700;
+}
+
+/* four briefing cards in a true grid: numbered, ruled, readable at a glance */
+.jx-features {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  column-gap: calc(24 * var(--u));
+  row-gap: calc(48 * var(--u));
+}
+
+.jx-feature {
+  display: flex;
+  flex-direction: column;
+  gap: calc(20 * var(--u));
+  padding-top: calc(20 * var(--u));
+  border-top: 1px solid rgba(255, 255, 255, 0.45);
+}
+
+.jx-feature__n {
+  font-size: max(12px, calc(13 * var(--u)));
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  opacity: 0.75;
+}
+
+.jx-feature__title {
+  margin: 0;
+  font-size: max(24px, calc(42 * var(--u)));
+  font-weight: 500;
+  line-height: 1;
+  letter-spacing: -0.05em !important;
+}
+
+.jx-feature__body {
+  margin: 0;
+  max-width: 32ch;
+  font-size: max(15px, calc(19 * var(--u)));
+  font-weight: 500;
+  line-height: 1.4;
+  letter-spacing: -0.02em;
+  opacity: 0.92;
+}
+
+@media (max-width: 1199px) {
+  .jx-features {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 479px) {
+  .jx-features {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.jx-ghost {
+  height: 94vh;
+}
+
+@media (max-width: 991px) {
+  .jx-about-s {
+    padding-block: calc(120 * var(--u));
+  }
+  .jx-p5 {
+    font-size: calc(30 * var(--u));
+  }
+  .jx-p7,
+  .jx-t7 {
+    font-size: calc(16 * var(--u));
+  }
+  .jx-l1 {
+    font-size: calc(13 * var(--u));
+  }
+}
+
+/* ---------- header ---------- */
+.jx-header {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 99;
+  padding-inline: var(--jx-pad);
+  pointer-events: none;
+}
+
+.jx-header__c {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: center;
+  column-gap: var(--jx-gap);
+  height: calc(24 * var(--u));
+}
+
+.jx-header__nav,
+.jx-header__cta {
+  display: flex;
+  gap: calc(20 * var(--u));
+  pointer-events: auto;
+}
+
+.jx-header__cta {
+  justify-content: flex-end;
+}
+
+.jx-header__logo {
+  grid-column: 2;
+  display: flex;
+  justify-content: center;
+}
+
+.jx-logo {
+  display: block;
+  width: calc(187 * var(--u));
+  text-align: center;
+  font-size: calc(23 * var(--u));
+  font-weight: 300;
+  line-height: calc(20 * var(--u));
+  letter-spacing: 0.03em;
+  color: #fff;
+  pointer-events: auto;
+  will-change: transform;
+}
+.jx-logo span {
+  margin-left: 0.3em;
+  font-weight: 500;
+}
+
+.jx-nav-item {
+  position: relative;
+  display: inline-block;
+  padding: calc(4 * var(--u)) calc(8 * var(--u));
+  color: #fff;
+}
+
+.jx-nav-item__label,
+.jx-cta__roll {
+  position: relative;
+  display: block;
+  overflow: hidden;
+}
+
+.jx-is-2 {
+  position: absolute;
+  left: 0;
+  top: 100%;
+}
+
+.jx-nav-item__label .jx-t7,
+.jx-cta__roll > * {
+  transition: transform 0.6s cubic-bezier(0.25, 1, 0.5, 1);
+}
+
+.jx-nav-item:hover .jx-nav-item__label .jx-t7,
+.jx-cta__btn:hover .jx-cta__roll > * {
+  transform: translateY(-100%);
+}
+
+.jx-nav-item__bg {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  border-radius: calc(6 * var(--u));
+  z-index: -1;
+}
+
+.jx-nav-item__hover {
+  position: absolute;
+  inset: 0;
+  top: 100%;
+  height: 100%;
+  border-radius: calc(8 * var(--u));
+  background: rgba(255, 255, 255, 0.15);
+  transition: transform 0.6s cubic-bezier(0.25, 1, 0.5, 1);
+}
+
+.jx-nav-item:hover .jx-nav-item__hover {
+  transform: translateY(-100%);
+}
+
+@media (max-width: 991px) {
+  .jx-header__c {
+    height: calc(40 * var(--u));
+  }
+  .jx-logo {
+    width: auto;
+    font-size: calc(30 * var(--u));
+    line-height: 1;
+  }
+}
+
+/* ---------- bottom CTA ---------- */
+.jx-cta {
+  position: fixed;
+  left: 50%;
+  bottom: calc(36 * var(--u));
+  z-index: 98;
+  translate: -50% 0;
+}
+
+.jx-cta__btn {
+  display: block;
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+}
+
+.jx-cta__label {
+  display: flex;
+  gap: calc(4 * var(--u));
+  padding: calc(6 * var(--u));
+  border-radius: calc(60 * var(--u));
+  background: rgba(255, 255, 255, 0.15);
+}
+
+.jx-cta__pill,
+.jx-cta__icon {
+  display: flex;
+  align-items: center;
+  background: #fff;
+  color: var(--jx-ink);
+  border-radius: calc(36 * var(--u));
+  box-shadow: 0 198px 55px 0 rgba(0, 0, 0, 0), 0 127px 51px 0 rgba(0, 0, 0, 0.01),
+    0 71px 43px 0 rgba(0, 0, 0, 0.04), 0 32px 32px 0 rgba(0, 0, 0, 0.07),
+    0 8px 17px 0 rgba(0, 0, 0, 0.08);
+}
+
+.jx-cta__pill {
+  padding: calc(8 * var(--u)) calc(20 * var(--u));
+  white-space: nowrap;
+}
+
+.jx-cta__icon {
+  padding: calc(8 * var(--u));
+}
+
+.jx-cta__roll--icon {
+  width: calc(20 * var(--u));
+  height: calc(20 * var(--u));
+}
+
+.jx-cta__roll--icon svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.jx-cta__roll--icon svg + svg {
+  position: absolute;
+  left: 0;
+  top: 100%;
+}
+
+@media (max-width: 991px) {
+  .jx-cta {
+    bottom: calc(28 * var(--u));
+  }
+  .jx-cta__pill {
+    padding: calc(12 * var(--u)) calc(26 * var(--u));
+  }
+  .jx-cta__icon {
+    padding: calc(12 * var(--u));
+  }
+  .jx-cta__roll--icon {
+    width: calc(22 * var(--u));
+    height: calc(22 * var(--u));
+  }
+}
+
+/* ---------- the rest of the site's floating chrome waits for the intro ---------- */
+.flightbar,
+.arriving,
+.sound {
+  transition: opacity 0.5s ease, visibility 0.5s;
+}
+
+html.in-intro .flightbar,
+html.in-intro .arriving,
+html.in-intro .sound,
+html.in-jet .flightbar,
+html.in-jet .arriving,
+html.in-jet .sound {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+}
+
+/* =====================================================================
+   Prize pool → schedule → finale cabin (the jet section)
+   ===================================================================== */
+
+.jx-jet {
+  --jx-ink: #312726;
+  position: relative;
+  z-index: 3;
+  color: var(--jx-ink);
+  /* rides up over the last screen of the intro sky, as the reference does */
+  margin-top: -100vh;
+}
+
+.jx-ink { color: var(--jx-ink); }
+.jx-gray { color: rgba(49, 39, 38, 0.3); }
+.jx-gray-ink { color: rgba(49, 39, 38, 0.6); }
+.jx-u36 { height: calc(36 * var(--u)); }
+.jx-fill { flex: 1; min-height: 0; }
+
+.jx-h1 {
+  font-size: calc(104 * var(--u));
+  font-weight: 500;
+  line-height: 0.84;
+  letter-spacing: -0.08em;
+  white-space: nowrap;
+}
+
+.jx-line-h--ink {
+  background: rgba(49, 39, 38, 0.1);
+}
+
+.jx-jet-area {
+  position: relative;
+  height: 400vh;
+  /* the first screen overlaps the intro's sky; past it, continue on the
+     cream that sky ends on, so the site's own backdrop never shows through
+     while the light wash is still fading in */
+  background: linear-gradient(transparent 0 100vh, #fff8ed 100vh);
+}
+
+.jx-jet-switcher {
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  padding-inline: var(--jx-pad);
+  clip-path: inset(0);
+}
+
+.jx-light-bg {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  background: linear-gradient(#7a716e 0%, #fff8ed 100%);
+  opacity: 0;
+}
+
+/* ---------- prize pool ---------- */
+.jx-jet-w {
+  position: relative;
+  z-index: 1;
+  height: 100%;
+  will-change: transform;
+}
+
+.jx-jet-s {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+.jx-jet-s__top,
+.jx-jet-s__bot {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+}
+
+.jx-jet-s__title {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.jx-jet-s__push {
+  flex: 1;
+  margin-left: calc(24 * var(--u));
+}
+
+.jx-jet-s__bot > .jx-grid {
+  width: 100%;
+}
+
+.jx-jet-s__sub {
+  grid-column: 1 / 3;
+}
+
+.jx-jet-s__desc {
+  grid-column: 6 / 8;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+}
+
+.jx-jet-s__desc-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.jx-prizes {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: calc(10 * var(--u));
+}
+
+.jx-prizes li {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  padding-bottom: calc(10 * var(--u));
+  border-bottom: 1px solid rgba(49, 39, 38, 0.1);
+}
+
+/* ---------- schedule ---------- */
+.jx-spec-w {
+  position: absolute;
+  z-index: 1;
+  left: var(--jx-pad);
+  right: var(--jx-pad);
+  top: -100%;
+  height: 100%;
+  will-change: transform;
+}
+
+.jx-spec-s {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.jx-spec-s__col {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  min-height: 0;
+}
+
+.jx-spec-s__col--l { grid-column: 1 / 3; }
+.jx-spec-s__col--r { grid-column: 6 / 8; }
+
+.jx-spec-s__center {
+  grid-column: 3 / 6;
+  position: relative;
+}
+
+.jx-ps {
+  display: flex;
+  flex-direction: column;
+  gap: calc(8 * var(--u));
+  padding-top: calc(12 * var(--u));
+  border-top: 1px solid rgba(49, 39, 38, 0.1);
+}
+
+.jx-ps .jx-p7 {
+  max-width: 84%;
+}
+
+.jx-ps__tag {
+  display: inline-flex;
+  align-items: center;
+  gap: calc(8 * var(--u));
+  align-self: flex-start;
+  padding: calc(5 * var(--u)) calc(10 * var(--u));
+  border-radius: calc(20 * var(--u));
+  background: rgba(49, 39, 38, 0.08);
+}
+
+.jx-ps__tag i,
+.jx-seat-badge__dot {
+  width: calc(6 * var(--u));
+  height: calc(6 * var(--u));
+  min-width: 5px;
+  min-height: 5px;
+  border-radius: 50%;
+  background: #c08a4e;
+  box-shadow: 0 0 0 0 rgba(192, 138, 78, 0.5);
+  animation: jx-ping 1.8s ease-out infinite;
+}
+
+@keyframes jx-ping {
+  0% { box-shadow: 0 0 0 0 rgba(192, 138, 78, 0.55); }
+  80%, 100% { box-shadow: 0 0 0 calc(8 * var(--u)) rgba(192, 138, 78, 0); }
+}
+
+.jx-sched {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.jx-sched__line {
+  display: grid;
+  grid-template-columns: max(64px, calc(84 * var(--u))) minmax(0, 1fr);
+  align-items: center;
+  column-gap: calc(14 * var(--u));
+}
+
+/* times set like split-flap tiles on a departures board */
+.jx-sched__time {
+  justify-self: start;
+  padding: calc(4 * var(--u)) calc(7 * var(--u));
+  border-radius: calc(4 * var(--u));
+  background: #2a2220;
+  color: #f6e7d2;
+  font-size: max(10.5px, calc(12 * var(--u)));
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.02em;
+  line-height: 1.2;
+  white-space: nowrap;
+  box-shadow: inset 0 -1px 0 rgba(255, 255, 255, 0.06), inset 0 calc(50% - 0.5px) 0 rgba(0, 0, 0, 0.18);
+}
+
+.jx-sched__time--tba {
+  background: transparent;
+  color: rgba(49, 39, 38, 0.45);
+  box-shadow: inset 0 0 0 1px rgba(49, 39, 38, 0.2);
+}
+
+.jx-sched__what {
+  font-size: max(12.5px, calc(14 * var(--u)));
+  font-weight: 600;
+  line-height: 1.25;
+  letter-spacing: -0.02em;
+}
+
+.jx-jet-anchor {
+  position: absolute;
+  left: 0;
+  top: 300vh;
+  height: 1px;
+}
+
+.jx-jet-anchor--prizes {
+  top: 150vh;
+}
+
+/* ---------- finale cabin badge ---------- */
+.jx-seat-badge {
+  position: absolute;
+  left: 50%;
+  top: calc(18 * var(--u));
+  transform: translateX(-50%);
+  text-align: center;
+  white-space: nowrap;
+  z-index: 2;
+}
+
+.jx-seat-badge__pill {
+  display: inline-flex;
+  align-items: center;
+  gap: calc(10 * var(--u));
+  padding: calc(8 * var(--u)) calc(16 * var(--u));
+  border-radius: calc(40 * var(--u));
+  background: #fff;
+  box-shadow: 0 32px 32px 0 rgba(0, 0, 0, 0.05), 0 8px 17px 0 rgba(0, 0, 0, 0.07);
+}
+
+.jx-seat-badge__n {
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---------- the jet ---------- */
+.jx-jet-plane {
+  position: sticky;
+  z-index: 2;
+  top: 50vh;
+  height: 50vh;
+  margin-top: 100vh;
+  pointer-events: none;
+}
+
+.jx-jet-plane__scale {
+  position: absolute;
+  inset: 0;
+  will-change: transform;
+}
+
+.jx-jet-box {
+  --swap: 0;
+  --edge: calc((1 - var(--swap)) * 110%);
+  position: relative;
+  width: 100%;
+  aspect-ratio: 2160 / 2400;
+  transform: translateY(-50%);
+}
+
+.jx-jet-photo,
+.jx-jet-blueprint {
+  position: absolute;
+  inset: 0;
+}
+
+/* photo above the moving edge, cabin plan below it */
+.jx-jet-photo {
+  -webkit-mask-image: linear-gradient(#000 calc(var(--edge) - 10%), transparent var(--edge));
+  mask-image: linear-gradient(#000 calc(var(--edge) - 10%), transparent var(--edge));
+}
+
+.jx-jet-blueprint {
+  -webkit-mask-image: linear-gradient(transparent calc(var(--edge) - 10%), #000 var(--edge));
+  mask-image: linear-gradient(transparent calc(var(--edge) - 10%), #000 var(--edge));
+}
+
+.jx-jet-art {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+.jx-print__hull {
+  fill: rgba(255, 250, 243, 0.72);
+  stroke: #8f857c;
+  stroke-width: 5;
+}
+
+.jx-print__line {
+  fill: none;
+  stroke: #a39a91;
+  stroke-width: 4;
+}
+
+.jx-print__aisle {
+  stroke: #c7bdb2;
+  stroke-width: 4;
+  stroke-dasharray: 18 16;
+}
+
+/* thirty empty seats, drawn in the event's gold so they read as available */
+.jx-seat__base {
+  fill: #f6e7d2;
+  stroke: #b0885c;
+  stroke-width: 5;
+}
+
+.jx-seat__back {
+  fill: #d9b184;
+}
+
+.jx-seat__arm {
+  fill: #c29a6c;
+}
+
+.jx-jet-tail {
+  height: 50vh;
+  margin-top: -1px;
+  background: linear-gradient(#fff8ed 0%, #e9dfd2 30%, #050403 100%);
+}
+
+/* header turns to ink over the light section */
+.jx-header .jx-t7,
+.jx-logo {
+  transition: color 0.5s ease;
+}
+.jx-header--ink .jx-t7,
+.jx-header--ink .jx-logo,
+.jx-header--light-bg .jx-t7,
+.jx-header--light-bg .jx-logo {
+  color: var(--jx-ink, #312726);
+}
+.jx-header--ink .jx-nav-item__hover,
+.jx-header--light-bg .jx-nav-item__hover {
+  background: rgba(49, 39, 38, 0.08);
+}
+
+[data-jet-chars],
+[data-jet-lines],
+[data-jet-divs] {
+  visibility: hidden;
+}
+
+/* ---------- phones: the stage unpins and stacks ---------- */
+@media (max-width: 991px) {
+  .jx-jet {
+    margin-top: 0;
+    background: linear-gradient(#7a716e 0%, #fff8ed 40%, #fff8ed 100%);
+  }
+  .jx-jet-area {
+    height: auto;
+    display: flex;
+    flex-direction: column;
+    background: none;
+  }
+  .jx-jet-switcher {
+    display: contents;
+  }
+  .jx-light-bg {
+    display: none;
+  }
+  .jx-jet-w {
+    order: 1;
+    height: auto;
+    min-height: 70svh;
+    padding: calc(120 * var(--u)) var(--jx-pad) calc(40 * var(--u));
+  }
+  .jx-jet-s__title {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: calc(12 * var(--u));
+  }
+  .jx-jet-s__push {
+    display: none;
+  }
+  .jx-h1 {
+    font-size: calc(96 * var(--u));
+  }
+  .jx-jet-s__sub,
+  .jx-jet-s__desc {
+    grid-column: 1 / -1;
+  }
+  .jx-jet-s__desc {
+    margin-top: calc(40 * var(--u));
+  }
+  .jx-jet-plane {
+    order: 2;
+    position: relative;
+    top: auto;
+    height: auto;
+    margin: 0;
+    overflow: hidden;
+  }
+  .jx-jet-plane__scale {
+    position: relative;
+    width: 70%;
+    margin-inline: auto;
+  }
+  .jx-jet-box {
+    transform: none;
+  }
+  .jx-spec-w {
+    order: 3;
+    position: relative;
+    inset: auto;
+    height: auto;
+    padding-inline: var(--jx-pad);
+  }
+  .jx-spec-s__col--l,
+  .jx-spec-s__col--r,
+  .jx-spec-s__center {
+    grid-column: 1 / -1;
+  }
+  .jx-spec-s__center {
+    order: -1;
+    min-height: calc(90 * var(--u));
+  }
+  .jx-seat-badge {
+    top: 0;
+  }
+  .jx-spec-s__col {
+    margin-top: calc(60 * var(--u));
+    gap: calc(30 * var(--u));
+  }
+  .jx-sched__what {
+    font-size: 15px;
+  }
+  .jx-jet-anchor {
+    top: 60%;
+  }
+  .jx-jet-anchor--prizes {
+    top: 0;
+  }
+}
+
+@media (max-width: 991px) {
+  .jx-p2 {
+    font-size: clamp(28px, 7.4vw, 44px);
+    line-height: 1.05;
+    letter-spacing: -0.06em !important;
+  }
+}

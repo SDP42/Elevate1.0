@@ -73,13 +73,19 @@ export default function CabinLab3D() {
 
   return (
     <section id="cabin-lab" data-label="Onboard" className="lab" ref={wrapRef}>
-      <div className="container">
+      {/* the build bay sits in open sky: the same clouds the flight began in */}
+      <div className="lab__sky" aria-hidden="true">
+        <span className="lab__cloud lab__cloud--a" />
+        <span className="lab__cloud lab__cloud--b" />
+        <span className="lab__cloud lab__cloud--c" />
+      </div>
+      <div className="container lab__content">
         <div className="section-head" data-reveal>
-          <span className="eyebrow">Onboard</span>
+          <span className="eyebrow">Onboard · after take-off</span>
           <h2 className="section-title">The cabin becomes the build bay.</h2>
           <p className="lab__copy">
-            Same seats, new purpose — a team of four, four laptops, twenty-four
-            hours. Keep scrolling to look down the table.
+            From 11:00 on 10 October, your crew gets a table, a laptop each and
+            twenty-four hours. Drag or keep scrolling to look down the table.
           </p>
         </div>
       </div>
