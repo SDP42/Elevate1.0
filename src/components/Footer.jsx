@@ -1,6 +1,11 @@
-import { EVENT, ORGANISER } from "../config";
+import { CONTACTS, EVENT, ORGANISER } from "../config";
 
-const TEAM = ["Vrinda Talwar", "Atharva Deo", "Swayam Panchal"];
+const LinkedInIcon = () => (
+  <svg viewBox="0 0 24 24" aria-hidden="true" className="footer__igIcon">
+    <rect x="3" y="3" width="18" height="18" rx="3" fill="none" stroke="currentColor" strokeWidth="1.8" />
+    <path d="M8 10.5V16M8 7.6v.1M11.5 16v-5.5M11.5 13c0-1.6 1-2.6 2.3-2.6s2.2.9 2.2 2.6V16" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+  </svg>
+);
 
 const InstagramIcon = () => (
   <svg viewBox="0 0 24 24" aria-hidden="true" className="footer__igIcon">
@@ -31,15 +36,26 @@ export default function Footer() {
             </div>
           </div>
           <p className="footer__tag">{ORGANISER.blurb}</p>
-          <a
-            className="footer__ig"
-            href={ORGANISER.instagram}
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <InstagramIcon />
-            <span>Follow {ORGANISER.handle}</span>
-          </a>
+          <div className="footer__social">
+            <a
+              className="footer__ig"
+              href={ORGANISER.instagram}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              <InstagramIcon />
+              <span>Instagram</span>
+            </a>
+            <a
+              className="footer__ig"
+              href={ORGANISER.linkedin}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              <LinkedInIcon />
+              <span>LinkedIn</span>
+            </a>
+          </div>
         </div>
 
         <div className="footer__col">
@@ -52,10 +68,11 @@ export default function Footer() {
 
         <div className="footer__col">
           <span className="footer__heading">Contact</span>
-          {TEAM.map((name) => (
-            <span key={name} className="footer__person">
-              {name}
-            </span>
+          {CONTACTS.map((c) => (
+            <a key={c.name} className="footer__contact" href={`tel:${c.tel}`}>
+              <span className="footer__person">{c.name}</span>
+              <span className="footer__phone">{c.phone}</span>
+            </a>
           ))}
         </div>
       </div>

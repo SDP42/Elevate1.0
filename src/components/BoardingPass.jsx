@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import useInView, { prefersReducedMotion } from "../hooks/useInView";
 import { cue } from "../audio/bus";
 import RegisterButton from "./RegisterButton";
-import { EVENT, EVENT_START, registrationOpen } from "../config";
+import { EVENT, EVENT_START, FEES, registrationOpen } from "../config";
 
 const ROWS = [
   { k: "Flight", v: "EL · 100" },
@@ -13,9 +13,9 @@ const ROWS = [
 
 // the three steps between this page and a seat in the finale
 const STEPS = [
-  { n: "01", title: "Check in", body: "Register your crew of two to four on Unstop." },
+  { n: "01", title: "Check in", body: `Register your crew of two to four on Unstop. Online round fare: ${FEES.online} per team.` },
   { n: "02", title: "Clear security", body: "Submit in the online qualifier round." },
-  { n: "03", title: "Board", body: "The top thirty teams are called to campus on 10 October." },
+  { n: "03", title: "Board", body: `The top thirty teams are called to campus on 10 October. Offline finale fare: ${FEES.offline} per team.` },
 ];
 
 function useCountdown(target) {
@@ -59,6 +59,10 @@ export default function BoardingPass() {
 
   return (
     <section id="register" data-label="Boarding pass" className="pass">
+      <div className="pass__sky" aria-hidden="true">
+        <span className="lab__cloud lab__cloud--a" />
+        <span className="lab__cloud lab__cloud--b" />
+      </div>
       <div className="container pass__grid">
         <div className="pass__intro" data-reveal>
           <span className="eyebrow">Claim a seat</span>
@@ -84,8 +88,8 @@ export default function BoardingPass() {
             <RegisterButton className="pass__register">Register your team</RegisterButton>
             <span className="pass__note">
               {registrationOpen()
-                ? "Opens Unstop in a new tab. Free to register."
-                : "The Unstop link goes live shortly. Free to register."}
+                ? "Opens Unstop in a new tab."
+                : "The Unstop link goes live shortly."}
             </span>
           </div>
         </div>
@@ -159,6 +163,21 @@ export default function BoardingPass() {
               </div>
             </div>
           </div>
+
+          <dl className="pass__fare">
+            <div className="pass__fareHead">
+              <dt>Fare</dt>
+              <dd>per team</dd>
+            </div>
+            <div>
+              <dt>Online round</dt>
+              <dd>{FEES.online}</dd>
+            </div>
+            <div>
+              <dt>Offline finale · if selected</dt>
+              <dd>{FEES.offline}</dd>
+            </div>
+          </dl>
 
           <div className="pass__countdown" aria-live="off">
             <span className="pass__countLabel">

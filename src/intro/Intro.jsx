@@ -4,7 +4,7 @@ import { gsap, ScrollTrigger, SplitText, BREAKPOINT, charReveal, lineReveal, chi
 import { BackPlate, FrontPlate, FrontOverPlate, Knob } from "./CabinWindow";
 import { paintSky } from "./skyPainter";
 import { prefersReducedMotion } from "../hooks/useInView";
-import { EVENT } from "../config";
+import { EVENT, FEES } from "../config";
 
 const VISITED = "elevate-intro-seen";
 
@@ -22,8 +22,8 @@ const FEATURES = [
     body: "Form your team before you register. Mixed skill sets tend to land the most complete demos.",
   },
   {
-    title: ["Free to", "register"],
-    body: "No entry fee for the qualifier or the finale. Bring a laptop, an idea and your crew.",
+    title: ["Fare,", "per team"],
+    body: `${FEES.online} per team for the online round. Teams selected for the offline finale pay ${FEES.offline} per team.`,
   },
 ]
 
