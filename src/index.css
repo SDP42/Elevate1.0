@@ -1,0 +1,86 @@
+:root {
+  --bg: #0a0908;
+  --bg-alt: #121110;
+  --cream: #f3ede2;
+  --cream-dim: #d9d0bf;
+  --gold: #c9a86a;
+  --gold-dim: #8a7a5c;
+  --line: rgba(243, 237, 226, 0.14);
+  --cabin: #14120f;
+  --sky-deep: #0f3f63;
+  --sky-mid: #4d8fb5;
+  --sky-pale: #cfe3ee;
+  --font-display: "Orbitron", "Helvetica Neue", Arial, sans-serif;
+  --font-body: "Inter", "Helvetica Neue", Arial, sans-serif;
+  color-scheme: dark;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+  /* global type scale — every rem-based size on the site lifts with this */
+  font-size: 138%;
+}
+
+@media (max-width: 760px) {
+  html {
+    font-size: 118%;
+  }
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--cream);
+  font-family: var(--font-body);
+  overflow-x: hidden;
+}
+
+#root {
+  min-height: 100vh;
+}
+
+h1, h2, h3, h4 {
+  font-family: var(--font-display);
+  font-weight: 600;
+  text-transform: uppercase;
+  margin: 0;
+  letter-spacing: 0.02em;
+}
+
+p {
+  margin: 0;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+button {
+  font-family: inherit;
+  cursor: pointer;
+}
+
+.eyebrow {
+  font-family: var(--font-display);
+  font-size: 0.85rem;
+  font-weight: 700;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  color: var(--gold);
+  display: inline-block;
+}
+
+.container {
+  width: min(1240px, 90vw);
+  margin: 0 auto;
+}
+
+::selection {
+  background: var(--gold);
+  color: #0a0908;
+}
