@@ -767,6 +767,128 @@ html.lenis {
   transform: translateY(-100%);
 }
 
+/* ---------- mobile menu: hamburger, drawer, backdrop ---------- */
+.jx-menu-btn {
+  display: none;
+  grid-column: 1;
+  justify-self: start;
+  align-items: center;
+  justify-content: center;
+  width: calc(40 * var(--u));
+  height: calc(40 * var(--u));
+  padding: 0;
+  border: none;
+  background: none;
+  color: #fff;
+  pointer-events: auto;
+}
+
+.jx-menu-btn__bars {
+  position: relative;
+  display: block;
+  width: calc(22 * var(--u));
+  height: calc(14 * var(--u));
+}
+
+.jx-menu-btn__bars i {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 2px;
+  border-radius: 2px;
+  background: currentColor;
+  transition: transform 0.35s cubic-bezier(0.65, 0, 0.35, 1), opacity 0.25s ease, top 0.35s cubic-bezier(0.65, 0, 0.35, 1);
+}
+.jx-menu-btn__bars i:nth-child(1) { top: 0; }
+.jx-menu-btn__bars i:nth-child(2) { top: 50%; transform: translateY(-50%); }
+.jx-menu-btn__bars i:nth-child(3) { top: 100%; transform: translateY(-100%); }
+
+.jx-menu-btn__bars.is-open i:nth-child(1) {
+  top: 50%;
+  transform: translateY(-50%) rotate(45deg);
+}
+.jx-menu-btn__bars.is-open i:nth-child(2) {
+  opacity: 0;
+}
+.jx-menu-btn__bars.is-open i:nth-child(3) {
+  top: 50%;
+  transform: translateY(-50%) rotate(-45deg);
+}
+
+.jx-mobile-menu {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 98;
+  display: none;
+  pointer-events: none;
+}
+
+.jx-mobile-menu__links {
+  display: flex;
+  flex-direction: column;
+  gap: calc(4 * var(--u));
+  padding: calc(96 * var(--u)) var(--jx-pad) calc(28 * var(--u));
+  background: rgba(18, 17, 16, 0.92);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+  border-bottom: 1px solid rgba(243, 237, 226, 0.1);
+  transform: translateY(-12px);
+  opacity: 0;
+  transition: transform 0.4s cubic-bezier(0.25, 1, 0.5, 1), opacity 0.3s ease;
+}
+
+.jx-mobile-menu__links a {
+  padding: calc(14 * var(--u)) calc(4 * var(--u));
+  font-size: calc(26 * var(--u));
+  font-weight: 500;
+  color: #f3ede2;
+  border-bottom: 1px solid rgba(243, 237, 226, 0.08);
+}
+.jx-mobile-menu__links a:last-child {
+  border-bottom: none;
+  color: var(--gold, #c9a86a);
+}
+
+.jx-mobile-menu__backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 97;
+  display: none;
+  border: none;
+  padding: 0;
+  background: rgba(0, 0, 0, 0.4);
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  cursor: default;
+}
+
+@media (max-width: 991px) {
+  .jx-menu-btn {
+    display: inline-flex;
+  }
+  .jx-mobile-menu,
+  .jx-mobile-menu__backdrop {
+    display: block;
+  }
+  .jx-mobile-menu.is-open {
+    pointer-events: auto;
+  }
+  .jx-mobile-menu.is-open .jx-mobile-menu__links {
+    transform: translateY(0);
+    opacity: 1;
+  }
+  .jx-mobile-menu__backdrop.is-open {
+    opacity: 1;
+    pointer-events: auto;
+  }
+}
+
+html.jx-menu-open {
+  overflow: hidden;
+}
+
 @media (max-width: 991px) {
   .jx-header__c {
     height: calc(40 * var(--u));
@@ -1290,19 +1412,20 @@ html.in-jet .sound {
 @media (max-width: 991px) {
   .jx-jet {
     margin-top: 0;
-    background: linear-gradient(#7a716e 0%, #fff8ed 40%, #fff8ed 100%);
   }
   .jx-jet-area {
+    position: relative;
     height: auto;
     display: flex;
     flex-direction: column;
-    background: none;
+    /* the intro sky still shows through at the very top and settles to
+       cream a little way down, sized to the section's own height rather
+       than a fixed vh — same idea as desktop's scroll-spanning wash, just
+       proportional since this box is no longer a fixed 400vh pin */
+    background: linear-gradient(transparent 0%, #7a716e 12%, #fff8ed 32%);
   }
   .jx-jet-switcher {
     display: contents;
-  }
-  .jx-light-bg {
-    display: none;
   }
   .jx-jet-w {
     order: 1;

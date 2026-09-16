@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { EVENT, ORGANISER } from "../config";
 
 const LINKS = [
@@ -52,9 +52,31 @@ function useInkOverLight(ref) {
   }, [ref]);
 }
 
+/* the desktop links, folded into one list so the phone drawer and the
+   inline nav/cta groups all read from the same source */
+const ALL_LINKS = [
+  ...LINKS,
+  { href: "#schedule", label: "Schedule" },
+  { href: ORGANISER.instagram, label: ORGANISER.handle, external: true },
+];
+
 export default function Header() {
   const ref = useRef(null);
+  const [open, setOpen] = useState(false);
   useInkOverLight(ref);
+
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e) => {
+      if (e.key === "Escape") setOpen(false);
+    };
+    document.addEventListener("keydown", onKey);
+    document.documentElement.classList.add("jx-menu-open");
+    return () => {
+      document.removeEventListener("keydown", onKey);
+      document.documentElement.classList.remove("jx-menu-open");
+    };
+  }, [open]);
 
   return (
     <header className="jx-header" data-jx-header ref={ref}>
@@ -67,6 +89,19 @@ export default function Header() {
             </NavItem>
           ))}
         </nav>
+        <button
+          type="button"
+          className="jx-menu-btn jx-mobile"
+          aria-label={open ? "Close menu" : "Open menu"}
+          aria-expanded={open}
+          onClick={() => setOpen((v) => !v)}
+        >
+          <span className={`jx-menu-btn__bars${open ? " is-open" : ""}`}>
+            <i />
+            <i />
+            <i />
+          </span>
+        </button>
         <div className="jx-header__logo">
           <a className="jx-logo" href="#top" data-jx-logo aria-label={`${EVENT.name} home`}>
             Elevate<span>1.0</span>
@@ -80,6 +115,29 @@ export default function Header() {
         </div>
       </div>
       <div className="jx-u24" />
+
+      <div className={`jx-mobile-menu${open ? " is-open" : ""}`}>
+        <nav className="jx-mobile-menu__links">
+          {ALL_LINKS.map((l) => (
+            <a
+              key={l.href}
+              href={l.href}
+              target={l.external ? "_blank" : undefined}
+              rel={l.external ? "noopener noreferrer" : undefined}
+              onClick={() => setOpen(false)}
+            >
+              {l.label}
+            </a>
+          ))}
+        </nav>
+      </div>
+      <button
+        type="button"
+        className={`jx-mobile-menu__backdrop${open ? " is-open" : ""}`}
+        aria-hidden="true"
+        tabIndex={-1}
+        onClick={() => setOpen(false)}
+      />
     </header>
   );
 }
