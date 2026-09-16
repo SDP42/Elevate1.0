@@ -92,6 +92,10 @@ export default function BoardingPass() {
   return (
     <section id="register" data-label="Boarding pass" className="pass bp-section">
       {cloudUrl && <img className="pass__cloud" src={cloudUrl} alt="" aria-hidden="true" />}
+      {/* the section it lands on (dark) and the one it hands off to (also dark)
+          both meet the cloud photo's own colour, not a hard-edged cut */}
+      <div className="pass__fadeTop" aria-hidden="true" />
+      <div className="pass__fadeBottom" aria-hidden="true" />
 
       <div className="container bp-wrap">
         <div ref={ref} className={`bp ${seen ? "is-in" : ""} ${torn ? "is-torn" : ""}`}>

@@ -28,13 +28,6 @@ const FAQS = [
 export default function Faq() {
   return (
     <section id="faq" data-label="FAQ" className="faq">
-      {/* the same cloud the flight opened in, carried down through the sky
-          the boarding pass sits on, fading out before the questions start */}
-      <div className="faq__sky" aria-hidden="true">
-        <span className="lab__cloud lab__cloud--a" />
-        <span className="lab__cloud lab__cloud--b" />
-        <span className="lab__cloud lab__cloud--c" />
-      </div>
       <div className="container faq__grid">
         <div className="faq__head" data-reveal>
           <span className="eyebrow">FAQ</span>

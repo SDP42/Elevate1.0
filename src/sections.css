@@ -974,19 +974,6 @@
   pointer-events: none;
 }
 
-/* the sky keeps going past the boarding pass — same cloud shapes, now faint
-   against the dark cabin lights, fading out before the questions start so
-   the list itself sits on a clean, readable backdrop */
-.faq__sky {
-  position: absolute;
-  inset: 0;
-  z-index: 0;
-  opacity: 0.24;
-  pointer-events: none;
-  -webkit-mask-image: linear-gradient(#000, transparent 52%);
-  mask-image: linear-gradient(#000, transparent 52%);
-}
-
 .faq__grid {
   position: relative;
   z-index: 1;
@@ -1172,6 +1159,34 @@
   height: 100%;
   object-fit: cover;
   display: block;
+}
+
+/* the jet section above ends on #050403; the FAQ below opens on #121110 —
+   fade the cloud photo into both exact colours instead of cutting straight
+   to it, so neither seam reads as a hard edge */
+.pass__fadeTop,
+.pass__fadeBottom {
+  position: absolute;
+  left: 0;
+  right: 0;
+  z-index: 1;
+  pointer-events: none;
+}
+
+.pass__fadeTop {
+  top: 0;
+  height: 22vh;
+  background: linear-gradient(#050403, transparent);
+}
+
+.pass__fadeBottom {
+  bottom: 0;
+  height: 26vh;
+  background: linear-gradient(transparent, #121110);
+}
+
+.bp-wrap {
+  z-index: 2;
 }
 
 
