@@ -1074,11 +1074,17 @@
   transform: rotate(2deg);
 }
 
-@media (max-width: 600px) {
-  /* extra headroom dedicated to the plane's flight path — the fixed
-     header and the heading below it leave too tight a gap otherwise */
+@media (max-width: 991px) {
+  /* extra headroom dedicated to the plane's flight path. the fixed mobile
+     header's own height scales with viewport width (it jumps between two
+     design-unit tiers at 479px, then keeps growing up to 991px), so a
+     fixed offset that clears it on a narrow phone can still collide with
+     it on a wider one — landscape phones and small tablets in this same
+     max-width:991px bucket. this buffer is sized generously enough to
+     clear the header at its tallest (near the 991px edge) with margin to
+     spare everywhere narrower than that */
   .faq {
-    padding-top: calc(var(--section-y) + 2.5rem);
+    padding-top: calc(var(--section-y) + 4.5rem);
   }
   .faq__plane {
     top: -2.2rem;
