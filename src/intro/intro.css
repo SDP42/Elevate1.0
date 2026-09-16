@@ -898,6 +898,37 @@ html.jx-menu-open {
     font-size: calc(29 * var(--u));
     line-height: 1;
   }
+
+  /* phones scroll straight through busy, high-contrast sections (dark FAQ
+     cards, the gold "before you board" heading, the cabin plan) right under
+     a fixed header — the desktop's soft fading blur isn't enough there, so
+     the bar gets a solid, always-opaque backing instead of a fade, and the
+     wordmark/nav stop swapping to the light-section "ink" colour, since
+     that colour would otherwise vanish against this now-solid dark bar */
+  .jx-header::before {
+    bottom: 0;
+    background: rgba(13, 12, 11, 0.88);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    mask-image: none;
+    -webkit-mask-image: none;
+    border-bottom: 1px solid rgba(243, 237, 226, 0.08);
+  }
+
+  .jx-header--ink .jx-logo,
+  .jx-header--light-bg .jx-logo,
+  .jx-header--ink .jx-t7,
+  .jx-header--light-bg .jx-t7 {
+    color: #fff;
+  }
+  .jx-header--ink .jx-menu-btn,
+  .jx-header--light-bg .jx-menu-btn {
+    color: #fff;
+  }
+  .jx-header--ink .jx-nav-item__hover,
+  .jx-header--light-bg .jx-nav-item__hover {
+    background: rgba(255, 255, 255, 0.15);
+  }
 }
 
 /* ---------- bottom CTA ---------- */
