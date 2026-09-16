@@ -1121,7 +1121,8 @@ html.in-jet .sound {
 .jx-seat-badge {
   position: absolute;
   left: 50%;
-  top: calc(18 * var(--u));
+  /* clear of the jet's nose, which sits directly beneath it */
+  top: calc(-30 * var(--u));
   transform: translateX(-50%);
   filter: url(#jx-dirblur);
   text-align: center;
