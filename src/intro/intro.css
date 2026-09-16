@@ -1269,10 +1269,19 @@ html.in-jet .sound {
 
 .jx-seat-badge {
   position: absolute;
-  left: 50%;
+  /* centered via left/right + auto margins rather than a transform:
+     translateX(-50%) — the entrance animation drives GSAP's xPercent on
+     this same element, and xPercent composes with whatever transform is
+     already on the element in a way that isn't reliably preserved across
+     viewport widths (confirmed: correct at 1440px, silently dropped the
+     CSS centering at 1366px). Leaving `transform` entirely to GSAP and
+     centering through a transform-free property avoids the conflict. */
+  left: 0;
+  right: 0;
+  width: fit-content;
+  margin-inline: auto;
   /* clear of the jet's nose, which sits directly beneath it */
   top: calc(-30 * var(--u));
-  transform: translateX(-50%);
   filter: url(#jx-dirblur);
   text-align: center;
   white-space: nowrap;
