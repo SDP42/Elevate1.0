@@ -949,8 +949,41 @@
   .bp__rows {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
+  /* side by side, the ticket and stub no longer fit — stack them, the stub
+     becoming a full-width strip along the bottom instead of a vertical tab */
+  .bp {
+    flex-direction: column;
+  }
+  .bp__ticket {
+    border-radius: 22px 22px 0 0;
+    -webkit-mask: none;
+    mask: none;
+  }
   .bp__stub {
-    width: 52px;
+    width: 100%;
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.9rem 1.3rem;
+    border-radius: 0 0 22px 22px;
+  }
+  .bp__stub::before {
+    left: 0;
+    right: 0;
+    top: -5px;
+    bottom: auto;
+    width: auto;
+    height: 10px;
+    background: radial-gradient(circle 4px at 6px 5px, #0b1b3a 98%, transparent) 0 0 / 12px 10px repeat-x;
+  }
+  .bp__stubTitle,
+  .bp__stubBrand {
+    writing-mode: horizontal-tb;
+    transform: none;
+  }
+  .bp.is-torn .bp__stub,
+  .bp:hover .bp__stub {
+    transform: translate(0, 10px) rotate(-1.5deg);
   }
 }
 

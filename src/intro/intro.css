@@ -1277,7 +1277,9 @@ html.in-jet .sound {
     order: 1;
     height: auto;
     min-height: 70svh;
-    padding: calc(120 * var(--u)) var(--jx-pad) calc(40 * var(--u));
+    /* extra clearance under the fixed header — small phones were catching
+       the "Prize Pool" heading against the wordmark mid-scroll */
+    padding: calc(200 * var(--u)) var(--jx-pad) calc(40 * var(--u));
   }
   .jx-jet-s__title {
     flex-direction: column;
