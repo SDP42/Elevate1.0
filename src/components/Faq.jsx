@@ -1,7 +1,7 @@
-import { EVENT, FEES } from "../config";
+import { EVENT } from "../config";
 
-/* Answers come straight from the organisers; keep this list in step with
-   the timeline in the jet section. */
+/* Five questions, straight from the organisers — the ones people actually
+   ask first. Keep this list in step with the timeline in the jet section. */
 const FAQS = [
   {
     q: "What is the team size?",
@@ -23,23 +23,18 @@ const FAQS = [
     q: "How do I register?",
     a: "Register your team on Unstop. Registration closes on 30 September at 11:59 PM.",
   },
-  {
-    q: "How are teams selected for the offline hackathon?",
-    a: "Every team takes part in the online PS round. Submissions close on 1 October at 11:59 PM, and shortlisted teams are announced on 3 October.",
-  },
-  {
-    q: "Is there a registration fee?",
-    a: `${FEES.online} per team for the online round. Shortlisted teams pay ${FEES.offline} per team for the offline hackathon.`,
-  },
-  {
-    q: "What should we bring?",
-    a: "Your own laptops and chargers, plus a college ID. Laptops are not provided.",
-  },
 ];
 
 export default function Faq() {
   return (
     <section id="faq" data-label="FAQ" className="faq">
+      {/* the same cloud the flight opened in, carried down through the sky
+          the boarding pass sits on, fading out before the questions start */}
+      <div className="faq__sky" aria-hidden="true">
+        <span className="lab__cloud lab__cloud--a" />
+        <span className="lab__cloud lab__cloud--b" />
+        <span className="lab__cloud lab__cloud--c" />
+      </div>
       <div className="container faq__grid">
         <div className="faq__head" data-reveal>
           <span className="eyebrow">FAQ</span>

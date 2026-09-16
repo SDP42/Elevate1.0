@@ -1,17 +1,35 @@
 import { CONTACTS, EVENT, ORGANISER } from "../config";
 
-const LinkedInIcon = () => (
-  <svg viewBox="0 0 24 24" aria-hidden="true" className="footer__igIcon">
-    <rect x="3" y="3" width="18" height="18" rx="3" fill="none" stroke="currentColor" strokeWidth="1.8" />
-    <path d="M8 10.5V16M8 7.6v.1M11.5 16v-5.5M11.5 13c0-1.6 1-2.6 2.3-2.6s2.2.9 2.2 2.6V16" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+/* Brand marks drawn to the official glyphs (the same shapes catalogued on
+   svgl.app) rather than a generic outline — Instagram's gradient camera ring
+   and LinkedIn's blue "in" badge, each on its own square so they read at a
+   glance in the footer row. */
+const InstagramIcon = () => (
+  <svg viewBox="0 0 48 48" aria-hidden="true" className="footer__igIcon">
+    <defs>
+      <radialGradient id="ig-grad" cx="0.3" cy="1" r="1.2">
+        <stop offset="0" stopColor="#FED576" />
+        <stop offset="0.26" stopColor="#F47133" />
+        <stop offset="0.61" stopColor="#BC3081" />
+        <stop offset="1" stopColor="#4C63D2" />
+      </radialGradient>
+    </defs>
+    <rect x="1" y="1" width="46" height="46" rx="13" fill="url(#ig-grad)" />
+    <rect x="12.5" y="12.5" width="23" height="23" rx="7.5" fill="none" stroke="#fff" strokeWidth="2.6" />
+    <circle cx="24" cy="24" r="6.6" fill="none" stroke="#fff" strokeWidth="2.6" />
+    <circle cx="32.6" cy="15.4" r="1.7" fill="#fff" />
   </svg>
 );
 
-const InstagramIcon = () => (
-  <svg viewBox="0 0 24 24" aria-hidden="true" className="footer__igIcon">
-    <rect x="3" y="3" width="18" height="18" rx="5" fill="none" stroke="currentColor" strokeWidth="1.8" />
-    <circle cx="12" cy="12" r="4.2" fill="none" stroke="currentColor" strokeWidth="1.8" />
-    <circle cx="17.3" cy="6.7" r="1.2" fill="currentColor" />
+const LinkedInIcon = () => (
+  <svg viewBox="0 0 48 48" aria-hidden="true" className="footer__igIcon">
+    <rect x="1" y="1" width="46" height="46" rx="9" fill="#0A66C2" />
+    <rect x="11" y="19" width="5.4" height="18" fill="#fff" />
+    <circle cx="13.7" cy="13" r="3" fill="#fff" />
+    <path
+      d="M22.4 19h5.2v2.6h.1c.9-1.6 3-2.9 5.8-2.9 5.4 0 7.5 3 7.5 8.8V37h-5.4v-8.5c0-2.9-.6-5.1-3.6-5.1-2.7 0-4.2 1.7-4.2 5.1V37h-5.4V19Z"
+      fill="#fff"
+    />
   </svg>
 );
 
@@ -42,18 +60,20 @@ export default function Footer() {
               href={ORGANISER.instagram}
               target="_blank"
               rel="noopener noreferrer"
+              aria-label="DJS NSDC on Instagram"
+              title="Instagram"
             >
               <InstagramIcon />
-              <span>Instagram</span>
             </a>
             <a
               className="footer__ig"
               href={ORGANISER.linkedin}
               target="_blank"
               rel="noopener noreferrer"
+              aria-label="DJS NSDC on LinkedIn"
+              title="LinkedIn"
             >
               <LinkedInIcon />
-              <span>LinkedIn</span>
             </a>
           </div>
         </div>

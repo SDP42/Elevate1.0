@@ -1,8 +1,29 @@
 import { useEffect, useState } from "react";
 import useInView, { prefersReducedMotion } from "../hooks/useInView";
 import { cue } from "../audio/bus";
-import { EVENT, ORGANISER } from "../config";
+import { EVENT, EVENT_START, ORGANISER } from "../config";
 import { NSDC_QR } from "./nsdcQr";
+
+/* Gates open at check-in, 09:00 on 10 October — a day early against the
+   11:00 flight-takeoff time quoted on the ticket itself. Lives in this one
+   section as a proper D/H/M/S timer, not a chip following the page around. */
+function useCountdown(target) {
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    const id = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(id);
+  }, []);
+  const left = Math.max(target.getTime() - now, 0);
+  return {
+    done: left === 0,
+    parts: [
+      ["Days", Math.floor(left / 86400000)],
+      ["Hrs", Math.floor((left % 86400000) / 3600000)],
+      ["Min", Math.floor((left % 3600000) / 60000)],
+      ["Sec", Math.floor((left % 60000) / 1000)],
+    ],
+  };
+}
 
 const ROWS = [
   { k: "Passenger", v: "Your team" },
@@ -18,6 +39,7 @@ const ROWS = [
 export default function BoardingPass() {
   const [ref, seen] = useInView(0.45);
   const [torn, setTorn] = useState(false);
+  const countdown = useCountdown(EVENT_START);
 
   useEffect(() => {
     // off screen: re-attach the stub so it tears again on the way back
@@ -78,8 +100,10 @@ export default function BoardingPass() {
 
                 <div className="bp__path" aria-hidden="true">
                   <span />
+                  {/* the same dart-plane mark used on the flight-progress bar up top,
+                      nose fixed to the right so the route always reads left to right */}
                   <svg viewBox="0 0 24 24">
-                    <path d="M21 16v-2l-8-5V3.5a1.5 1.5 0 0 0-3 0V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5z" fill="currentColor" transform="rotate(90 12 12)" />
+                    <path d="M22 12 L3 5 L6 12 L3 19 Z" fill="currentColor" />
                   </svg>
                   <span />
                 </div>
@@ -115,6 +139,20 @@ export default function BoardingPass() {
             <span className="bp__stubBrand">
               ELEVATE <em>1.0</em>
             </span>
+          </div>
+        </div>
+
+        <div className="pass__countdown">
+          <span className="pass__countLabel">
+            {countdown.done ? "Gates are open" : "Gates open in"}
+          </span>
+          <div className="pass__countParts">
+            {countdown.parts.map(([label, value]) => (
+              <div key={label}>
+                <strong>{String(value).padStart(2, "0")}</strong>
+                <span>{label}</span>
+              </div>
+            ))}
           </div>
         </div>
       </div>

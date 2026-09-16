@@ -11,10 +11,8 @@ import Faq from "./components/Faq";
 import Footer from "./components/Footer";
 import BookFlight from "./components/BookFlight";
 import SoundToggle from "./components/SoundToggle";
-import CabinLab3D from "./components/CabinLab3D";
 import {
   ScrollFlight,
-  NowArriving,
   PlaneCursor,
   FlyOver,
   useRevealAll,
@@ -34,14 +32,12 @@ export default function App() {
         <Intro />
         <JetSection />
         <BoardingPass />
-        <CabinLab3D />
         <Faq />
         <Baggage />
       </main>
       <Footer />
       <BookFlight />
       <SoundToggle />
-      <NowArriving />
       <FlyOver />
       <PlaneCursor />
     </>

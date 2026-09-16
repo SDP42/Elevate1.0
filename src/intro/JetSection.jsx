@@ -231,11 +231,11 @@ export default function JetSection() {
               <div className="jx-jet-s__top" />
               <div className="jx-jet-s__title">
                 <div className="jx-h1" data-jet-chars>
-                  Prizes
+                  Prize
                 </div>
                 <div className="jx-jet-s__push" />
                 <div className="jx-h1 jx-right" data-jet-chars>
-                  ₹1 Lakh
+                  Pool
                 </div>
               </div>
               <div className="jx-jet-s__bot">
@@ -252,12 +252,6 @@ export default function JetSection() {
                     <div className="jx-jet-s__desc-title" data-jet-divs>
                       <div className="jx-line-h jx-line-h--ink" />
                       <div className="jx-u12" />
-                      <div className="jx-jet-s__desc-row">
-                        <div className="jx-l1">Prize pool</div>
-                        <div className="jx-l1">
-                          <strong>₹1,00,000</strong>
-                        </div>
-                      </div>
                     </div>
                     <div className="jx-u36" />
                     <ul className="jx-prizes" data-jet-divs>

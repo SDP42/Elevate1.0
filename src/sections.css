@@ -696,7 +696,15 @@
 .bp-wrap {
   position: relative;
   display: flex;
-  justify-content: center;
+  flex-direction: column;
+  align-items: center;
+  gap: clamp(1.6rem, 4vw, 2.6rem);
+}
+
+/* the timer sits under the ticket, centred, sized to its own content */
+.bp-wrap > .pass__countdown {
+  width: auto;
+  max-width: min(100%, 620px);
 }
 
 .bp {
@@ -951,6 +959,7 @@
    ===================================================================== */
 .faq {
   position: relative;
+  overflow: hidden;
   background: var(--bg-alt);
   padding-top: var(--section-y);
   padding-bottom: calc(var(--section-y) + clamp(80px, 12vw, 180px));
@@ -965,7 +974,22 @@
   pointer-events: none;
 }
 
+/* the sky keeps going past the boarding pass — same cloud shapes, now faint
+   against the dark cabin lights, fading out before the questions start so
+   the list itself sits on a clean, readable backdrop */
+.faq__sky {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  opacity: 0.24;
+  pointer-events: none;
+  -webkit-mask-image: linear-gradient(#000, transparent 52%);
+  mask-image: linear-gradient(#000, transparent 52%);
+}
+
 .faq__grid {
+  position: relative;
+  z-index: 1;
   display: grid;
   grid-template-columns: minmax(0, 0.8fr) minmax(0, 1.4fr);
   gap: clamp(2rem, 5vw, 5rem);
@@ -1056,3 +1080,86 @@
 .lab {
   padding-top: clamp(2rem, 5vw, 4rem);
 }
+
+/* ---------- days-to-go pill (bottom-right, mirrors the sound toggle) ---------- */
+.daystogo {
+  position: fixed;
+  right: 1.6rem;
+  bottom: 1.6rem;
+  z-index: 60;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.65rem 1.1rem;
+  border-radius: 999px;
+  border: 1px solid rgba(201, 168, 106, 0.35);
+  background: rgba(12, 14, 16, 0.72);
+  backdrop-filter: blur(8px);
+  color: var(--cream);
+  font-size: 0.8rem;
+  letter-spacing: 0.02em;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
+  pointer-events: none;
+}
+
+.daystogo__dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--gold);
+  box-shadow: 0 0 0 0 rgba(201, 168, 106, 0.55);
+  animation: jx-ping 1.8s ease-out infinite;
+}
+
+.daystogo__n {
+  font-family: var(--font-display);
+  font-size: 1rem;
+  color: var(--gold);
+}
+
+.daystogo__label {
+  color: var(--cream-dim);
+}
+
+@media (max-width: 640px) {
+  .daystogo {
+    right: 1rem;
+    bottom: 1rem;
+    padding: 0.55rem 0.9rem;
+    font-size: 0.72rem;
+  }
+}
+
+/* ---------- footer social: icon-only brand marks, no label text ---------- */
+.footer__social {
+  gap: 0.7rem;
+}
+
+.footer__social .footer__ig {
+  margin-top: 0;
+  padding: 0;
+  width: 2.4rem;
+  height: 2.4rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  border: 1px solid rgba(201, 168, 106, 0.35);
+}
+
+.footer__social .footer__ig span {
+  display: none;
+}
+
+.footer__social .footer__igIcon {
+  width: 1.15rem;
+  height: 1.15rem;
+}
+
+/* the exact same sky the "Elevate 1.0" brief paragraph sits on — not a
+   fresh approximation, the literal gradient from .jx-sky__about-grad */
+.pass {
+  background: linear-gradient(180deg, #015aa9 0%, #015aa9 33.3%, #8fc2d7 66.6%, #fff8ed 100%);
+}
+
+
