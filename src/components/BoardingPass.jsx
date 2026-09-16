@@ -3,6 +3,37 @@ import useInView, { prefersReducedMotion } from "../hooks/useInView";
 import { cue } from "../audio/bus";
 import { EVENT, EVENT_START, ORGANISER } from "../config";
 import { NSDC_QR } from "./nsdcQr";
+import { paintSky } from "../intro/skyPainter";
+
+/* The literal cloud from the cabin window, painted again at this section's
+   own size — same seed as the intro's hero plate, so it is not a similar
+   sky, it is the same one, continued. */
+function useHeroCloud() {
+  const [url, setUrl] = useState("");
+  useEffect(() => {
+    let cancelled = false;
+    let made = "";
+    const ratio = window.innerHeight / Math.max(window.innerWidth, 1);
+    const width = Math.min(1600, Math.round(window.innerWidth * Math.min(window.devicePixelRatio || 1, 1.5)));
+    paintSky({ hero: { mode: "hero", width, height: Math.round(width * ratio * 2), seed: 3 } })
+      .then((out) => {
+        made = out.hero || "";
+        if (cancelled) {
+          if (made) URL.revokeObjectURL(made);
+        } else {
+          setUrl(made);
+        }
+      })
+      .catch(() => {
+        /* no WebGL: the section's own gradient underneath still reads as sky */
+      });
+    return () => {
+      cancelled = true;
+      if (made) URL.revokeObjectURL(made);
+    };
+  }, []);
+  return url;
+}
 
 /* Gates open at check-in, 09:00 on 10 October — a day early against the
    11:00 flight-takeoff time quoted on the ticket itself. Lives in this one
@@ -40,6 +71,7 @@ export default function BoardingPass() {
   const [ref, seen] = useInView(0.45);
   const [torn, setTorn] = useState(false);
   const countdown = useCountdown(EVENT_START);
+  const cloudUrl = useHeroCloud();
 
   useEffect(() => {
     // off screen: re-attach the stub so it tears again on the way back
@@ -59,10 +91,7 @@ export default function BoardingPass() {
 
   return (
     <section id="register" data-label="Boarding pass" className="pass bp-section">
-      <div className="pass__sky" aria-hidden="true">
-        <span className="lab__cloud lab__cloud--a" />
-        <span className="lab__cloud lab__cloud--b" />
-      </div>
+      {cloudUrl && <img className="pass__cloud" src={cloudUrl} alt="" aria-hidden="true" />}
 
       <div className="container bp-wrap">
         <div ref={ref} className={`bp ${seen ? "is-in" : ""} ${torn ? "is-torn" : ""}`}>
