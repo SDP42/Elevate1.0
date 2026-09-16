@@ -155,7 +155,7 @@ export default function JetSection() {
           const blur = $("[data-dirblur]");
           const badgeIn = gsap.timeline({ scrollTrigger: at("74% bottom", "84% bottom", { scrub: true }) });
           badgeIn
-            .fromTo(badge, { opacity: 0, xPercent: -60 }, { opacity: 1, xPercent: -50, ease: "Out", duration: 1 }, 0)
+            .fromTo(badge, { opacity: 0, xPercent: -10 }, { opacity: 1, xPercent: 0, ease: "Out", duration: 1 }, 0)
             .fromTo(blur, { attr: { stdDeviation: "48 0" } }, { attr: { stdDeviation: "0 0" }, ease: "Out", duration: 1 }, 0);
         });
 
