@@ -29,7 +29,7 @@ body{margin:0;background:var(--bg);color:var(--cream);font-family:var(--font-bod
 .manifest{display:grid;grid-template-columns:auto 1fr;gap:.34rem 1.1rem;padding:.5in .55in;font-size:.86rem}
 .manifest dt{font-family:var(--font-display);font-weight:700;font-size:.6rem;letter-spacing:.2em;text-transform:uppercase;color:var(--gold);align-self:center}
 .manifest dd{margin:0;color:var(--cream);line-height:1.5}
-.ps{position:relative;break-before:auto;padding:1.06in .8in .68in;box-decoration-break:clone;-webkit-box-decoration-break:clone;background:#0a0908}
+.ps{position:relative;break-before:page;padding:1.06in .8in .68in;box-decoration-break:clone;-webkit-box-decoration-break:clone;background:#0a0908}
 .ps:last-of-type{padding-bottom:1.6in}
 .ps-head{display:flex;align-items:flex-start;gap:.9rem;padding-bottom:.9rem;border-bottom:1px solid var(--line)}
 .badge{font-family:var(--font-display);font-weight:700;font-size:.66rem;letter-spacing:.18em;color:#0a0908;background:var(--gold);border-radius:var(--radius-pill);padding:.42rem .82rem;white-space:nowrap}
@@ -44,14 +44,15 @@ ul{margin:0;padding:0;list-style:none}
 li{position:relative;font-size:.88rem;line-height:1.56;color:var(--cream);padding:0 0 0 1.15rem;margin:0 0 .5rem;break-inside:avoid;orphans:3;widows:3}
 li:last-child{margin-bottom:0}
 li::before{content:"";position:absolute;left:0;top:.52em;width:.42rem;height:1px;background:var(--gold)}
-.cols{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.22in;margin-top:.22in}
+.cols{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.22in;margin-top:.22in;min-height:8.25in;align-items:stretch}
+.stacked-panels .cols{grid-template-columns:1fr}
 .panel{padding:.3in .32in}
 .panel h3{margin-top:0}
 .quote{font-family:var(--font-editorial);font-stretch:125%;font-weight:500;letter-spacing:-.03em;font-size:1.04rem;line-height:1.34;color:var(--cream);margin:.9rem 0 0;padding-left:.7rem;border-left:1px solid var(--gold)}
 .ex{font-size:1rem;font-weight:520;color:var(--cream);line-height:1.52;margin:.3rem 0 .62rem;padding:.22rem .45rem .22rem .7rem;border-left:2px solid var(--gold);background:rgba(243,237,226,.055);border-radius:0 var(--radius-micro) var(--radius-micro) 0}
 @media print{
  .cover,.ps{box-sizing:border-box;break-inside:auto}
- .ps{break-before:auto}
+ .ps{break-before:page}
  .ps-head,.glass,li{break-inside:avoid}
  .ps-head{break-after:avoid}
 }
@@ -135,7 +136,7 @@ li::before{content:"";position:absolute;left:0;top:.52em;width:.42rem;height:1px
 </div>
 </section>
 
-<section class="ps">
+<section class="ps stacked-panels">
 <div class="ps-head"><span class="badge">EL-03</span><h2>AI-Powered Cross-Ministry Governance &amp; Impact Intelligence Platform</h2></div>
 <h3>Background</h3>
 <p>Government programmes involve multiple ministries, departments, implementing agencies, and geographic regions, generating large volumes of information across different systems and formats. Data related to schemes, budgets, projects, beneficiaries, implementation progress, and outcomes is often distributed across portals, reports, financial systems, and geospatial datasets.</p>
@@ -192,7 +193,7 @@ li::before{content:"";position:absolute;left:0;top:.52em;width:.42rem;height:1px
 </div>
 </section>
 
-<section class="ps">
+<section class="ps stacked-panels">
 <div class="ps-head"><span class="badge">EL-05</span><h2>AI-Powered Autonomous Robot &amp; Drone Swarm Mission Orchestration</h2></div>
 <h3>Background</h3>
 <p>Autonomous robots and drones are increasingly being deployed in environments where human intervention is difficult, dangerous, or too slow, including disaster zones, mines, industrial facilities, agricultural fields, oceans, and remote infrastructure. Real-world missions often require multiple heterogeneous autonomous systems working together, each with different sensors, mobility, payload capacity, battery life, communication capabilities, and operational constraints.</p>
