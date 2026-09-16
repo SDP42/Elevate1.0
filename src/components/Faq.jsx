@@ -41,13 +41,40 @@ export default function Faq() {
               cut off a plane sitting above it on a negative offset */}
           <div className="faq__plane" aria-hidden="true">
             <span className="faq__planeTrail" />
-            <svg viewBox="0 0 120 48">
+            <svg viewBox="0 0 240 100">
+              <defs>
+                <linearGradient id="faqJetFuse" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0" stopColor="#fbe7d3" />
+                  <stop offset="0.5" stopColor="#d8b48c" />
+                  <stop offset="1" stopColor="#8a6b56" />
+                </linearGradient>
+                <linearGradient id="faqJetWing" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0" stopColor="#9fb3c8" />
+                  <stop offset="1" stopColor="#7d6a5c" />
+                </linearGradient>
+              </defs>
+              {/* horizontal stabiliser, then the vertical fin, both behind the fuselage */}
+              <path d="M50 56 L18 78 L46 60 Z" fill="url(#faqJetWing)" />
+              <path d="M46 40 L20 8 L52 38 Z" fill="url(#faqJetWing)" />
+              {/* main wing */}
+              <path d="M150 58 L88 96 L128 62 Z" fill="url(#faqJetWing)" />
+              {/* fuselage on top, nose to the right */}
               <path
-                d="M4 26 C4 18 14 14 28 14 L88 14 L118 24 L88 34 L28 34 C14 34 4 30 4 26 Z"
-                fill="currentColor"
+                d="M20 50 C20 40 34 34 55 34 L205 34 C222 34 233 42 236 50 C233 58 222 66 205 66 L55 66 C34 66 20 60 20 50 Z"
+                fill="url(#faqJetFuse)"
               />
-              <path d="M46 30 L20 46 L42 32 Z" fill="currentColor" opacity="0.9" />
-              <path d="M16 14 L8 2 L26 14 Z" fill="currentColor" opacity="0.9" />
+              <ellipse cx="125" cy="72" rx="13" ry="6.5" fill="#6f5343" />
+              <ellipse cx="209" cy="46" rx="7.5" ry="5" fill="#3a3f4c" opacity="0.75" />
+              <line
+                x1="70"
+                y1="42"
+                x2="192"
+                y2="42"
+                stroke="#fff8ed"
+                strokeWidth="1.6"
+                strokeDasharray="3 5"
+                opacity="0.45"
+              />
             </svg>
           </div>
 
