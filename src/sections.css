@@ -990,36 +990,79 @@
 /* =====================================================================
    FAQ
    ===================================================================== */
+/* the last section before the footer, and both share var(--bg-alt) — no
+   fade needed at the seam now that Baggage no longer sits between them */
 .faq {
   position: relative;
   overflow: hidden;
   background: var(--bg-alt);
   padding-top: var(--section-y);
-  padding-bottom: calc(var(--section-y) + clamp(80px, 12vw, 180px));
-}
-
-.faq::after {
-  content: "";
-  position: absolute;
-  inset: auto 0 0;
-  height: clamp(120px, 16vw, 240px);
-  background: linear-gradient(rgba(243, 237, 226, 0), #f3ede2);
-  pointer-events: none;
+  padding-bottom: calc(var(--section-y) + 4rem);
 }
 
 .faq__grid {
   position: relative;
   z-index: 1;
+}
+
+/* a gold dart crosses once, left to right, and the panel wipes open behind
+   it instead of just fading up in place like the rest of the page.
+   the reveal trigger (data-reveal, observed by IntersectionObserver) lives
+   on the plain .faq__reveal wrapper rather than the clipped .faq__wipe
+   itself — a clip-path'd element reports zero intersection to the
+   observer, so watching it directly would mean it could never reveal */
+.faq__reveal {
+  opacity: 1;
+  transform: none;
+}
+
+.faq__wipe {
+  position: relative;
   display: grid;
   grid-template-columns: minmax(0, 0.8fr) minmax(0, 1.4fr);
   gap: clamp(2rem, 5vw, 5rem);
   align-items: start;
+  clip-path: inset(0 100% 0 0);
+  transition: clip-path 1.3s cubic-bezier(0.65, 0, 0.35, 1);
+}
+
+.faq__reveal.is-in .faq__wipe {
+  clip-path: inset(0 0 0 0);
+}
+
+.faq__plane {
+  position: absolute;
+  top: -2.4rem;
+  left: -3%;
+  width: 28px;
+  height: 28px;
+  color: var(--gold);
+  transition: left 1.3s cubic-bezier(0.65, 0, 0.35, 1);
+  pointer-events: none;
+}
+
+.faq__reveal.is-in .faq__plane {
+  left: 100%;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .faq__wipe {
+    clip-path: none;
+    transition: none;
+  }
+  .faq__plane {
+    display: none;
+  }
 }
 
 .faq__head {
   display: flex;
   flex-direction: column;
   gap: 0.9rem;
+}
+
+.faq .section-title {
+  color: var(--gold);
 }
 
 .faq__list {
@@ -1209,7 +1252,9 @@
 .pass__fadeTop {
   top: 0;
   height: 22vh;
-  background: linear-gradient(#050403, transparent);
+  /* matches .jx-jet-tail's own end colour, so cream runs into blue with no
+     dark band between the two sections */
+  background: linear-gradient(#579bd8, transparent);
 }
 
 .pass__fadeBottom {

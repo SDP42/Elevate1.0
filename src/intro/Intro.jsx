@@ -17,12 +17,29 @@ const FEATURES = [
     title: ["Round two,", "on campus"],
     body: `Twenty-four continuous hours at ${EVENT.college.split(" of ")[0]}, ${EVENT.city}, on ${EVENT.dates}.`,
   },
-  {
-    title: ["Crews of", "two to four"],
-    body: "Form your team before you register. Mixed skill sets tend to land the most complete demos.",
-  },
+];
 
-]
+/* A word or phrase ringed in a hand-drawn pencil circle — the ring draws
+   itself in as the phrase scrolls into view (see the pencil animation
+   below). Used twice in the brief: the event name, and "everyone". */
+function Circled({ children }) {
+  return (
+    <span className="jx-circled" data-circled>
+      {children}
+      <svg className="jx-circled__pencil" viewBox="0 0 300 110" preserveAspectRatio="none" aria-hidden="true">
+        <path
+          data-pencil
+          d="M168 12 C 96 4, 22 20, 12 52 C 2 86, 78 104, 162 100 C 246 96, 296 78, 290 48 C 284 18, 214 4, 138 10 C 112 12, 94 16, 80 22"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="3.2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+      </svg>
+    </span>
+  );
+}
 
 /* Plate sizes follow the viewport's shape so the painted sky is never
    stretched; widths are capped because the plates are soft by nature. */
@@ -218,19 +235,20 @@ export default function Intro() {
         }
       );
 
-      // the pencil circle draws itself round the name as the brief arrives
-      const pencil = $("[data-pencil]");
-      if (pencil) {
+      // each pencil circle draws itself round its own word as it scrolls in
+      el.querySelectorAll("[data-circled]").forEach((circle, i) => {
+        const pencil = circle.querySelector("[data-pencil]");
+        if (!pencil) return;
         const len = pencil.getTotalLength();
         gsap.set(pencil, { strokeDasharray: len, strokeDashoffset: len });
         gsap.to(pencil, {
           strokeDashoffset: 0,
           duration: 1.4,
-          delay: 0.5,
+          delay: 0.5 + i * 0.15,
           ease: "InOut",
-          scrollTrigger: { trigger: $("[data-circled]"), start: "top 85%", toggleActions: "play none none reverse" },
+          scrollTrigger: { trigger: circle, start: "top 85%", toggleActions: "play none none reverse" },
         });
-      }
+      });
 
       // hide the rest of the site's floating chrome while the intro plays
       // starts before the page top so it is still active when scrolled back to 0
@@ -332,21 +350,7 @@ export default function Intro() {
             <div className="jx-about-s__lead" data-scroll-reveal>
               <div>
                 <p className="jx-brief">
-                  <span className="jx-circled" data-circled>
-                    {EVENT.name}
-                    <svg className="jx-circled__pencil" viewBox="0 0 300 110" preserveAspectRatio="none" aria-hidden="true">
-                      <path
-                        data-pencil
-                        d="M168 12 C 96 4, 22 20, 12 52 C 2 86, 78 104, 162 100 C 246 96, 296 78, 290 48 C 284 18, 214 4, 138 10 C 112 12, 94 16, 80 22"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="3.2"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                      />
-                    </svg>
-                  </span>{" "}
-                  is a {EVENT.format} for builders from every college, year and department. Form a
+                  <Circled>{EVENT.name}</Circled> is a {EVENT.format} for <Circled>everyone</Circled>. Form a
                   crew, pick a problem, and ship something real before the flight lands at{" "}
                   {EVENT.college.split(" of ")[0]}, {EVENT.city}.
                 </p>

@@ -29,21 +29,34 @@ export default function Faq() {
   return (
     <section id="faq" data-label="FAQ" className="faq">
       <div className="container faq__grid">
-        <div className="faq__head" data-reveal>
-          <span className="eyebrow">FAQ</span>
-          <h2 className="section-title">Before you board.</h2>
-        </div>
+        {/* a gold dart flies left to right once, and the whole panel wipes
+            open behind it, rather than just fading up in place. the reveal
+            trigger sits on this plain wrapper (not the clipped element
+            itself) because a clip-path'd target reports zero intersection
+            to IntersectionObserver, which would mean it could never reveal */}
+        <div className="faq__reveal" data-reveal>
+          <div className="faq__wipe">
+            <svg className="faq__plane" viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M22 12 L3 5 L6 12 L3 19 Z" fill="currentColor" />
+            </svg>
 
-        <div className="faq__list" data-reveal="stagger">
-          {FAQS.map((f) => (
-            <details key={f.q} className="faq__item">
-              <summary>
-                <span>{f.q}</span>
-                <i aria-hidden="true" />
-              </summary>
-              <p>{f.a}</p>
-            </details>
-          ))}
+            <div className="faq__head">
+              <span className="eyebrow">FAQ</span>
+              <h2 className="section-title">Before you board.</h2>
+            </div>
+
+            <div className="faq__list">
+              {FAQS.map((f) => (
+                <details key={f.q} className="faq__item">
+                  <summary>
+                    <span>{f.q}</span>
+                    <i aria-hidden="true" />
+                  </summary>
+                  <p>{f.a}</p>
+                </details>
+              ))}
+            </div>
+          </div>
         </div>
       </div>
     </section>

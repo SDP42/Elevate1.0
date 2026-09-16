@@ -543,6 +543,11 @@ html.lenis {
   will-change: transform;
 }
 
+.jx-about-s__lead {
+  display: flex;
+  justify-content: center;
+}
+
 .jx-u60 { height: calc(60 * var(--u)); }
 
 .jx-about-s__mark {
@@ -570,15 +575,17 @@ html.lenis {
   font-weight: 700;
 }
 
-/* four briefing cards in a true grid: numbered, ruled, readable at a glance */
+/* two briefing cards, always side by side above phone width */
 .jx-features {
   list-style: none;
   margin: 0;
   padding: 0;
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   column-gap: calc(24 * var(--u));
   row-gap: calc(48 * var(--u));
+  max-width: 52rem;
+  margin-inline: auto;
 }
 
 .jx-feature {
@@ -612,12 +619,6 @@ html.lenis {
   line-height: 1.4;
   letter-spacing: -0.02em;
   opacity: 0.92;
-}
-
-@media (max-width: 1199px) {
-  .jx-features {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
 }
 
 @media (max-width: 479px) {
@@ -939,19 +940,14 @@ html.in-jet .sound {
   display: flex;
 }
 
-.jx-jet-s__title {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.jx-jet-s__push {
-  flex: 1;
-  margin-left: calc(24 * var(--u));
-}
-
 .jx-jet-s__bot > .jx-grid {
   width: 100%;
+}
+
+/* prize heading (left) and the podium amounts (right) sit in the same row,
+   centred on each other rather than the old title-bar-plus-footer split */
+.jx-jet-s__prizeRow {
+  align-items: center;
 }
 
 .jx-jet-s__sub {
@@ -962,7 +958,7 @@ html.in-jet .sound {
   grid-column: 6 / 8;
   display: flex;
   flex-direction: column;
-  justify-content: flex-end;
+  justify-content: center;
 }
 
 .jx-jet-s__desc-row {
@@ -985,6 +981,25 @@ html.in-jet .sound {
   align-items: baseline;
   padding-bottom: calc(10 * var(--u));
   border-bottom: 1px solid rgba(49, 39, 38, 0.1);
+}
+
+.jx-prizes--lg li {
+  gap: calc(24 * var(--u));
+}
+
+.jx-prizes--lg .jx-h2 {
+  letter-spacing: -0.05em !important;
+}
+
+/* the "announced soon" line stands in for the removed runway graphics */
+.jx-tracks-soon {
+  display: flex;
+  align-items: center;
+  min-height: calc(120 * var(--u));
+}
+
+.jx-tracks-soon p {
+  max-width: 22ch;
 }
 
 /* ---------- schedule ---------- */
@@ -1230,7 +1245,8 @@ html.in-jet .sound {
 .jx-jet-tail {
   height: 50vh;
   margin-top: -1px;
-  background: linear-gradient(#fff8ed 0%, #e9dfd2 30%, #050403 100%);
+  /* cream straight to the boarding pass's own blue — no black stopover */
+  background: linear-gradient(#fff8ed 0%, #e9dfd2 30%, #579bd8 100%);
 }
 
 /* header turns to ink over the light section */
@@ -1280,14 +1296,6 @@ html.in-jet .sound {
     /* extra clearance under the fixed header — small phones were catching
        the "Prize Pool" heading against the wordmark mid-scroll */
     padding: calc(200 * var(--u)) var(--jx-pad) calc(40 * var(--u));
-  }
-  .jx-jet-s__title {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: calc(12 * var(--u));
-  }
-  .jx-jet-s__push {
-    display: none;
   }
   .jx-h1 {
     font-size: calc(96 * var(--u));
@@ -1427,15 +1435,19 @@ html.in-jet .sound {
   position: relative;
   display: inline-block;
   white-space: nowrap;
-  padding-inline: 0.12em;
+  /* room for the pencil stroke without it reaching the next word */
+  padding-inline: 0.3em;
 }
 
 .jx-circled__pencil {
   position: absolute;
-  left: -14%;
-  top: -34%;
-  width: 128%;
-  height: 168%;
+  /* the drawn loop already fills almost all of its own 300×110 viewBox, so
+     this only needs a small margin — the old 128%/-14% let it bleed onto
+     the word right after "Elevate 1.0" */
+  left: -4%;
+  top: -28%;
+  width: 108%;
+  height: 156%;
   color: #ffe9a8;
   overflow: visible;
   pointer-events: none;
@@ -1444,12 +1456,6 @@ html.in-jet .sound {
 
 .jx-brief__org {
   opacity: 0.85;
-}
-
-@media (min-width: 1200px) {
-  .jx-features {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-  }
 }
 
 @media (max-width: 991px) {

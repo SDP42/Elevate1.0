@@ -42,35 +42,6 @@ function Schedule({ rows, phase }) {
   );
 }
 
-/* Runways stand in for tracks until they are announced: painted strips with
-   threshold bars and a dashed centreline, marked "to be announced". */
-function Runways() {
-  return (
-    <ol className="jx-sched jx-runways" data-phase="2">
-      {[0, 1, 2].map((i) => (
-        <li className="jx-sched__row jx-runway" key={i}>
-          <svg viewBox="0 0 320 44" className="jx-runway__strip" aria-hidden="true">
-            <rect x="0" y="4" width="320" height="36" rx="4" fill="#3a3230" />
-            {[0, 1, 2, 3].map((k) => (
-              <rect key={k} x={10} y={9 + k * 7.5} width="18" height="4" fill="#efe6da" />
-            ))}
-            {[0, 1, 2, 3].map((k) => (
-              <rect key={`e${k}`} x={292} y={9 + k * 7.5} width="18" height="4" fill="#efe6da" />
-            ))}
-            {Array.from({ length: 9 }).map((_, k) => (
-              <rect key={`c${k}`} x={44 + k * 26} y="20.5" width="14" height="3" fill="#efe6da" opacity="0.8" />
-            ))}
-          </svg>
-          <div className="jx-runway__label">
-            <span className="jx-l1">RWY {String(i + 1).padStart(2, "0")}</span>
-            <span className="jx-l1 jx-gray">Track to be announced</span>
-          </div>
-        </li>
-      ))}
-    </ol>
-  );
-}
-
 /* Prize pool, then the two-day schedule, then the finale cabin.
    One jet carries the section: it rises into frame as the prize pool is
    revealed, shrinks toward the top as the schedule slides in (10 October
@@ -192,7 +163,22 @@ export default function JetSection() {
           const plane = $("[data-jet]");
           phase(1, { trigger: $('[data-phase="1"]'), start: "top 90%", end: "bottom 70%", scrub: true });
           phase(2, { trigger: $('[data-phase="2"]'), start: "top 90%", end: "bottom 70%", scrub: true });
-          cabinReveal({ trigger: plane, start: "top 70%", end: "bottom 60%", scrub: true });
+
+          // the jet settles in size as it scrolls through — desktop shrinks it
+          // into the schedule pin; here, with nothing pinned, a gentle zoom as
+          // it crosses the viewport reads as the same "coming in to land" beat
+          gsap.fromTo(plane, { scale: 1.16 }, {
+            scale: 0.86,
+            ease: "none",
+            scrollTrigger: { trigger: plane, start: "top bottom", end: "bottom top", scrub: true },
+          });
+
+          // photo → cabin plan: stretched across nearly the plane's whole
+          // pass through the viewport, so it reads as a scroll-driven change
+          // rather than something that has already happened by the time it
+          // scrolls into view
+          cabinReveal({ trigger: plane, start: "top 85%", end: "bottom 25%", scrub: true });
+
           gsap.fromTo(badge, { opacity: 0, y: 16 }, {
             opacity: 1,
             y: 0,
@@ -229,36 +215,21 @@ export default function JetSection() {
           <div className="jx-jet-w" data-jet-w>
             <div className="jx-jet-s">
               <div className="jx-jet-s__top" />
-              <div className="jx-jet-s__title">
-                <div className="jx-h1" data-jet-chars>
-                  Prize
-                </div>
-                <div className="jx-jet-s__push" />
-                <div className="jx-h1 jx-right" data-jet-chars>
-                  Pool
-                </div>
-              </div>
               <div className="jx-jet-s__bot">
-                <div className="jx-grid jx-fill">
+                <div className="jx-grid jx-fill jx-jet-s__prizeRow">
                   <div className="jx-jet-s__sub">
-                    <div className="jx-u36" />
-                    <h3 className="jx-p5" data-jet-lines>
-                      Split across <br />
-                      three podium <br />
-                      places
-                    </h3>
+                    <div className="jx-p5">Podium finish</div>
+                    <div className="jx-u24" />
+                    <h2 className="jx-h1" data-jet-chars>
+                      Prize <br /> Pool
+                    </h2>
                   </div>
                   <div className="jx-jet-s__desc">
-                    <div className="jx-jet-s__desc-title" data-jet-divs>
-                      <div className="jx-line-h jx-line-h--ink" />
-                      <div className="jx-u12" />
-                    </div>
-                    <div className="jx-u36" />
-                    <ul className="jx-prizes" data-jet-divs>
+                    <ul className="jx-prizes jx-prizes--lg" data-jet-divs>
                       {PRIZES.map((p) => (
                         <li key={p.place}>
                           <span className="jx-p7 jx-gray-ink">{p.place}</span>
-                          <span className="jx-p5">{p.amount}</span>
+                          <span className="jx-h2 jx-ink">{p.amount}</span>
                         </li>
                       ))}
                     </ul>
@@ -267,7 +238,6 @@ export default function JetSection() {
                       Winners take home certificates and goodies; every finalist team gets a
                       participation certificate.
                     </p>
-                    <div className="jx-u36 jx-desktop" />
                   </div>
                 </div>
               </div>
@@ -324,8 +294,8 @@ export default function JetSection() {
                       </span>
                     </div>
                   </div>
-                  <div className="jx-sched-wrap">
-                    <Runways />
+                  <div className="jx-sched-wrap jx-tracks-soon">
+                    <p className="jx-p7 jx-gray-ink">Tracks will be announced soon.</p>
                   </div>
                 </div>
               </div>
