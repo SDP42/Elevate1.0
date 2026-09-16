@@ -1184,7 +1184,11 @@
 }
 
 @media (max-width: 860px) {
-  .faq__grid {
+  /* .faq__grid stopped being the grid container once the wipe-reveal
+     wrapper (.faq__wipe) was introduced — this rule was still pointing at
+     the old selector, so the two-column desktop layout was leaking onto
+     mobile instead of stacking */
+  .faq__wipe {
     grid-template-columns: minmax(0, 1fr);
   }
 }
