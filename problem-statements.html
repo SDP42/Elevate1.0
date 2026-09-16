@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8"><title>Elevate 1.0 — Problem Statements</title><link rel="stylesheet" href="design/styles.css">
+<style>
+doc-page:not(:defined){visibility:hidden}
+body{margin:0;background:var(--bg);color:var(--cream);font-family:var(--font-body)}
+.doc{position:relative;isolation:isolate;background:transparent;padding:0;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+.pad{padding:.85in .8in}
+.cover{position:relative;isolation:isolate;overflow:hidden;padding:.2in .8in .72in;break-after:page;background:var(--bg)}
+/* Cover-only artwork leaves the central column calm for future event
+   instructions while giving the first sheet a stronger opening moment. */
+.cover::before{content:"";position:absolute;z-index:-1;inset:0;background:
+ radial-gradient(circle at 88% 16%,rgba(201,168,106,.26) 0 2px,transparent 2.5px),
+ radial-gradient(circle at 88% 16%,transparent 0 7.5rem,rgba(201,168,106,.22) 7.55rem 7.62rem,transparent 7.67rem 11.6rem,rgba(77,143,181,.40) 11.65rem 11.73rem,transparent 11.78rem),
+ linear-gradient(118deg,transparent 0 55%,rgba(77,143,181,.13) 55.1% 55.25%,transparent 55.35% 100%),
+ repeating-linear-gradient(0deg,transparent 0 31px,rgba(207,227,238,.045) 32px 33px),
+ repeating-linear-gradient(90deg,transparent 0 31px,rgba(207,227,238,.045) 32px 33px)}
+.cover::after{content:"ELEVATE  /  01";position:absolute;right:-.05in;bottom:.72in;z-index:-1;font-family:var(--font-display);font-size:.58rem;letter-spacing:.34em;color:rgba(207,227,238,.46);writing-mode:vertical-rl}
+.college-banner{display:block;width:min(100%,5in);height:auto;margin:0 auto .52in;opacity:1}
+.eyebrow{font-family:var(--font-display);font-weight:700;font-size:.62rem;letter-spacing:.3em;text-transform:uppercase;color:var(--gold);margin:0}
+.wordmark{font-family:var(--font-editorial);font-stretch:125%;font-weight:500;letter-spacing:-.05em;font-size:4.1rem;line-height:.9;margin:.22in 0 0;color:var(--cream)}
+.wordmark span{color:var(--gold)}
+.cover h1{font-family:var(--font-display);font-weight:600;text-transform:uppercase;letter-spacing:.055em;font-size:1.32rem;line-height:1.35;margin:.3in 0 0;color:var(--cream)}
+.lede{font-size:.98rem;line-height:1.62;color:var(--cream-dim);max-width:5.6in;margin:.22in 0 0;text-wrap:pretty}
+.route{display:flex;align-items:center;gap:.6rem;margin:.34in 0 .34in;color:var(--gold)}
+.route .dash{flex:1;height:1px;background:repeating-linear-gradient(to right,var(--gold) 0 7px,transparent 7px 14px);opacity:.75}
+.route svg{flex:none}
+.route .code{font-family:var(--font-display);font-weight:700;font-size:.62rem;letter-spacing:.26em;color:var(--gold-dim)}
+.glass{background:linear-gradient(160deg,var(--glass-fill-strong),var(--glass-fill));border:1px solid var(--glass-border);border-radius:var(--radius-card);backdrop-filter:blur(14px) saturate(140%);-webkit-backdrop-filter:blur(14px) saturate(140%);box-shadow:0 10px 30px rgba(0,0,0,.35),inset 0 1px 0 rgba(255,255,255,.07)}
+.manifest{display:grid;grid-template-columns:auto 1fr;gap:.34rem 1.1rem;padding:.5in .55in;font-size:.86rem}
+.manifest dt{font-family:var(--font-display);font-weight:700;font-size:.6rem;letter-spacing:.2em;text-transform:uppercase;color:var(--gold);align-self:center}
+.manifest dd{margin:0;color:var(--cream);line-height:1.5}
+.ps{position:relative;break-before:page;padding:.92in .8in .72in;box-decoration-break:clone;-webkit-box-decoration-break:clone;background:#0a0908}
+.ps:last-of-type{padding-bottom:1.6in}
+.ps-head{display:flex;align-items:flex-start;gap:.9rem;padding-bottom:.9rem;border-bottom:1px solid var(--line)}
+.badge{font-family:var(--font-display);font-weight:700;font-size:.66rem;letter-spacing:.18em;color:#0a0908;background:var(--gold);border-radius:var(--radius-pill);padding:.42rem .82rem;white-space:nowrap}
+.ps h2{font-family:var(--font-display);font-weight:600;text-transform:uppercase;letter-spacing:.035em;font-size:1.06rem;line-height:1.38;margin:.12rem 0 0;color:var(--cream);text-wrap:balance}
+h3{font-family:var(--font-display);font-weight:700;text-transform:uppercase;letter-spacing:.24em;font-size:.6rem;color:var(--gold);margin:1.5rem 0 .5rem}
+p{font-size:.9rem;line-height:1.62;color:var(--cream);margin:0 0 .72rem;text-wrap:pretty}
+.muted{color:var(--cream-dim)}
+.statement{padding:.42in .46in;margin:1.1rem 0 .2rem}
+.statement p:last-child{margin-bottom:0}
+.statement p{font-size:.93rem;color:var(--cream)}
+ul{margin:0;padding:0;list-style:none}
+li{position:relative;font-size:.88rem;line-height:1.56;color:var(--cream);padding:0 0 0 1.15rem;margin:0 0 .5rem;break-inside:avoid;orphans:3;widows:3}
+li:last-child{margin-bottom:0}
+li::before{content:"";position:absolute;left:0;top:.52em;width:.42rem;height:1px;background:var(--gold)}
+.cols{display:grid;grid-template-columns:1fr;gap:.34in}
+.panel{padding:.4in .44in}
+.panel h3{margin-top:0}
+.quote{font-family:var(--font-editorial);font-stretch:125%;font-weight:500;letter-spacing:-.03em;font-size:1.04rem;line-height:1.34;color:var(--cream);margin:.9rem 0 0;padding-left:.7rem;border-left:1px solid var(--gold)}
+.ex{font-size:1rem;font-weight:520;color:var(--cream);line-height:1.52;margin:.3rem 0 .62rem;padding:.22rem .45rem .22rem .7rem;border-left:2px solid var(--gold);background:rgba(243,237,226,.055);border-radius:0 var(--radius-micro) var(--radius-micro) 0}
+@media print{
+ .cover,.ps{box-sizing:border-box;break-inside:auto}
+ .ps{break-before:page}
+ .ps-head,.glass,li{break-inside:avoid}
+ .ps-head{break-after:avoid}
+}
+</style></head><body>
+<doc-page size="a4" width="210mm" height="297mm" margin="0">
+<div class="doc">
+
+<section class="cover">
+<img class="college-banner" src="design/assets/djsce-banner.png" alt="Dwarkadas J. Sanghvi College of Engineering">
+<p class="eyebrow">Gate open · Boarding document</p>
+<p class="wordmark">Elevate <span>1.0</span></p>
+<h1>Problem Statements</h1>
+<p class="lede"></p>
+<div class="route"><span class="code">DEP</span><span class="dash"></span><svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><path d="M22 12 L3 5 L6 12 L3 19 Z"/></svg><span class="dash"></span><span class="code">ARR</span></div>
+<dl class="glass manifest">
+<dt>EL-01</dt><dd>AI-Powered ML Paper Reproducibility Platform</dd>
+<dt>EL-02</dt><dd>Intelligent &amp; Transparent Disaster Relief Resource Allocation</dd>
+<dt>EL-03</dt><dd>AI-Powered Cross-Ministry Governance &amp; Impact Intelligence Platform</dd>
+<dt>EL-04</dt><dd>Multimodal AI Clinical Screening &amp; Intelligence Platform</dd>
+<dt>EL-05</dt><dd>AI-Powered Autonomous Robot &amp; Drone Swarm Mission Orchestration</dd>
+<dt>EL-06</dt><dd>General-Purpose No-Code AI Automation Platform for Android</dd>
+</dl>
+<p class="lede muted" style="margin-top:.34in;font-size:.84rem">Every statement below carries the same structure: background, the main problem, objectives, and the deliverables expected at the end of the flight.</p>
+</section>
+
+<section class="ps">
+<div class="ps-head"><span class="badge">EL-01</span><h2>AI-Powered ML Paper Reproducibility Platform</h2></div>
+<h3>Background</h3>
+<p>Machine learning research is advancing rapidly, but reproducing published results remains a significant challenge. A paper may describe its methodology while important implementation details are scattered across supplementary material, source code, configuration files, and documentation. Variations in preprocessing, dataset splits, hyperparameters, dependencies, or execution environments can lead to results that differ from those reported by the authors.</p>
+<p class="muted">A practical system is needed to bridge the gap between what a research paper claims and what can actually be reproduced from its available implementation and resources.</p>
+<div class="glass statement">
+<h3 style="margin-top:0">Main Problem Statement</h3>
+<p>Design a web-based platform that can take an ML research paper along with its associated code repository and assess the reproducibility of its reported experiments.</p>
+<p>The platform should understand the experimental methodology described in the paper, identify the relevant implementation and configuration in the repository, execute appropriate experiments in a controlled environment, and compare the resulting outputs with the results reported in the paper.</p>
+<p>The system should go beyond checking whether code exists or generating a paper summary. It should provide an evidence-backed assessment of individual experiments and highlight discrepancies, missing information, or implementation differences that may explain why reproduced results differ from the original findings.</p>
+<p class="muted">For the hackathon, participants will work with a curated set of lightweight ML papers and repositories selected to support execution using CPU-only resources.</p>
+</div>
+<div class="cols">
+<div class="glass panel"><h3>Objective</h3><ul>
+<li>Develop an end-to-end workflow connecting research claims with their corresponding implementations and experimental results.</li>
+<li>Automatically extract relevant experimental information such as datasets, configurations, metrics, procedures, and reported results.</li>
+<li>Identify and execute the appropriate experiments from the associated repository.</li>
+<li>Compare reproduced results with the results reported in the paper.</li>
+<li>Identify missing, ambiguous, or inconsistent information that may affect reproducibility.</li>
+<li>Present the findings in a clear and interpretable manner, with evidence supporting the assessment.</li>
+</ul></div>
+<div class="glass panel"><h3>Expected Deliverables</h3><ul>
+<li>Proposed solution and end-to-end system architecture.</li>
+<li>Working prototype or UI demonstrating the reproducibility workflow.</li>
+<li>Demonstration of experiment execution, result comparison, and discrepancy analysis.</li>
+<li>Sample reproducibility assessment/report with supporting evidence.</li>
+</ul></div>
+</div>
+</section>
+
+<section class="ps">
+<div class="ps-head"><span class="badge">EL-02</span><h2>Intelligent and Transparent Disaster Relief Resource Allocation</h2></div>
+<h3>Background</h3>
+<p>During large-scale disasters, relief systems must coordinate limited resources across a rapidly changing environment. The number and severity of affected people can change within minutes, while hospitals may reach capacity, ambulances may become unavailable, roads may be blocked, and essential supplies such as blood, ICU beds, medicines, and emergency funds may be limited.</p>
+<p>At the same time, relief distribution often involves multiple agencies, field workers, hospitals, government bodies, NGOs, and donors. Fragmented information and limited visibility into how resources and funds are allocated can lead to delays, duplication, inefficient routing, and difficulties in verifying whether assistance reached the intended beneficiaries.</p>
+<p class="muted">An effective disaster-response system therefore needs to combine dynamic resource allocation with transparent and traceable distribution, allowing decisions to adapt as the situation evolves while maintaining a reliable record of critical transactions and assistance.</p>
+<div class="glass statement">
+<h3 style="margin-top:0">Main Problem Statement</h3>
+<p>Design an intelligent disaster-response platform that dynamically allocates scarce emergency resources based on changing demand, infrastructure conditions, transportation constraints, and available capacity, while providing transparent and traceable records of resource and fund distribution.</p>
+<p>The system should be capable of modelling a disaster scenario involving affected populations with different levels of urgency, ambulances and relief resources with varying capabilities, hospitals with changing capacities, disrupted road networks, and limited medical supplies or funds. As the scenario evolves, the system should dynamically reallocate resources rather than relying on static rules such as nearest-hospital or first-come-first-served allocation.</p>
+<p>The platform should also provide a mechanism for tracking the allocation and movement of relief resources or funds across stakeholders, with appropriate privacy controls. Blockchain or other tamper-evident technologies may be explored to establish verifiable records of critical transactions and distributions.</p>
+</div>
+<div class="cols">
+<div class="glass panel"><h3>Objective</h3><ul>
+<li>Develop a system that makes dynamic, system-wide allocation decisions under changing disaster conditions.</li>
+<li>Model factors such as patient severity, hospital capacity, resource availability, road accessibility, and travel time when determining allocations.</li>
+<li>Demonstrate how allocation decisions change as demand, infrastructure, or resource availability changes.</li>
+<li>Provide transparent and verifiable tracking of relief resources or funds from allocation to final distribution.</li>
+</ul></div>
+<div class="glass panel"><h3>Expected Deliverables</h3><ul>
+<li>Proposed solution, system architecture, and disaster-response workflow.</li>
+<li>Working prototype or simulation demonstrating dynamic resource reallocation under changing scenarios.</li>
+<li>Visualization of resource allocation, system state, and resulting outcomes.</li>
+<li>Demonstration of transparent tracking and verification of relief resources or funds.</li>
+</ul></div>
+</div>
+</section>
+
+<section class="ps">
+<div class="ps-head"><span class="badge">EL-03</span><h2>AI-Powered Cross-Ministry Governance &amp; Impact Intelligence Platform</h2></div>
+<h3>Background</h3>
+<p>Government programmes involve multiple ministries, departments, implementing agencies, and geographic regions, generating large volumes of information across different systems and formats. Data related to schemes, budgets, projects, beneficiaries, implementation progress, and outcomes is often distributed across portals, reports, financial systems, and geospatial datasets.</p>
+<p class="muted">This fragmentation makes it difficult to obtain a unified view of programme implementation, identify overlapping interventions, understand geographic gaps, and determine whether resources are translating into measurable outcomes. Decision-makers need the ability to move beyond isolated scheme-level reporting and understand how programmes interact across ministries and regions.</p>
+<div class="glass statement">
+<h3 style="margin-top:0">Main Problem Statement</h3>
+<p>Design an AI-powered governance intelligence platform that integrates data from multiple government schemes and programmes to provide a unified view of implementation, resource utilization, geographic coverage, and outcomes.</p>
+<p>The platform should be capable of harmonizing heterogeneous datasets and establishing relationships between ministries, schemes, projects, locations, beneficiaries, budgets, and outcomes. It should allow decision-makers to query this information across schemes and regions rather than examining each programme independently.</p>
+<p>The system should additionally identify overlapping schemes, geographic or implementation gaps, unusual patterns, and programmes showing signs of underperformance. It should transform these findings into evidence-backed insights that can support inter-ministerial coordination, targeted interventions, and more informed allocation of resources. Teams may use publicly available or synthetic datasets to demonstrate the complete workflow.</p>
+</div>
+<div class="cols">
+<div class="glass panel"><h3>Objective</h3><ul>
+<li>Create a unified representation of data from multiple government schemes and implementation sources.</li>
+<li>Enable cross-ministry and cross-scheme analysis through natural-language queries and interactive visualizations.</li>
+<li>Identify programme overlaps, geographic gaps, anomalies, and emerging implementation issues.</li>
+<li>Generate traceable, data-backed insights for coordination, intervention, and resource planning.</li>
+</ul></div>
+<div class="glass panel"><h3>Expected Deliverables</h3><ul>
+<li>Demonstrate ingestion and harmonization of at least 2–3 heterogeneous government datasets, including resolution of common entities such as schemes, locations, departments, and beneficiaries.</li>
+<li>Demonstrate a cross-ministry intelligence layer that supports queries such as scheme overlap, geographic coverage, fund utilization, beneficiary reach, and relationships between programmes.</li>
+<li>Provide an AI-powered governance dashboard with geographic visualization, scheme-level drill-downs, anomaly/underperformance alerts, and natural-language querying.</li>
+<li>Demonstrate evidence-backed recommendations or insights, with each finding traceable to the underlying datasets and showing the factors or data points supporting it.</li>
+</ul></div>
+</div>
+</section>
+
+<section class="ps">
+<div class="ps-head"><span class="badge">EL-04</span><h2>Multimodal AI Clinical Screening &amp; Intelligence Platform</h2></div>
+<h3>Background</h3>
+<p>Modern healthcare generates information across many different modalities. A patient's medical history may include MRI and CT scans, X-rays, ECG signals, pathology or dermatological images, laboratory reports, prescriptions, clinical notes, and previous diagnostic records. At the same time, AI models are increasingly being developed for individual diseases, organs, and data types.</p>
+<p>However, these models typically operate as isolated systems. A model trained to analyze an MRI may have no understanding of the patient's previous reports, while an ECG model may operate independently of cardiovascular history, medications, or laboratory results. As the number of specialized models increases, deploying and coordinating them also becomes challenging, particularly on systems with limited RAM, compute, and storage.</p>
+<p class="muted">A more useful clinical AI system would need to bring together multimodal medical analysis, patient-specific context, medical document understanding, retrieval-augmented generation, and intelligent model orchestration within a single platform.</p>
+<div class="glass statement">
+<h3 style="margin-top:0">Main Problem Statement</h3>
+<p>Design a unified AI-powered clinical screening and intelligence platform capable of analyzing a patient's multimodal medical information and coordinating multiple specialized AI models to generate a comprehensive, context-aware assessment.</p>
+<p>The platform should support a broad range of diseases and conditions across areas such as neurological, cardiovascular, respiratory, and dermatological health, using modalities including MRI, CT, X-ray and other medical imaging, ECG and physiological signals, clinical/lab reports, and patient-provided images or information. The system should be capable of incorporating multiple disease-specific models rather than relying on a single general-purpose model.</p>
+<p>A key challenge is to determine which models should be invoked for a given patient and in what sequence. The system should intelligently route different inputs to appropriate models, coordinate their outputs, and manage multiple models despite constrained RAM and compute resources. Teams may explore approaches such as dynamic model loading and unloading, model quantization, caching, lightweight model selection, shared encoders, or other resource-aware inference strategies.</p>
+<p>The platform should also maintain a patient-centric knowledge layer. Patient documents such as medical reports, prescriptions, previous diagnoses, laboratory results, clinical notes, and imaging summaries should be processed and indexed so that relevant historical information can be retrieved when evaluating a new case. A RAG-based layer should allow the system to ground its responses in the patient's available records and, where appropriate, trusted medical knowledge sources.</p>
+<p class="muted">The final system should combine information from AI model predictions, patient history, retrieved medical evidence, and multimodal observations into a unified clinical screening report. It should clearly distinguish model-generated findings from retrieved evidence and provide traceability for the information used to support each conclusion. The platform is intended for screening and clinical decision support, not autonomous medical diagnosis.</p>
+</div>
+<div class="cols">
+<div class="glass panel"><h3>Objective</h3><ul>
+<li>Design a multimodal clinical AI architecture capable of coordinating specialized models across multiple diseases, organs, and data modalities.</li>
+<li>Develop an intelligent orchestration layer that determines relevant models, execution order, and resource allocation for each patient case.</li>
+<li>Incorporate patient documents and historical records through document processing, semantic retrieval, and RAG to provide patient-specific context.</li>
+<li>Combine multimodal model outputs and retrieved evidence into a unified, explainable clinical screening workflow.</li>
+</ul></div>
+<div class="glass panel"><h3>Expected Deliverables</h3><ul>
+<li>Demonstrate a proposed architecture supporting at least 6 diseases/conditions across brain, heart, skin, respiratory, and other medical imaging domains, using multiple modalities such as MRI, CT, X-ray, ECG, medical images, and clinical documents.</li>
+<li>Demonstrate the model orchestration and resource-management strategy, including how numerous specialized models can be selected, loaded, coordinated, and executed under limited RAM/compute.</li>
+<li>Demonstrate a patient-centric RAG pipeline capable of ingesting medical documents, retrieving relevant historical information, and grounding AI-generated responses in patient records and trusted medical knowledge.</li>
+<li>Present a unified clinical intelligence interface/report combining model predictions, patient history, retrieved evidence, confidence/risk indicators, and traceability of the information supporting the generated assessment.</li>
+</ul></div>
+</div>
+</section>
+
+<section class="ps">
+<div class="ps-head"><span class="badge">EL-05</span><h2>AI-Powered Autonomous Robot &amp; Drone Swarm Mission Orchestration</h2></div>
+<h3>Background</h3>
+<p>Autonomous robots and drones are increasingly being deployed in environments where human intervention is difficult, dangerous, or too slow, including disaster zones, mines, industrial facilities, agricultural fields, oceans, and remote infrastructure. Real-world missions often require multiple heterogeneous autonomous systems working together, each with different sensors, mobility, payload capacity, battery life, communication capabilities, and operational constraints.</p>
+<p>The challenge becomes significantly more complex when conditions change during execution. Robots may encounter obstacles, lose communication, run low on battery, suffer hardware failures, or discover information that changes the priorities of the mission. Weather, terrain, network availability, and task urgency can also evolve dynamically.</p>
+<p class="muted">A capable autonomous system therefore needs to operate beyond individual robot capabilities and reason at the mission level, understanding the overall objective, coordinating a heterogeneous swarm, allocating tasks and resources, continuously adapting the plan, and knowing when autonomous decisions should be escalated to a human operator.</p>
+<div class="glass statement">
+<h3 style="margin-top:0">Main Problem Statement</h3>
+<p>Design an intelligent mission-planning and orchestration platform capable of coordinating a heterogeneous swarm of autonomous robots and drones to accomplish complex missions in dynamic and infrastructure-constrained environments.</p>
+<p>The system should accept a high-level mission objective, environmental information, available robot and drone capabilities, resource constraints, and real-time events, and transform them into an executable multi-agent mission plan. It should determine how the overall mission should be decomposed into tasks, which agent should perform each task, how tasks should be sequenced, and how routes, energy, payload, communication, and risk should be managed collectively.</p>
+<p>The challenge extends beyond initial planning. During mission execution, the system should continuously monitor the state of the swarm and environment and dynamically re-plan when new information or unexpected events occur. For example, a drone may identify a high-priority target, a rover may lose communication, a route may become inaccessible, weather conditions may deteriorate, or an agent may approach a critical battery level. The system must determine whether to reassign tasks, change mission priorities, alter routes, reposition communication assets, or terminate part of the mission.</p>
+<p>The platform should also reason about limited communication and uncertainty. It should determine which observations or data are important enough to transmit, identify situations where the mission may no longer be safely achievable, and escalate decisions to a human operator when autonomous confidence is insufficient.</p>
+<p class="quote">The objective is to demonstrate mission-level autonomy and swarm coordination, rather than solving an isolated capability such as object detection, SLAM, or obstacle avoidance.</p>
+</div>
+<div class="cols">
+<div class="glass panel"><h3>Objective</h3><ul>
+<li>Convert high-level mission objectives into coordinated tasks, dependencies, priorities, and execution plans for heterogeneous autonomous agents.</li>
+<li>Dynamically allocate tasks and resources based on agent capabilities, location, battery, payload, communication availability, risk, and mission priorities.</li>
+<li>Continuously re-plan and coordinate the swarm in response to failures, obstacles, environmental changes, newly discovered information, and changing mission priorities.</li>
+<li>Incorporate communication-aware, risk-aware, and human-in-the-loop decision-making into autonomous mission execution.</li>
+</ul></div>
+<div class="glass panel"><h3>Expected Deliverables</h3><ul>
+<li>Demonstrate a mission scenario involving at least 3 heterogeneous autonomous agents, such as drones, ground robots, inspection robots, or communication relays, with distinct capabilities and constraints.</li>
+<li>Demonstrate dynamic task allocation and swarm coordination, including task reassignment, scheduling, routing, and resource management as mission conditions change.</li>
+<li>Demonstrate real-time re-planning for multiple failure or disruption scenarios such as battery depletion, communication loss, blocked routes, agent failure, or environmental changes.</li>
+<li>Present the proposed autonomy and decision layer, including communication prioritization, mission-feasibility/risk assessment, human escalation, and explanations for major autonomous decisions.</li>
+</ul></div>
+</div>
+</section>
+
+<section class="ps">
+<div class="ps-head"><span class="badge">EL-06</span><h2>General-Purpose No-Code AI Automation Platform for Android</h2></div>
+<h3>Background</h3>
+<p>AI models are becoming increasingly capable of running directly on Android devices, but using them together still requires significant technical effort. Users typically need to know which model to use, how to install it, how to connect different models, and how to handle limitations such as RAM, battery, storage, latency, and hardware compatibility.</p>
+<p class="muted">A user may want to create an automation such as “record my meeting → transcribe it → extract tasks → summarize it → save the result”, but today building such workflows often requires developer-written pipelines and manually configured AI models.</p>
+<div class="glass statement">
+<h3 style="margin-top:0">Main Problem Statement</h3>
+<p>Design a general-purpose, no-code AI automation platform for Android, inspired by tools such as n8n and Apple Shortcuts, that allows users to create complex AI workflows without programming or machine-learning knowledge. Everything must be controllable from a single notification controllable action.</p>
+<p>A user should be able to describe a workflow in natural language or construct it visually from triggers, actions, and AI steps. The platform should understand what the workflow requires and autonomously determine which AI capabilities and models are needed. For example, a user could create:</p>
+<p class="ex">“Take a photo of a handwritten bill → extract the items and prices → calculate the total → categorize the expenses → add them to my expense tracker.”</p>
+<p class="ex">“Record a lecture → transcribe it → identify important concepts → generate study notes → create five quiz questions.”</p>
+<p class="ex">“Take a photo of a plant → identify the disease → explain the symptoms → retrieve treatment information → create a care plan.”</p>
+<p>The system should automatically discover suitable models or AI components for these tasks, evaluate candidates based on accuracy, model size, RAM requirements, hardware compatibility, latency, battery impact, and availability, and download/configure the selected models when required.</p>
+<p>During execution, the platform should intelligently orchestrate multiple models and actions. It should decide which model runs at each step, when models should be loaded or unloaded, which intermediate results can be cached, and whether a task should run locally or use cloud inference when necessary and permitted.</p>
+<p class="muted">The platform should be domain-agnostic and support workflows involving text, documents, images, audio, video, sensors, and device actions. The goal is to create an AI automation layer where users specify what they want done, while the platform determines how to execute it efficiently on the Android device.</p>
+</div>
+<div class="cols">
+<div class="glass panel"><h3>Objective</h3><ul>
+<li>Enable users to create multi-step AI automations through natural language or a visual workflow builder.</li>
+<li>Automatically discover, evaluate, download, and configure suitable AI models for each workflow.</li>
+<li>Dynamically orchestrate multiple models and device actions while considering memory, battery, latency, connectivity, and hardware constraints.</li>
+<li>Provide a reusable automation platform capable of supporting workflows across multiple domains.</li>
+</ul></div>
+<div class="glass panel"><h3>Expected Deliverables</h3><ul>
+<li>Demonstrate a no-code workflow builder with triggers, AI/model steps, data transformation, and device or application actions.</li>
+<li>Demonstrate autonomous model discovery and selection for a user-defined workflow, including evaluation against task requirements and Android device constraints.</li>
+<li>Demonstrate a multi-model workflow with dynamic model loading/unloading, resource management, and local/cloud execution decisions.</li>
+<li>Demonstrate at least three substantially different workflows such as document processing, visual analysis, education, healthcare, productivity, accessibility, or finance using the same platform.</li>
+</ul></div>
+</div>
+<div class="route" style="margin-top:.5in"><span class="code">ARR</span><span class="dash"></span><svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M22 12 L3 5 L6 12 L3 19 Z"/></svg></div>
+</section>
+
+</div>
+</doc-page>
+<script src="design/doc-page.js"></script>
+</body></html>

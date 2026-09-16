@@ -1,5 +1,12 @@
 # Elevate 1.0 — Design System
 
+## Problem-statement document
+
+- The printable entry point is [`problem-statements.html`](../problem-statements.html); supporting design files live in this `design/` directory.
+- Shared assets are in `design/assets/`, tokens are in `design/tokens/`, and the rendered A4 PDF is in `design/pdf/`.
+- Every page carries the DJS NSDC × Infomatrix lockup and a centered page number. The college banner appears only on the cover.
+- A problem statement starts on a black sheet. Only continuation sheets for that same statement receive the blue-to-white gradient; the renderer determines these from the page flow so the rule holds even when a statement becomes longer.
+
 > Source of truth: this document was written by reading the live, deployed implementation of the Elevate 1.0 website (React + plain CSS, no Tailwind/UI framework). Every value below was extracted directly from the codebase unless marked **Inferred** or **Approximate**. Where the code does not define something, this document says so explicitly rather than inventing a value.
 
 ---
