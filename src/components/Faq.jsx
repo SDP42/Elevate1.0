@@ -29,17 +29,29 @@ export default function Faq() {
   return (
     <section id="faq" data-label="FAQ" className="faq">
       <div className="container faq__grid">
-        {/* a gold dart flies left to right once, and the whole panel wipes
+        {/* a gold jet crosses once, left to right, and the whole panel wipes
             open behind it, rather than just fading up in place. the reveal
             trigger sits on this plain wrapper (not the clipped element
             itself) because a clip-path'd target reports zero intersection
             to IntersectionObserver, which would mean it could never reveal */}
         <div className="faq__reveal" data-reveal>
-          <div className="faq__wipe">
-            <svg className="faq__plane" viewBox="0 0 24 24" aria-hidden="true">
-              <path d="M22 12 L3 5 L6 12 L3 19 Z" fill="currentColor" />
+          {/* lives outside .faq__wipe, not inside it — that element's own
+              clip-path still clips anything overflowing its box even once
+              "open" (inset(0) clips exactly at the box edge), which would
+              cut off a plane sitting above it on a negative offset */}
+          <div className="faq__plane" aria-hidden="true">
+            <span className="faq__planeTrail" />
+            <svg viewBox="0 0 120 48">
+              <path
+                d="M4 26 C4 18 14 14 28 14 L88 14 L118 24 L88 34 L28 34 C14 34 4 30 4 26 Z"
+                fill="currentColor"
+              />
+              <path d="M46 30 L20 46 L42 32 Z" fill="currentColor" opacity="0.9" />
+              <path d="M16 14 L8 2 L26 14 Z" fill="currentColor" opacity="0.9" />
             </svg>
+          </div>
 
+          <div className="faq__wipe">
             <div className="faq__head">
               <span className="eyebrow">FAQ</span>
               <h2 className="section-title">Before you board.</h2>

@@ -1012,6 +1012,7 @@
    itself — a clip-path'd element reports zero intersection to the
    observer, so watching it directly would mean it could never reveal */
 .faq__reveal {
+  position: relative;
   opacity: 1;
   transform: none;
 }
@@ -1032,17 +1033,60 @@
 
 .faq__plane {
   position: absolute;
-  top: -2.4rem;
-  left: -3%;
-  width: 28px;
-  height: 28px;
+  top: clamp(-5rem, -10vw, -3rem);
+  left: -26%;
+  width: clamp(5rem, 12vw, 9rem);
   color: var(--gold);
-  transition: left 1.3s cubic-bezier(0.65, 0, 0.35, 1);
+  filter: drop-shadow(0 8px 20px rgba(0, 0, 0, 0.4));
+  transition: left 1.3s cubic-bezier(0.65, 0, 0.35, 1), transform 1.3s cubic-bezier(0.65, 0, 0.35, 1);
+  transform: rotate(-3deg);
   pointer-events: none;
+  z-index: 2;
+}
+
+.faq__plane::after {
+  content: "";
+  position: absolute;
+  inset: -60% -30%;
+  background: radial-gradient(ellipse at center, rgba(201, 168, 106, 0.35), transparent 70%);
+  z-index: -1;
+}
+
+.faq__plane svg {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.faq__planeTrail {
+  position: absolute;
+  right: 100%;
+  top: 56%;
+  width: clamp(4rem, 10vw, 8rem);
+  height: 3px;
+  background: linear-gradient(to left, var(--gold), transparent);
+  opacity: 0.6;
+  transform: translateY(-50%);
 }
 
 .faq__reveal.is-in .faq__plane {
-  left: 100%;
+  left: 108%;
+  transform: rotate(2deg);
+}
+
+@media (max-width: 600px) {
+  /* extra headroom dedicated to the plane's flight path — the fixed
+     header and the heading below it leave too tight a gap otherwise */
+  .faq {
+    padding-top: calc(var(--section-y) + 2.5rem);
+  }
+  .faq__plane {
+    top: -2.2rem;
+    width: clamp(4rem, 20vw, 5rem);
+  }
+  .faq__planeTrail {
+    width: clamp(1.6rem, 10vw, 2.6rem);
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
