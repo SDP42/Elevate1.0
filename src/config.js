@@ -25,6 +25,9 @@ export const ORGANISER = {
   handle: "@djs.nsdc",
 };
 
+// venue pin, for the footer's "Location" link
+export const VENUE_MAP_URL = "https://maps.app.goo.gl/sNT9rcGjo4L1356UA?g_st=aw";
+
 // gates open with registration and check-in on day one
 export const EVENT_START = new Date("2026-10-10T09:00:00+05:30");
 

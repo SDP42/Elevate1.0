@@ -1159,17 +1159,6 @@ html.in-jet .sound {
   letter-spacing: -0.05em !important;
 }
 
-/* the "announced soon" line stands in for the removed runway graphics */
-.jx-tracks-soon {
-  display: flex;
-  align-items: center;
-  min-height: calc(120 * var(--u));
-}
-
-.jx-tracks-soon p {
-  max-width: 22ch;
-}
-
 /* ---------- schedule ---------- */
 .jx-spec-w {
   position: absolute;
@@ -1202,29 +1191,6 @@ html.in-jet .sound {
   position: relative;
 }
 
-.jx-ps {
-  display: flex;
-  flex-direction: column;
-  gap: calc(8 * var(--u));
-  padding-top: calc(12 * var(--u));
-  border-top: 1px solid rgba(49, 39, 38, 0.1);
-}
-
-.jx-ps .jx-p7 {
-  max-width: 84%;
-}
-
-.jx-ps__tag {
-  display: inline-flex;
-  align-items: center;
-  gap: calc(8 * var(--u));
-  align-self: flex-start;
-  padding: calc(5 * var(--u)) calc(10 * var(--u));
-  border-radius: calc(20 * var(--u));
-  background: rgba(49, 39, 38, 0.08);
-}
-
-.jx-ps__tag i,
 .jx-seat-badge__dot {
   width: calc(6 * var(--u));
   height: calc(6 * var(--u));

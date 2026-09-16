@@ -1,4 +1,4 @@
-import { CONTACTS, EVENT, ORGANISER } from "../config";
+import { CONTACTS, EVENT, ORGANISER, VENUE_MAP_URL } from "../config";
 
 /* Brand marks drawn to the official glyphs (the same shapes catalogued on
    svgl.app) rather than a generic outline — Instagram's gradient camera ring
@@ -84,6 +84,9 @@ export default function Footer() {
           <a href="#prizes">Prizes</a>
           <a href="#schedule">Schedule</a>
           <a href="#register">Register</a>
+          <a href={VENUE_MAP_URL} target="_blank" rel="noopener noreferrer">
+            Location
+          </a>
         </div>
 
         <div className="footer__col">

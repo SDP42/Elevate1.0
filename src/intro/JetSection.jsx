@@ -21,6 +21,17 @@ const TIMELINE = [
   ["11 Oct", "", "Hackathon ends"],
 ];
 
+// the six tracks, numbered like the timeline's dates so the two lists read
+// as a matched pair either side of the jet
+const TRACKS = [
+  ["01", "", "Research"],
+  ["02", "", "Social Impact"],
+  ["03", "", "GovTech"],
+  ["04", "", "HealthTech and MedAI"],
+  ["05", "", "Robots"],
+  ["06", "", "EdgeAI"],
+];
+
 function Schedule({ rows, phase }) {
   return (
     <ol className="jx-sched" data-phase={phase}>
@@ -286,16 +297,9 @@ export default function JetSection() {
                     <div className="jx-p5">Runways</div>
                     <div className="jx-u24" />
                     <div className="jx-h2 jx-ink">Tracks</div>
-                    <div className="jx-u24" />
-                    <div className="jx-ps">
-                      <span className="jx-l1 jx-gray">Problem statements &amp; tracks</span>
-                      <span className="jx-ps__tag jx-l1">
-                        <i /> Revealed soon
-                      </span>
-                    </div>
                   </div>
-                  <div className="jx-sched-wrap jx-tracks-soon">
-                    <p className="jx-p7 jx-gray-ink">Tracks will be announced soon.</p>
+                  <div className="jx-sched-wrap">
+                    <Schedule rows={TRACKS} phase="2" />
                   </div>
                 </div>
               </div>
