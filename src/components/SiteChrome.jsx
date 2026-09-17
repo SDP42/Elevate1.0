@@ -200,7 +200,11 @@ export function useRevealAll() {
             e.intersectionRect.height > window.innerHeight * 0.25;
 
           if (e.isIntersecting && enough) {
+            const entering = !el.classList.contains("is-in");
             el.classList.add("is-in");
+            // The FAQ opens behind its small jet. Fire its compact pass-by
+            // sound only as that right-to-left reveal starts.
+            if (entering && el.classList.contains("faq__reveal")) cue("swoosh");
           } else if (!e.isIntersecting) {
             el.dataset.from = e.boundingClientRect.top < 0 ? "top" : "bottom";
             el.classList.remove("is-in");

@@ -179,9 +179,12 @@ export default function Intro() {
       /* ---- scroll choreography ------------------------------------ */
       const heroArea = $("[data-hero-area]");
       const scrub = { trigger: heroArea, start: "top top", end: "bottom bottom", scrub: true };
+      // The narrow mobile cabin needs a smaller opening scale to keep the
+      // complete wordmark inside the visible window frame.
+      const heroLogoScale = window.matchMedia(`(max-width: ${BREAKPOINT - 1}px)`).matches ? 1.55 : 1.82;
 
       // wordmark drops out of the window and settles into the header
-      gsap.fromTo(logo, { y: "44vh", scale: 2.1 }, { y: "0vh", scale: 1, ease: "ease", scrollTrigger: scrub });
+      gsap.fromTo(logo, { y: "44vh", scale: heroLogoScale }, { y: "0vh", scale: 1, ease: "ease", scrollTrigger: scrub });
 
       const mm = gsap.matchMedia();
       mm.add(

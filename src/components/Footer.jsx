@@ -1,5 +1,5 @@
 import { CONTACTS, EVENT, ORGANISER, VENUE_MAP_URL } from "../config";
-import { WordmarkPlane } from "./SiteChrome";
+import BrandWordmark from "./BrandWordmark";
 
 // the venue's Google Maps embed — same pin as the footer's "Location" link,
 // shown in place rather than as another tab to lose people to
@@ -56,9 +56,7 @@ export default function Footer() {
               }}
             />
             <div className="footer__brand">
-              ELEV
-              <WordmarkPlane />
-              ATE <em>1.0</em>
+              <BrandWordmark uppercase />
             </div>
           </div>
           <p className="footer__tag">{ORGANISER.blurb}</p>

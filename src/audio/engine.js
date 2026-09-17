@@ -9,7 +9,8 @@
      reverse  – broadband roar of reverse thrust after touchdown
    One-shots:
      chime    – two-tone cabin call chime when sound is switched on
-     chirp    – main-gear tyre contact, fired once at touchdown */
+     chirp    – main-gear tyre contact, fired once at touchdown
+     swoosh   – short pass-by for the FAQ jet reveal */
 
 function noiseBuffer(ctx, seconds = 2) {
   const len = ctx.sampleRate * seconds;
@@ -245,11 +246,32 @@ export function createEngine() {
     src.stop(now + 2.8);
   }
 
+  // compact pass-by for the FAQ jet: aligned to its 1.3s screen crossing
+  function swoosh() {
+    const now = ctx.currentTime;
+    const src = ctx.createBufferSource();
+    src.buffer = brown;
+    const f = ctx.createBiquadFilter();
+    f.type = "bandpass";
+    f.Q.value = 1.15;
+    f.frequency.setValueAtTime(240, now);
+    f.frequency.exponentialRampToValueAtTime(1800, now + 0.56);
+    f.frequency.exponentialRampToValueAtTime(330, now + 1.25);
+    const g = ctx.createGain();
+    g.gain.setValueAtTime(0.0001, now);
+    g.gain.exponentialRampToValueAtTime(0.42, now + 0.42);
+    g.gain.exponentialRampToValueAtTime(0.0001, now + 1.3);
+    src.connect(f).connect(g).connect(master);
+    src.start(now);
+    src.stop(now + 1.35);
+  }
+
   return {
     tick,
     flap,
     stamp,
     flyover,
+    swoosh,
     chime,
     async enable() {
       if (ctx.state === "suspended") await ctx.resume();

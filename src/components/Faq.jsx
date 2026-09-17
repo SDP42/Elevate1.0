@@ -29,7 +29,7 @@ export default function Faq() {
   return (
     <section id="faq" data-label="FAQ" className="faq">
       <div className="container faq__grid">
-        {/* a gold jet crosses once, left to right, and the whole panel wipes
+        {/* a gold jet crosses once, right to left, and the whole panel wipes
             open behind it, rather than just fading up in place. the reveal
             trigger sits on this plain wrapper (not the clipped element
             itself) because a clip-path'd target reports zero intersection

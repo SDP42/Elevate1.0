@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { EVENT, ORGANISER } from "../config";
-import { WordmarkPlane } from "../components/SiteChrome";
+import BrandWordmark from "../components/BrandWordmark";
 
 const LINKS = [
   { href: "#brief", label: "About" },
@@ -105,9 +105,7 @@ export default function Header() {
         </button>
         <div className="jx-header__logo">
           <a className="jx-logo" href="#top" data-jx-logo aria-label={`${EVENT.name} home`}>
-            Elev
-            <WordmarkPlane />
-            ate<span>1.0</span>
+            <BrandWordmark uppercase />
           </a>
         </div>
         <div className="jx-header__cta jx-desktop">

@@ -499,6 +499,10 @@
   color: var(--gold);
 }
 
+.footer__brand .brand-wordmark__version {
+  color: var(--gold);
+}
+
 .footer__tag {
   line-height: 1.6;
 }
@@ -1005,7 +1009,7 @@
   z-index: 1;
 }
 
-/* a gold dart crosses once, left to right, and the panel wipes open behind
+/* a gold dart crosses once, right to left, and the panel wipes open behind
    it instead of just fading up in place like the rest of the page.
    the reveal trigger (data-reveal, observed by IntersectionObserver) lives
    on the plain .faq__reveal wrapper rather than the clipped .faq__wipe
@@ -1043,12 +1047,12 @@
 .faq__plane {
   position: absolute;
   top: clamp(-5rem, -10vw, -3rem);
-  left: -26%;
+  left: 108%;
   width: clamp(5rem, 12vw, 9rem);
   color: var(--gold);
   filter: drop-shadow(0 8px 20px rgba(0, 0, 0, 0.4));
-  transition: left 1.05s cubic-bezier(0.65, 0, 0.35, 1), transform 1.05s cubic-bezier(0.65, 0, 0.35, 1);
-  transform: rotate(-3deg);
+  transition: left 1.3s cubic-bezier(0.65, 0, 0.35, 1), transform 1.3s cubic-bezier(0.65, 0, 0.35, 1);
+  transform: rotate(2deg) scaleX(-1);
   pointer-events: none;
   z-index: 2;
 }
@@ -1079,8 +1083,8 @@
 }
 
 .faq__reveal.is-in .faq__plane {
-  left: 108%;
-  transform: rotate(2deg);
+  left: -26%;
+  transform: rotate(-3deg) scaleX(-1);
 }
 
 @media (max-width: 991px) {
@@ -1331,5 +1335,3 @@
 .bp-wrap {
   z-index: 2;
 }
-
-
