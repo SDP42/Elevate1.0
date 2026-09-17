@@ -277,6 +277,10 @@ export function createEngine() {
       if (ctx.state === "suspended") await ctx.resume();
       glide(master.gain, 0.9, 0.4);
       chime();
+      // a steady cabin hum plays throughout the site the whole time sound
+      // is on — the toggle's whole point, not just its one-off chimes
+      glide(cabin.gain, 0.42 * 0.5, 1.4);
+      glide(wind.gain, 0.14 * 0.32, 1.4);
     },
     disable() {
       glide(master.gain, 0, 0.15);
