@@ -1063,10 +1063,8 @@ html.jx-menu-open {
 
 html.in-intro .flightbar,
 html.in-intro .arriving,
-html.in-intro .sound,
 html.in-jet .flightbar,
-html.in-jet .arriving,
-html.in-jet .sound {
+html.in-jet .arriving {
   opacity: 0;
   visibility: hidden;
   pointer-events: none;
