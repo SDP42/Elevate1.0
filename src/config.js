@@ -1,7 +1,7 @@
 /* Drop the Unstop registration URL in here when it is live — every CTA on
    the site reads from this one constant. While it is empty, the buttons
    fall back to a "opening soon" state instead of linking nowhere. */
-export const UNSTOP_URL = "";
+export const UNSTOP_URL = "https://unstop.com/o/PMU41BH";
 
 export const EVENT = {
   name: "Elevate 1.0",
