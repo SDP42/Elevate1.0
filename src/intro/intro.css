@@ -575,25 +575,37 @@ html.lenis {
   font-weight: 700;
 }
 
-/* two briefing cards, always side by side above phone width */
+/* two briefing steps, read as one panel — a single hairline runs the full
+   width above both and a faint spine splits them, rather than each sitting
+   in its own disconnected border like two standalone cards */
 .jx-features {
+  position: relative;
   list-style: none;
   margin: 0;
-  padding: 0;
+  padding-top: calc(24 * var(--u));
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  column-gap: calc(24 * var(--u));
-  row-gap: calc(48 * var(--u));
+  column-gap: calc(48 * var(--u));
+  row-gap: calc(40 * var(--u));
   max-width: 52rem;
   margin-inline: auto;
+  border-top: 1px solid rgba(255, 255, 255, 0.4);
+}
+
+.jx-features::before {
+  content: "";
+  position: absolute;
+  top: calc(24 * var(--u));
+  bottom: 0;
+  left: 50%;
+  width: 1px;
+  background: rgba(255, 255, 255, 0.22);
 }
 
 .jx-feature {
   display: flex;
   flex-direction: column;
   gap: calc(20 * var(--u));
-  padding-top: calc(20 * var(--u));
-  border-top: 1px solid rgba(255, 255, 255, 0.45);
 }
 
 .jx-feature__n {
@@ -624,6 +636,13 @@ html.lenis {
 @media (max-width: 479px) {
   .jx-features {
     grid-template-columns: minmax(0, 1fr);
+  }
+  .jx-features::before {
+    display: none;
+  }
+  .jx-feature + .jx-feature {
+    padding-top: calc(40 * var(--u));
+    border-top: 1px solid rgba(255, 255, 255, 0.22);
   }
 }
 
@@ -1176,10 +1195,13 @@ html.in-jet .sound {
   flex-direction: column;
 }
 
+/* rows start right under the heading, level with the cabin's first row of
+   seats, rather than being pushed toward the bottom of the column */
 .jx-spec-s__col {
   display: flex;
   flex-direction: column;
-  justify-content: space-between;
+  justify-content: flex-start;
+  gap: calc(56 * var(--u));
   min-height: 0;
 }
 

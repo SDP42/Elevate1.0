@@ -351,7 +351,7 @@ export default function Intro() {
               <div>
                 <p className="jx-brief">
                   <Circled>{EVENT.name}</Circled> is a {EVENT.format} for <Circled>everyone</Circled>. Form a
-                  crew, pick a problem, and ship something real before the flight lands at{" "}
+                  crew, pick a problem, and ship something real at{" "}
                   {EVENT.college.split(" of ")[0]}, {EVENT.city}.
                 </p>
                 <div className="jx-u24" />

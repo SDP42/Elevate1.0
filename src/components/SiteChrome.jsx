@@ -5,6 +5,18 @@ import { cue } from "../audio/bus";
 /* Page-level chrome: a flight-path progress bar, a "now arriving" section
    indicator, the plane cursor, and the scroll-reveal system. */
 
+/* The small jet that flies through the wordmark itself — the same mark
+   used everywhere else on the site (flight bar, boarding-pass route),
+   dropped in place of a letter's crossbar so "ELEVATE" always reads as
+   mid-flight, not just labelled with one. */
+export function WordmarkPlane({ className = "" }) {
+  return (
+    <svg className={`jx-wm-plane ${className}`} viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M22 12 L3 5 L6 12 L3 19 Z" fill="currentColor" />
+    </svg>
+  );
+}
+
 /* Flight path across the top of the page: a dashed route with a small plane
    travelling from departure to arrival as the page scrolls. */
 export function ScrollFlight() {

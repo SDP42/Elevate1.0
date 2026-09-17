@@ -4,6 +4,7 @@ import { cue } from "../audio/bus";
 import { EVENT, EVENT_START, ORGANISER } from "../config";
 import { NSDC_QR } from "./nsdcQr";
 import { paintSky } from "../intro/skyPainter";
+import { WordmarkPlane } from "./SiteChrome";
 
 /* The literal cloud from the cabin window, painted again at this section's
    own size — same seed as the intro's hero plate, so it is not a similar
@@ -57,7 +58,7 @@ function useCountdown(target) {
 }
 
 const ROWS = [
-  { k: "Passenger", v: "Your team" },
+  { k: "You", v: "Your team" },
   { k: "Seat", v: "?/30" },
   { k: "Terminal", v: "DJSCE" },
   { k: "Gate", v: EVENT.city },
@@ -110,7 +111,6 @@ export default function BoardingPass() {
               <svg viewBox={NSDC_QR.viewBox} shapeRendering="crispEdges" aria-hidden="true">
                 <path d={NSDC_QR.d} fill="none" stroke="#0b1b3a" strokeWidth="1" />
               </svg>
-              <span className="bp__qrLabel">Scan · {ORGANISER.handle}</span>
             </a>
 
             <div className="bp__perf" aria-hidden="true" />
@@ -124,11 +124,7 @@ export default function BoardingPass() {
                     anywhere
                   </span>
                   <strong className="bp__code">IDEA</strong>
-                  <span className="bp__when">
-                    Sat, 10 October
-                    <br />
-                    Hackathon starts
-                  </span>
+                  <span className="bp__when">Sat, 10 October</span>
                 </div>
 
                 <div className="bp__path" aria-hidden="true">
@@ -148,11 +144,7 @@ export default function BoardingPass() {
                     {EVENT.city}
                   </span>
                   <strong className="bp__code">DEMO</strong>
-                  <span className="bp__when">
-                    Sun, 11 October
-                    <br />
-                    Hackathon ends
-                  </span>
+                  <span className="bp__when">Sun, 11 October</span>
                 </div>
               </div>
 
@@ -170,7 +162,9 @@ export default function BoardingPass() {
           <div className="bp__stub">
             <span className="bp__stubTitle">Boarding Pass</span>
             <span className="bp__stubBrand">
-              ELEVATE <em>1.0</em>
+              ELEV
+              <WordmarkPlane />
+              ATE <em>1.0</em>
             </span>
           </div>
         </div>

@@ -81,7 +81,6 @@ export default function Faq() {
           <div className="faq__wipe">
             <div className="faq__head">
               <span className="eyebrow">FAQ</span>
-              <h2 className="section-title">Before you board.</h2>
             </div>
 
             <div className="faq__list">

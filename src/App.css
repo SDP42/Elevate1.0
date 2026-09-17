@@ -1258,6 +1258,26 @@
   color: var(--cream);
 }
 
+.footer__map {
+  margin-top: 3rem;
+  border-radius: 16px;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  filter: grayscale(0.25) saturate(0.9);
+  transition: filter 0.3s ease;
+}
+
+.footer__map:hover {
+  filter: none;
+}
+
+.footer__map iframe {
+  display: block;
+  width: 100%;
+  height: 280px;
+  border: 0;
+}
+
 .footer__bottom {
   margin-top: 3.5rem;
   padding-top: 1.5rem;
@@ -3037,6 +3057,19 @@ main,
 :root {
   --section-y: clamp(5.5rem, 11vw, 9.5rem);
   --head-gap: clamp(2.4rem, 4.5vw, 3.6rem);
+}
+
+/* the jet dropped into every "ELEVATE" wordmark, sized off the text it
+   sits in rather than a fixed value so it scales with the logo, the
+   ticket stub and the footer brand alike */
+.jx-wm-plane {
+  display: inline-block;
+  width: 0.62em;
+  height: 0.62em;
+  margin: 0 0.08em;
+  vertical-align: -0.05em;
+  color: var(--gold, #c9a86a);
+  transform: rotate(-6deg);
 }
 
 .pass,

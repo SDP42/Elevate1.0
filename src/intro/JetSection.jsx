@@ -17,8 +17,6 @@ const TIMELINE = [
   ["30 Sep", "11:59 PM", "Registration deadline"],
   ["1 Oct", "11:59 PM", "Submission deadline"],
   ["3 Oct", "12:21 PM", "Shortlisted teams announced"],
-  ["10 Oct", "", "Hackathon starts"],
-  ["11 Oct", "", "Hackathon ends"],
 ];
 
 // the six tracks, numbered like the timeline's dates so the two lists read
@@ -151,7 +149,7 @@ export default function JetSection() {
 
           // jet shrinks toward the top of the frame
           gsap.fromTo($("[data-jet]"), { scale: 1, yPercent: 0 }, {
-            scale: 0.4,
+            scale: 0.48,
             yPercent: -15,
             ease: "In",
             scrollTrigger: at("25% center", "85% bottom", { scrub: 1.2 }),
@@ -229,8 +227,6 @@ export default function JetSection() {
               <div className="jx-jet-s__bot">
                 <div className="jx-grid jx-fill jx-jet-s__prizeRow">
                   <div className="jx-jet-s__sub">
-                    <div className="jx-p5">Podium finish</div>
-                    <div className="jx-u24" />
                     <h2 className="jx-h1" data-jet-chars>
                       Prize <br /> Pool
                     </h2>
