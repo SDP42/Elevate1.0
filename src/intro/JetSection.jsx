@@ -242,7 +242,7 @@ export default function JetSection() {
                     </ul>
                     <div className="jx-u24" />
                     <p className="jx-p7 jx-gray-ink" data-jet-lines>
-                      Winners take home certificates and goodies; every finalist team gets a
+                      Winners take home CodeCrafters VIP memberships, certificates and goodies; every finalist team gets a
                       participation certificate.
                     </p>
                   </div>
