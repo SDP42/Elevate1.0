@@ -5,6 +5,7 @@ import { EVENT, EVENT_START, ORGANISER } from "../config";
 import { NSDC_QR } from "./nsdcQr";
 import { paintSky } from "../intro/skyPainter";
 import { WordmarkPlane } from "./SiteChrome";
+import Sponsors from "./Sponsors";
 
 /* The literal cloud from the cabin window, painted again at this section's
    own size — same seed as the intro's hero plate, so it is not a similar
@@ -70,6 +71,7 @@ const ROWS = [
    away along its perforation once the pass is on screen. */
 export default function BoardingPass() {
   const [ref, seen] = useInView(0.45);
+  const [backRef, backSeen] = useInView(0.3);
   const [torn, setTorn] = useState(false);
   const countdown = useCountdown(EVENT_START);
   const cloudUrl = useHeroCloud();
@@ -181,6 +183,17 @@ export default function BoardingPass() {
               </div>
             ))}
           </div>
+        </div>
+
+        {/* the other side of the same ticket — flip past the QR half to
+            find who is fuelling the flight */}
+        <div ref={backRef} className={`bp-back ${backSeen ? "is-in" : ""}`}>
+          <div className="bp-back__perf" aria-hidden="true" />
+          <div className="bp-back__head">
+            <span className="bp-back__eyebrow">Boarding Pass · Back</span>
+            <h3 className="bp-back__title">Fuelled by our partners</h3>
+          </div>
+          <Sponsors />
         </div>
       </div>
     </section>

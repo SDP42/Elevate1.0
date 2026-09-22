@@ -1336,89 +1336,142 @@
   z-index: 2;
 }
 
-/* ---------- Sponsors ---------- */
-.sponsors {
-  background: var(--bg-alt);
-  padding: 0 0 var(--section-y);
-  text-align: center;
+/* ---------- Boarding pass, back side: the sponsor tiles ---------- */
+/* Same paper as the front ticket, laid out below it — the pass's other
+   side, reached by scrolling rather than a literal flip. */
+.bp-back {
+  --ink: #0b1b3a;
+  width: min(100%, 980px);
+  color: var(--ink);
+  background: #fbfcfd;
+  border-radius: 22px;
+  padding: 1.8rem clamp(1.4rem, 4vw, 2.6rem) 2rem;
+  filter: drop-shadow(0 30px 50px rgba(6, 22, 44, 0.28));
+  opacity: 0;
+  transform: translateY(30px);
+  transition: opacity 0.8s ease, transform 0.9s cubic-bezier(0.25, 1, 0.5, 1);
 }
 
-.sponsors__head {
-  margin-bottom: 1.6rem;
+.bp-back.is-in {
+  opacity: 1;
+  transform: none;
+}
+
+.bp-back__perf {
+  width: 100%;
+  height: 0;
+  margin-bottom: 1.4rem;
+  border-top: 2px dashed #d8dce4;
+}
+
+.bp-back__head {
+  text-align: center;
+  margin-bottom: 1.4rem;
+}
+
+.bp-back__eyebrow {
+  display: block;
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: #8a92a6;
+}
+
+.bp-back__title {
+  margin: 0.4rem 0 0;
+  font-size: clamp(1.1rem, 2.6vw, 1.5rem);
+  font-weight: 800;
 }
 
 .sponsors__list {
-  display: flex;
-  justify-content: center;
-  flex-wrap: wrap;
-  gap: 1.2rem;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  border: 1px solid #d7dbe3;
+  border-radius: 8px;
+  overflow: hidden;
+  background: #fff;
+  max-width: 46rem;
+  margin: 0 auto;
 }
 
 .sponsors__card {
-  width: min(100%, 30rem);
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 1rem;
-  padding: 1.6rem 2.4rem 1.4rem;
-  border-radius: 18px;
-  background: var(--cream);
-  color: #151515;
+  text-align: center;
+  gap: 0.7rem;
+  padding: 1.4rem 1.4rem 1.2rem;
+  border: none;
+  border-right: 1px solid #d7dbe3;
+  background: #fff;
+  color: var(--ink);
   text-decoration: none;
-  transition: transform 0.3s ease, box-shadow 0.3s ease;
+  transition: background 0.3s ease;
+}
+
+.sponsors__card:last-child {
+  border-right: none;
 }
 
 .sponsors__card:hover,
 .sponsors__card:focus-visible {
-  transform: translateY(-4px);
-  box-shadow: 0 14px 40px rgba(201, 168, 106, 0.25);
+  background: #f7f8fa;
 }
 
 .sponsors__role {
-  font-size: 0.7rem;
-  letter-spacing: 0.18em;
+  font-size: 0.68rem;
+  font-weight: 600;
+  letter-spacing: 0.14em;
   text-transform: uppercase;
-  color: #6b5d3f;
+  color: #8a92a6;
 }
 
 .sponsors__logo {
   display: block;
-  width: min(320px, 70vw);
-  height: auto;
-}
-
-.sponsors__name {
-  font-size: 0.75rem;
-  color: #6b5d3f;
+  height: 2.3rem;
+  width: auto;
+  max-width: 100%;
+  object-fit: contain;
 }
 
 .sponsors__perks {
   list-style: none;
   text-align: left;
-  margin: 0.4rem 0 0;
-  padding: 0.9rem 0 0;
+  margin: 0.2rem 0 0;
+  padding: 0.8rem 0 0;
   width: 100%;
   display: grid;
-  gap: 0.5rem;
-  border-top: 1px solid rgba(21, 21, 21, 0.14);
-  font-size: clamp(0.72rem, 3.2vw, 0.95rem);
+  gap: 0.45rem;
+  border-top: 1px solid #eef0f4;
+  font-size: clamp(0.7rem, 3vw, 0.85rem);
 }
 
 .sponsors__perks li {
   display: grid;
-  grid-template-columns: 5.5em 1fr;
+  grid-template-columns: 5.2em 1fr;
   align-items: baseline;
-  gap: 1rem;
+  gap: 0.8rem;
+}
+
+.sponsors__perks span {
+  color: #8a92a6;
 }
 
 .sponsors__perks strong {
   text-align: left;
+  font-weight: 700;
 }
 
-.sponsors__perks span {
-  color: #6b5d3f;
-}
-
-.sponsors__perks strong {
-  font-weight: 600;
+@media (max-width: 760px) {
+  .sponsors__list {
+    grid-template-columns: 1fr;
+  }
+  .sponsors__card {
+    border-right: none;
+    border-bottom: 1px solid #d7dbe3;
+  }
+  .sponsors__card:last-child {
+    border-bottom: none;
+  }
 }

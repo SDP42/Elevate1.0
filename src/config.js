@@ -43,17 +43,18 @@ export const CONTACTS = [
   { name: "Samarth Bhirud", phone: "+91 84089 17498", tel: "+918408917498" },
 ];
 
-// sponsors — first up is our learning partner
+// sponsors — shown on the back of the boarding pass, one row of tiles
 export const SPONSORS = [
   {
     role: "Learning Partner",
     name: "CodeCrafters",
     url: "https://codecrafters.io/",
     logo: "/codecrafters-logo.svg",
-    perks: [
-      ["1st place", "2-year VIP membership"],
-      ["2nd place", "1-year VIP membership"],
-      ["3rd place", "6-month VIP membership"],
-    ],
+  },
+  {
+    role: "Domain Partner",
+    name: ".xyz",
+    url: "https://gen.xyz/",
+    logo: "/xyz-logo-purple.png",
   },
 ];

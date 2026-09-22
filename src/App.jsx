@@ -6,7 +6,6 @@ import "./intro/intro.css";
 import "./sections.css";
 import BoardingPass from "./components/BoardingPass";
 import JetSection from "./intro/JetSection";
-import Sponsors from "./components/Sponsors";
 import Faq from "./components/Faq";
 import Footer from "./components/Footer";
 import BookFlight from "./components/BookFlight";
@@ -32,7 +31,6 @@ export default function App() {
         <Intro />
         <JetSection />
         <BoardingPass />
-        <Sponsors />
         <Faq />
       </main>
       <Footer />
