@@ -17,7 +17,7 @@ const TIMELINE = [
   ["3 Oct", "11:59 PM", "Registration deadline"],
   ["3 Oct", "11:59 PM", "Submission deadline"],
   ["6 Oct", "12:21 PM", "Shortlisted teams announced"],
-  ["10 & 11 Oct", "", "Hackathon finale · top 30 teams"],
+  ["10–11 Oct", "", "Hackathon finale · top 30 teams"],
 ];
 
 // the six tracks, numbered like the timeline's dates so the two lists read

@@ -1258,7 +1258,7 @@ html.in-jet .arriving {
 
 .jx-sched__line {
   display: grid;
-  grid-template-columns: max(64px, calc(84 * var(--u))) minmax(0, 1fr);
+  grid-template-columns: max(96px, calc(112 * var(--u))) minmax(0, 1fr);
   align-items: center;
   column-gap: calc(14 * var(--u));
 }
@@ -1556,6 +1556,7 @@ html.in-jet .arriving {
 .jx-sched__time {
   min-width: max(58px, calc(66 * var(--u)));
   text-align: center;
+  white-space: nowrap;
 }
 
 .jx-sched__what {
