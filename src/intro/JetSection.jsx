@@ -14,9 +14,9 @@ const PRIZES = [
 const TIMELINE = [
   ["16 Sep", "", "Registration starts"],
   ["17 Sep", "", "Online PS round"],
-  ["30 Sep", "11:59 PM", "Registration deadline"],
-  ["1 Oct", "11:59 PM", "Submission deadline"],
-  ["3 Oct", "12:21 PM", "Shortlisted teams announced"],
+  ["3 Oct", "11:59 PM", "Registration deadline"],
+  ["3 Oct", "11:59 PM", "Submission deadline"],
+  ["6 Oct", "12:21 PM", "Shortlisted teams announced"],
 ];
 
 // the six tracks, numbered like the timeline's dates so the two lists read

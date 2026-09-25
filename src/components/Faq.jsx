@@ -21,7 +21,7 @@ const FAQS = [
   },
   {
     q: "How do I register?",
-    a: "Register your team on Unstop. Registration closes on 30 September at 11:59 PM.",
+    a: "Register your team on Unstop. Registration closes on 3 October at 11:59 PM.",
   },
 ];
 
