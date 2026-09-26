@@ -57,4 +57,10 @@ export const SPONSORS = [
     url: "https://gen.xyz/",
     logo: "/xyz-logo-purple.png",
   },
+  {
+    role: "AI Partner",
+    name: "Infina",
+    url: "https://www.infina.so/",
+    logo: "/infina-logo.svg",
+  },
 ];
