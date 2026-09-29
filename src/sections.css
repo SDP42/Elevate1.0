@@ -1427,6 +1427,16 @@
   border-bottom: none;
 }
 
+/* a lone tile lands alone in the last row (it opens a row — nth-child
+   3n+1 — and is also the final item) — centre it under the middle
+   column instead of pinning it to the left, with its own side borders
+   since it no longer touches the outer box's edges */
+.sponsors__list > .sponsors__card:last-child:nth-child(3n + 1) {
+  grid-column: 2;
+  border-left: 1px solid #d7dbe3;
+  border-right: 1px solid #d7dbe3;
+}
+
 .sponsors__card:hover,
 .sponsors__card:focus-visible {
   background: #f7f8fa;
@@ -1481,8 +1491,16 @@
     grid-template-columns: 1fr;
   }
   .sponsors__card {
+    border-left: none;
     border-right: none;
     border-bottom: 1px solid #d7dbe3;
+  }
+  /* matches the lone-last-row selector's specificity so it actually wins
+     here — a plain .sponsors__card rule above is too weak to override it */
+  .sponsors__list > .sponsors__card:last-child:nth-child(3n + 1) {
+    grid-column: auto;
+    border-left: none;
+    border-right: none;
   }
   .sponsors__card:last-child {
     border-bottom: none;
