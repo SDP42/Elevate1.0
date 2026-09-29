@@ -1,3 +1,4 @@
+import { Analytics } from "@vercel/analytics/react";
 import "./App.css";
 import Header from "./intro/Header";
 import SkyBackdrop from "./components/SkyBackdrop";
@@ -38,6 +39,7 @@ export default function App() {
       <SoundToggle />
       <FlyOver />
       <PlaneCursor />
+      <Analytics />
     </>
   );
 }
