@@ -75,4 +75,16 @@ export const SPONSORS = [
     url: "https://www.mumbaitechcommunity.in/",
     logo: "/mumbai-tech-community-logo.png",
   },
+  {
+    role: "Entertainment Partner",
+    name: "Dave & Buster's",
+    url: "https://daveandbustersindia.com/mumbai",
+    logo: "/dave-busters-logo.png",
+  },
+  {
+    role: "Drinks & Energy Partner",
+    name: "Red Bull",
+    url: "https://www.redbull.com/in-en/energydrink",
+    logo: "/redbull-logo.svg",
+  },
 ];
