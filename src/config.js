@@ -64,6 +64,12 @@ export const SPONSORS = [
     logo: "/infina-logo.svg",
   },
   {
+    role: "Deployment & Cloud Infra Partner",
+    name: "Voroa",
+    url: "https://getvoroa.com/",
+    logo: "/voroa-logo.svg",
+  },
+  {
     role: "Community Partner",
     name: "Mumbai Tech Community",
     url: "https://www.mumbaitechcommunity.in/",

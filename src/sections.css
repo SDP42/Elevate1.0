@@ -1384,9 +1384,13 @@
   font-weight: 800;
 }
 
+/* fixed 3-column grid: with 5 tiles that reads as a row of 3 then a row
+   of 2, rather than an uneven auto-fit wrap. The outer box draws all four
+   edges; each cell draws its own right/bottom divider and drops it where
+   that divider would double up with the outer edge instead. */
 .sponsors__list {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  grid-template-columns: repeat(3, 1fr);
   border: 1px solid #d7dbe3;
   border-radius: 8px;
   overflow: hidden;
@@ -1402,16 +1406,25 @@
   text-align: center;
   gap: 0.7rem;
   padding: 1.4rem 1rem 1.2rem;
-  border: none;
   border-right: 1px solid #d7dbe3;
+  border-bottom: 1px solid #d7dbe3;
   background: #fff;
   color: var(--ink);
   text-decoration: none;
   transition: background 0.3s ease;
 }
 
+/* last column, and whichever tile trails a short final row, needs no
+   right divider — the outer border (or the blank space beside it) does */
+.sponsors__card:nth-child(3n),
 .sponsors__card:last-child {
   border-right: none;
+}
+
+/* the last row — 2 of the current 5 sponsors — needs no bottom divider;
+   update the -n+2 count if the number of sponsors changes */
+.sponsors__card:nth-last-child(-n + 2) {
+  border-bottom: none;
 }
 
 .sponsors__card:hover,
