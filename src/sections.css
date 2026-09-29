@@ -1386,12 +1386,12 @@
 
 .sponsors__list {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
   border: 1px solid #d7dbe3;
   border-radius: 8px;
   overflow: hidden;
   background: #fff;
-  max-width: 46rem;
+  max-width: 100%;
   margin: 0 auto;
 }
 
@@ -1401,7 +1401,7 @@
   align-items: center;
   text-align: center;
   gap: 0.7rem;
-  padding: 1.4rem 1.4rem 1.2rem;
+  padding: 1.4rem 1rem 1.2rem;
   border: none;
   border-right: 1px solid #d7dbe3;
   background: #fff;
@@ -1429,7 +1429,7 @@
 
 .sponsors__logo {
   display: block;
-  height: 2.3rem;
+  height: 2.8rem;
   width: auto;
   max-width: 100%;
   object-fit: contain;

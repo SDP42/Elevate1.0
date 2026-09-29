@@ -63,4 +63,10 @@ export const SPONSORS = [
     url: "https://www.infina.so/",
     logo: "/infina-logo.svg",
   },
+  {
+    role: "Community Partner",
+    name: "Mumbai Tech Community",
+    url: "https://www.mumbaitechcommunity.in/",
+    logo: "/mumbai-tech-community-logo.png",
+  },
 ];
