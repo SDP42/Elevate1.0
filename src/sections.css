@@ -1506,3 +1506,72 @@
     border-bottom: none;
   }
 }
+
+/* =====================================================================
+   Announcements: a departures-board ticker pinned under the nav
+   ===================================================================== */
+.announce {
+  position: fixed;
+  left: 0;
+  right: 0;
+  z-index: 98;
+  overflow: hidden;
+  background: linear-gradient(90deg, #e0b354, var(--gold, #c9a86a) 50%, #e0b354);
+  color: #201804;
+  border-bottom: 1px solid rgba(32, 24, 4, 0.15);
+}
+
+.announce__track {
+  display: flex;
+  width: max-content;
+  animation: announce-scroll 22s linear infinite;
+}
+
+.announce__track.is-static {
+  animation: none;
+  width: 100%;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.announce__set {
+  display: flex;
+  align-items: center;
+  flex: none;
+  white-space: nowrap;
+}
+
+.announce__item {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5em;
+  padding: 0.5rem 1.4rem;
+  font-size: 0.82rem;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  white-space: nowrap;
+}
+
+.announce__dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: #201804;
+  opacity: 0.6;
+  flex: none;
+}
+
+@keyframes announce-scroll {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .announce__track {
+    animation: none;
+  }
+}

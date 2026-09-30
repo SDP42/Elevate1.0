@@ -1,6 +1,7 @@
 import { Analytics } from "@vercel/analytics/react";
 import "./App.css";
 import Header from "./intro/Header";
+import Announcements from "./components/Announcements";
 import SkyBackdrop from "./components/SkyBackdrop";
 import Intro from "./intro/Intro";
 import "./intro/intro.css";
@@ -28,6 +29,7 @@ export default function App() {
       <SkyBackdrop />
       <ScrollFlight />
       <Header />
+      <Announcements />
       <main>
         <Intro />
         <JetSection />
