@@ -187,7 +187,7 @@ export default function BoardingPass() {
 
         {/* the other side of the same ticket — flip past the QR half to
             find who is fuelling the flight */}
-        <div ref={backRef} className={`bp-back ${backSeen ? "is-in" : ""}`}>
+        <div id="sponsors" ref={backRef} className={`bp-back ${backSeen ? "is-in" : ""}`}>
           <div className="bp-back__perf" aria-hidden="true" />
           <div className="bp-back__head">
             <span className="bp-back__eyebrow">Boarding Pass · Back</span>

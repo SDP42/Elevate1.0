@@ -90,6 +90,7 @@ export default function Footer() {
           <a href="#prizes">Prizes</a>
           <a href="#schedule">Schedule</a>
           <a href="#register">Register</a>
+          <a href="#sponsors">Sponsors</a>
           <a href={VENUE_MAP_URL} target="_blank" rel="noopener noreferrer">
             Location
           </a>
