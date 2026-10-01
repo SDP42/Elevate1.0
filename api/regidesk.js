@@ -1,6 +1,7 @@
 import { sql } from "./_lib/db.js";
 import { requireRole } from "./_lib/auth.js";
 import { logAction } from "./_lib/audit.js";
+import { createIncident } from "./_lib/incidents.js";
 
 const QR_PREFIX = "ELEVATE1:";
 
@@ -25,7 +26,8 @@ async function handler(req, res) {
 async function membersFor(team) {
   return sql`
     select tm.id, tm.name, tm.is_lead,
-      rc.github_id, rc.govt_id_checked, rc.bag_checked, rc.kit_checked, rc.notes
+      rc.github_id, rc.govt_id_checked, rc.bag_checked, rc.kit_checked,
+      rc.medical_note, rc.late_arrival, rc.notes
     from team_members tm
     left join registration_checkins rc on rc.member_id = tm.id
     where tm.team_id = ${team.id}
@@ -44,6 +46,8 @@ function respond(res, team, members) {
       govtIdChecked: m.govt_id_checked || false,
       bagChecked: m.bag_checked || false,
       kitChecked: m.kit_checked || false,
+      medicalNote: m.medical_note || "",
+      lateArrival: m.late_arrival || false,
       notes: m.notes || "",
     })),
   });
@@ -86,7 +90,8 @@ async function lookupByCode(req, res) {
 
 /* one member's registration-desk details, upserted */
 async function save(req, res) {
-  const { memberId, teamId, githubId, govtIdChecked, bagChecked, kitChecked, notes } = req.body || {};
+  const { memberId, teamId, githubId, govtIdChecked, bagChecked, kitChecked, medicalNote, lateArrival, notes } =
+    req.body || {};
   if (!memberId || !teamId) {
     res.status(400).json({ error: "memberId and teamId are required" });
     return;
@@ -100,18 +105,37 @@ async function save(req, res) {
     return;
   }
 
+  const wasLateRows = await sql`select late_arrival from registration_checkins where member_id = ${memberId}`;
+  const wasLate = wasLateRows[0]?.late_arrival || false;
+
   await sql`
-    insert into registration_checkins (member_id, team_id, github_id, govt_id_checked, bag_checked, kit_checked, notes, checked_in_by)
-    values (${memberId}, ${teamId}, ${githubId || null}, ${Boolean(govtIdChecked)}, ${Boolean(bagChecked)}, ${Boolean(kitChecked)}, ${notes || null}, ${req.session.accountId})
+    insert into registration_checkins
+      (member_id, team_id, github_id, govt_id_checked, bag_checked, kit_checked, medical_note, late_arrival, notes, checked_in_by)
+    values (
+      ${memberId}, ${teamId}, ${githubId || null}, ${Boolean(govtIdChecked)}, ${Boolean(bagChecked)},
+      ${Boolean(kitChecked)}, ${medicalNote || null}, ${Boolean(lateArrival)}, ${notes || null}, ${req.session.accountId}
+    )
     on conflict (member_id) do update set
       github_id = excluded.github_id,
       govt_id_checked = excluded.govt_id_checked,
       bag_checked = excluded.bag_checked,
       kit_checked = excluded.kit_checked,
+      medical_note = excluded.medical_note,
+      late_arrival = excluded.late_arrival,
       notes = excluded.notes,
       checked_in_by = excluded.checked_in_by,
       checked_in_at = now()
   `;
+
+  if (Boolean(lateArrival) && !wasLate) {
+    await createIncident({
+      type: "late_arrival",
+      teamId,
+      message: `Late arrival at registration: member ${memberId}`,
+      createdBy: req.session.accountId,
+      createdRole: req.session.role,
+    });
+  }
 
   await logAction(req.session.accountId, "regidesk.save", { memberId, teamId });
   res.status(200).json({ ok: true });

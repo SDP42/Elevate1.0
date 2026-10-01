@@ -3,9 +3,40 @@ import { useNavigate } from "react-router-dom";
 import RequireRole from "./RequireRole";
 import QrScanner from "./QrScanner";
 import { CRITERIA, MAX_TOTAL } from "../../shared/criteria.js";
-import { coreCheckinLog, coreCheckinLookup, coreSaveRound1Note, coreSubmitMark, coreTeams, logout } from "./api";
+import {
+  coreCheckinLog,
+  coreCheckinLookup,
+  coreSaveRound1Note,
+  coreSubmitMark,
+  coreTeams,
+  coreToggleRecuse,
+  logout,
+} from "./api";
 
-function MarksRow({ team, onSaved }) {
+function RecuseButton({ team, onRecused }) {
+  const [busy, setBusy] = useState(false);
+  return (
+    <button
+      type="button"
+      className="portal-logout"
+      disabled={busy}
+      onClick={async () => {
+        if (!window.confirm(`Recuse yourself from ${team.teamCode}? You'll stop seeing them — admin can reassign.`)) return;
+        setBusy(true);
+        try {
+          await coreToggleRecuse(team.id);
+          onRecused(team.id);
+        } finally {
+          setBusy(false);
+        }
+      }}
+    >
+      {busy ? "…" : "Recuse (conflict of interest)"}
+    </button>
+  );
+}
+
+function MarksRow({ team, onSaved, onRecused }) {
   const [values, setValues] = useState(() => {
     const initial = {};
     for (const c of CRITERIA) initial[c.key] = team.criteria?.[c.key] ?? "";
@@ -50,7 +81,13 @@ function MarksRow({ team, onSaved }) {
     <tr>
       <td>
         {team.teamCode}
-        {team.psCode && <div className="portal-table__sub">{team.psCode}</div>}
+        {team.psCode && (
+          <div className="portal-table__sub" title={team.psDescription || undefined}>
+            {team.psCode}
+            {team.psDescription && " · " + team.psDescription.slice(0, 40) + (team.psDescription.length > 40 ? "…" : "")}
+          </div>
+        )}
+        {team.slotTime && <div className="portal-table__sub">Slot: {team.slotTime}</div>}
       </td>
       <td>{team.seatNo ?? "—"}</td>
       {CRITERIA.map((c) => (
@@ -85,6 +122,9 @@ function MarksRow({ team, onSaved }) {
           {saving ? "Saving…" : saved ? "Saved ✓" : "Save"}
         </button>
         {error && <div className="portal-marksError">{error}</div>}
+      </td>
+      <td className="portal-no-print">
+        <RecuseButton team={team} onRecused={onRecused} />
       </td>
     </tr>
   );
@@ -314,6 +354,10 @@ function CoreHome({ session }) {
     setTeams((prev) => prev.map((t) => (t.id === teamId ? { ...t, round1Note: note } : t)));
   }
 
+  function onRecused(teamId) {
+    setTeams((prev) => prev.filter((t) => t.id !== teamId));
+  }
+
   async function onLogout() {
     await logout();
     navigate("/portal/login", { replace: true });
@@ -367,11 +411,12 @@ function CoreHome({ session }) {
                   <th>Total</th>
                   <th>Feedback</th>
                   <th></th>
+                  <th className="portal-no-print"></th>
                 </tr>
               </thead>
               <tbody>
                 {teams.map((t) => (
-                  <MarksRow key={t.id} team={t} onSaved={onSaved} />
+                  <MarksRow key={t.id} team={t} onSaved={onSaved} onRecused={onRecused} />
                 ))}
               </tbody>
             </table>

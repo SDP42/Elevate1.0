@@ -8,9 +8,11 @@ const QR_PREFIX = "ELEVATE1:";
 /* Core (and admin) only: everything a mentor/judge needs shares this file
    — see api/auth.js for why. GET lists the teams this account is actually
    responsible for (every team, unless an admin has narrowed them down via
-   core_assignments), with their PS, Round 2 marks, and latest Round 1
-   note. POST's `action` field picks the write: submitting a mark (the
-   default), a Round 1 note, or the two steps of a door check-in scan. */
+   core_assignments, minus any team this account has personally recused
+   itself from), with their PS, Round 2 marks, latest Round 1 note, and
+   mentoring slot time if one was set. POST's `action` field picks the
+   write: submitting a mark (the default), a Round 1 note, toggling a
+   recusal, or the two steps of a door check-in scan. */
 async function handler(req, res) {
   if (req.method === "GET") return listTeams(req, res);
   if (req.method === "POST") {
@@ -18,6 +20,7 @@ async function handler(req, res) {
     if (action === "round1-note") return saveRound1Note(req, res);
     if (action === "checkin-lookup") return checkinLookup(req, res);
     if (action === "checkin-log") return checkinLog(req, res);
+    if (action === "toggle-recuse") return toggleRecuse(req, res);
     return submitMark(req, res);
   }
   res.status(405).json({ error: "Method not allowed" });
@@ -29,16 +32,23 @@ async function listTeams(req, res) {
 
   // an admin, or a core account nobody has narrowed down, sees everyone
   let assignedIds = null;
+  const slotTimes = new Map();
   if (!isAdmin) {
-    const rows = await sql`select team_id from core_assignments where core_account_id = ${accountId}`;
+    const rows = await sql`select team_id, slot_time from core_assignments where core_account_id = ${accountId}`;
     if (rows.length > 0) assignedIds = rows.map((r) => r.team_id);
+    for (const r of rows) if (r.slot_time) slotTimes.set(r.team_id, r.slot_time);
   }
+
+  const recusedRows = isAdmin
+    ? []
+    : await sql`select team_id from core_recusals where core_account_id = ${accountId}`;
+  const recusedIds = new Set(recusedRows.map((r) => r.team_id));
 
   const teams = await sql`
     select
       t.id, t.team_code, t.seat_no,
       m.score, m.criteria, m.feedback,
-      p.code as ps_code, p.title as ps_title,
+      p.code as ps_code, p.title as ps_title, p.description as ps_description,
       rn.note as round1_note
     from teams t
     left join marks m
@@ -52,7 +62,9 @@ async function listTeams(req, res) {
     order by t.id asc
   `;
 
-  const filtered = assignedIds ? teams.filter((t) => assignedIds.includes(t.id)) : teams;
+  const filtered = teams
+    .filter((t) => (assignedIds ? assignedIds.includes(t.id) : true))
+    .filter((t) => !recusedIds.has(t.id));
 
   res.status(200).json({
     criteria: CRITERIA,
@@ -65,9 +77,37 @@ async function listTeams(req, res) {
       feedback: t.feedback || "",
       psCode: t.ps_code,
       psTitle: t.ps_title,
+      psDescription: t.ps_description || "",
       round1Note: t.round1_note || "",
+      slotTime: slotTimes.get(t.id) || "",
     })),
   });
+}
+
+/* a core account excusing itself from one team (conflict of interest) —
+   toggled by the mentor themselves, independent of admin's assignment
+   narrowing, so recusing one team never flips "sees everyone" into "sees
+   only this team" */
+async function toggleRecuse(req, res) {
+  if (req.session.role !== "core") {
+    res.status(403).json({ error: "Only a core account can recuse itself" });
+    return;
+  }
+  const { teamId } = req.body || {};
+  if (!teamId) {
+    res.status(400).json({ error: "teamId is required" });
+    return;
+  }
+  const existing = await sql`
+    select 1 from core_recusals where core_account_id = ${req.session.accountId} and team_id = ${teamId}
+  `;
+  if (existing[0]) {
+    await sql`delete from core_recusals where core_account_id = ${req.session.accountId} and team_id = ${teamId}`;
+  } else {
+    await sql`insert into core_recusals (core_account_id, team_id) values (${req.session.accountId}, ${teamId})`;
+  }
+  await logAction(req.session.accountId, "core.toggle_recuse", { teamId, recused: !existing[0] });
+  res.status(200).json({ ok: true, recused: !existing[0] });
 }
 
 /* Expects { teamId, criteria: { <key>: number, ... }, feedback? }. The

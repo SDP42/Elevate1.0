@@ -1,6 +1,7 @@
 import { sql } from "./_lib/db.js";
 import { requireRole } from "./_lib/auth.js";
 import { logAction } from "./_lib/audit.js";
+import { createIncident } from "./_lib/incidents.js";
 
 const QR_PREFIX = "ELEVATE1:";
 
@@ -8,13 +9,16 @@ const QR_PREFIX = "ELEVATE1:";
    confirm-and-log step, and the running tally all share this file — see
    api/auth.js for why. GET is the tally; POST's `action` picks the write
    ("log" logs, "lookup-by-code" looks up by typed team code instead of a
-   camera scan, anything else is the normal QR lookup). */
+   camera scan, "flag-low-stock"/"log-guest" raise an incident for admin,
+   anything else is the normal QR lookup). */
 async function handler(req, res) {
   if (req.method === "GET") return tally(req, res);
   if (req.method === "POST") {
     const { action } = req.body || {};
     if (action === "log") return logMeal(req, res);
     if (action === "lookup-by-code") return lookupByCode(req, res);
+    if (action === "flag-low-stock") return flagLowStock(req, res);
+    if (action === "log-guest") return logGuest(req, res);
     return lookup(req, res);
   }
   res.status(405).json({ error: "Method not allowed" });
@@ -152,6 +156,44 @@ async function logMeal(req, res) {
 
   await logAction(req.session.accountId, "meal.log", { teamId, mealSlotCode, count: validIds.size });
   res.status(200).json({ ok: true, logged: validIds.size });
+}
+
+/* "we're almost out of X" — a visible flag for admin/organisers, not a
+   passive count they'd have to keep refreshing to notice */
+async function flagLowStock(req, res) {
+  const { mealSlotCode, note } = req.body || {};
+  if (!mealSlotCode || !note || !note.trim()) {
+    res.status(400).json({ error: "mealSlotCode and a note are required" });
+    return;
+  }
+  await createIncident({
+    type: "low_stock",
+    message: `${mealSlotCode}: ${note.trim()}`,
+    createdBy: req.session.accountId,
+    createdRole: req.session.role,
+  });
+  await logAction(req.session.accountId, "meal.flag_low_stock", { mealSlotCode });
+  res.status(200).json({ ok: true });
+}
+
+/* a team shows up with someone not on the roster — logged as an incident
+   with a headcount/note rather than silently served or silently turned
+   away */
+async function logGuest(req, res) {
+  const { teamId, mealSlotCode, note } = req.body || {};
+  if (!teamId || !mealSlotCode || !note || !note.trim()) {
+    res.status(400).json({ error: "teamId, mealSlotCode and a note are required" });
+    return;
+  }
+  await createIncident({
+    type: "guest",
+    teamId,
+    message: `${mealSlotCode}: ${note.trim()}`,
+    createdBy: req.session.accountId,
+    createdRole: req.session.role,
+  });
+  await logAction(req.session.accountId, "meal.log_guest", { teamId, mealSlotCode });
+  res.status(200).json({ ok: true });
 }
 
 export default requireRole(handler, ["meal", "admin"]);

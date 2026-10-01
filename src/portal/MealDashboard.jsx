@@ -3,7 +3,105 @@ import { useNavigate } from "react-router-dom";
 import RequireRole from "./RequireRole";
 import QrScanner from "./QrScanner";
 import { MEAL_SLOTS } from "./mealSlots";
-import { logout, mealLog, mealLookup, mealLookupByCode, mealTally } from "./api";
+import { logout, mealFlagLowStock, mealLog, mealLogGuest, mealLookup, mealLookupByCode, mealTally } from "./api";
+
+function LowStockFlag({ slotCode }) {
+  const [open, setOpen] = useState(false);
+  const [note, setNote] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [sent, setSent] = useState(false);
+
+  async function send(e) {
+    e.preventDefault();
+    if (!note.trim()) return;
+    setBusy(true);
+    try {
+      await mealFlagLowStock(slotCode, note.trim());
+      setSent(true);
+      setNote("");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  if (!open) {
+    return (
+      <button
+        type="button"
+        className="portal-logout"
+        onClick={() => {
+          setOpen(true);
+          setSent(false);
+        }}
+      >
+        Flag low stock
+      </button>
+    );
+  }
+
+  return (
+    <form className="portal-manualLookup__row portal-u-mt" onSubmit={send}>
+      <input value={note} onChange={(e) => setNote(e.target.value)} placeholder="e.g. Running low on rice" />
+      <button type="submit" className="portal-auth__submit" disabled={busy || !note.trim()}>
+        {busy ? "Sending…" : sent ? "Sent ✓" : "Flag"}
+      </button>
+      <button type="button" className="portal-logout" onClick={() => setOpen(false)}>
+        Cancel
+      </button>
+    </form>
+  );
+}
+
+function GuestOverride({ teamId, slotCode }) {
+  const [open, setOpen] = useState(false);
+  const [note, setNote] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [sent, setSent] = useState(false);
+
+  async function send(e) {
+    e.preventDefault();
+    if (!note.trim()) return;
+    setBusy(true);
+    try {
+      await mealLogGuest(teamId, slotCode, note.trim());
+      setSent(true);
+      setNote("");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  if (!open) {
+    return (
+      <button
+        type="button"
+        className="portal-logout"
+        onClick={() => {
+          setOpen(true);
+          setSent(false);
+        }}
+      >
+        Guest / extra headcount
+      </button>
+    );
+  }
+
+  return (
+    <form className="portal-manualLookup__row portal-u-mt" onSubmit={send}>
+      <input
+        value={note}
+        onChange={(e) => setNote(e.target.value)}
+        placeholder="e.g. 1 guest not on roster, served"
+      />
+      <button type="submit" className="portal-auth__submit" disabled={busy || !note.trim()}>
+        {busy ? "Logging…" : sent ? "Logged ✓" : "Log"}
+      </button>
+      <button type="button" className="portal-logout" onClick={() => setOpen(false)}>
+        Cancel
+      </button>
+    </form>
+  );
+}
 
 function Tally({ refreshKey }) {
   const [slots, setSlots] = useState(null);
@@ -152,6 +250,8 @@ function MealHome({ session }) {
         {status && <p className="portal-status">{status}</p>}
         {error && <p className="portal-auth__error">{error}</p>}
 
+        <LowStockFlag slotCode={slotCode} />
+
         {scanning ? (
           <>
             <QrScanner onDecode={onDecode} paused={!scanning} />
@@ -201,6 +301,7 @@ function MealHome({ session }) {
                   Cancel / scan next
                 </button>
               </div>
+              <GuestOverride teamId={result.team.id} slotCode={slotCode} />
             </div>
           )
         )}

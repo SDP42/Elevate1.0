@@ -2,21 +2,46 @@ import bcrypt from "bcryptjs";
 import { sql } from "./_lib/db.js";
 import { signSession, sessionCookie, clearSessionCookie, readSession } from "./_lib/auth.js";
 import { logAction } from "./_lib/audit.js";
+import { createIncident } from "./_lib/incidents.js";
 
-/* Login, logout, "who am I" and a team's own submission share this file —
-   Vercel's Hobby plan caps a deployment at 12 serverless functions, so
-   related endpoints branch on method / an `action` field rather than each
-   getting its own route. GET = who am I; POST = login, or logout/submit if
-   the body says so. */
+/* Login, logout, "who am I", a team's own submission, and a team's SOS
+   request share this file — Vercel's Hobby plan caps a deployment at 12
+   serverless functions, so related endpoints branch on method / an
+   `action` field rather than each getting its own route. GET = who am I;
+   POST = login, or logout/submit/help if the body says so. */
 export default async function handler(req, res) {
   if (req.method === "GET") return me(req, res);
   if (req.method === "POST") {
     const { action } = req.body || {};
     if (action === "logout") return logout(req, res);
     if (action === "submit") return submitProject(req, res);
+    if (action === "help") return requestHelp(req, res);
     return login(req, res);
   }
   res.status(405).json({ error: "Method not allowed" });
+}
+
+/* a team's SOS — 3am, something's broken, hunting someone down physically
+   is slower than this reaching core/admin/regidesk directly */
+async function requestHelp(req, res) {
+  const session = readSession(req);
+  if (!session || session.role !== "team" || !session.teamId) {
+    res.status(401).json({ error: "Not authenticated as a team" });
+    return;
+  }
+  const { message } = req.body || {};
+  if (!message || !message.trim()) {
+    res.status(400).json({ error: "A message is required" });
+    return;
+  }
+  await createIncident({
+    type: "sos",
+    teamId: session.teamId,
+    message: message.trim(),
+    createdBy: session.accountId,
+    createdRole: "team",
+  });
+  res.status(200).json({ ok: true });
 }
 
 /* a team's own submission — a link plus an optional note, saved against
@@ -135,13 +160,13 @@ async function me(req, res) {
   }
 
   const announcementRows = await sql`
-    select message from announcements where active = true order by sort_order asc, id asc
+    select message, pinned from announcements where active = true order by pinned desc, sort_order asc, id asc
   `;
 
   res.status(200).json({
     role: session.role,
     displayName: session.displayName,
     team,
-    announcements: announcementRows.map((a) => a.message),
+    announcements: announcementRows.map((a) => ({ message: a.message, pinned: a.pinned })),
   });
 }

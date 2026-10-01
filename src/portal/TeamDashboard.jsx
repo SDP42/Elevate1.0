@@ -2,10 +2,10 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import QRCode from "qrcode";
 import RequireRole from "./RequireRole";
-import { EVENT, EVENT_START } from "../config";
+import { EVENT, EVENT_START, SUBMISSION_DEADLINE, VENUE_INFO } from "../config";
 import { CRITERIA } from "../../shared/criteria.js";
 import useHeroCloud from "./useHeroCloud";
-import { leaderboard, logout, psList, selectPs, submitProject } from "./api";
+import { leaderboard, logout, psList, requestHelp, selectPs, submitProject } from "./api";
 
 /* Days/hours/minutes/seconds to a target — the same mechanic as the
    marketing site's own "Gates open in" timer (src/components/BoardingPass),
@@ -48,14 +48,171 @@ function Countdown() {
   );
 }
 
+/* A second, sharper countdown to the submission cutoff itself — separate
+   from "gates open" so the last stretch of the 24 hours reads as urgent
+   rather than blending into the same clock teams stopped watching on day
+   one. */
+function SubmissionCountdown() {
+  const countdown = useCountdown(SUBMISSION_DEADLINE);
+  if (countdown.done) return null;
+  const isUrgent = SUBMISSION_DEADLINE.getTime() - Date.now() < 3 * 60 * 60 * 1000;
+  return (
+    <section className={`portal-countdown portal-countdown--submission${isUrgent ? " is-urgent" : ""}`}>
+      <span className="portal-countdown__label">Submission closes in</span>
+      <div className="portal-countdown__parts">
+        {countdown.parts.map(([label, value]) => (
+          <div key={label}>
+            <strong>{String(value).padStart(2, "0")}</strong>
+            <span>{label}</span>
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
+
 function Announcements({ messages }) {
   if (!messages || messages.length === 0) return null;
   return (
     <div className="portal-announce">
       {messages.map((m, i) => (
-        <p key={i}>📣 {m}</p>
+        <p key={i} className={m.pinned ? "is-pinned" : undefined}>
+          {m.pinned ? "🚨" : "📣"} {m.message}
+        </p>
       ))}
     </div>
+  );
+}
+
+const HelpIcon = () => (
+  <svg className="portal-card__icon" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+    <path
+      d="M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18ZM12 17v.01M12 14c0-2 2-2 2-4a2 2 0 1 0-4 0"
+      stroke="currentColor"
+      strokeWidth="1.6"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+  </svg>
+);
+
+/* 3am, something's broken — a laptop, the WiFi, a person. Hunting down
+   core/admin/regidesk physically across the venue is slower than this
+   reaching them directly as an incident they're already watching for. */
+function HelpRequest() {
+  const [open, setOpen] = useState(false);
+  const [message, setMessage] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [sent, setSent] = useState(false);
+  const [error, setError] = useState("");
+
+  async function send(e) {
+    e.preventDefault();
+    if (!message.trim()) return;
+    setBusy(true);
+    setError("");
+    try {
+      await requestHelp(message.trim());
+      setSent(true);
+      setMessage("");
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <section className="portal-card portal-card--help">
+      <h3>
+        <HelpIcon />
+        Need help?
+      </h3>
+      <p className="portal-card__hint">
+        WiFi down, a laptop broke, someone's not feeling well — send a request and core/admin/registration
+        desk see it immediately, no need to go find someone.
+      </p>
+      {!open ? (
+        <button
+          type="button"
+          className="portal-auth__submit portal-helpButton"
+          onClick={() => {
+            setOpen(true);
+            setSent(false);
+          }}
+        >
+          Request help
+        </button>
+      ) : (
+        <form className="portal-auth__form" onSubmit={send}>
+          <label className="portal-field">
+            <span>What's going on?</span>
+            <input
+              value={message}
+              onChange={(e) => setMessage(e.target.value)}
+              placeholder="e.g. WiFi is down at our table"
+              required
+            />
+          </label>
+          {error && <p className="portal-auth__error">{error}</p>}
+          {sent && <p className="portal-status">Sent — someone will come find you.</p>}
+          <div className="portal-scanResult__actions">
+            <button className="portal-auth__submit" type="submit" disabled={busy || !message.trim()}>
+              {busy ? "Sending…" : "Send"}
+            </button>
+            <button type="button" className="portal-logout" onClick={() => setOpen(false)}>
+              Cancel
+            </button>
+          </div>
+        </form>
+      )}
+    </section>
+  );
+}
+
+const MapPinIcon = () => (
+  <svg className="portal-card__icon" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+    <path
+      d="M12 21s7-6.5 7-11.5A7 7 0 0 0 5 9.5C5 14.5 12 21 12 21ZM12 12a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5Z"
+      stroke="currentColor"
+      strokeWidth="1.6"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+  </svg>
+);
+
+/* Venue essentials at a glance — WiFi, washrooms, charging, a rest corner
+   if one's offered. Doesn't need to be fancy, just somewhere to look
+   instead of asking a volunteer the same four questions all night. */
+function VenueInfo() {
+  return (
+    <section className="portal-card">
+      <h3>
+        <MapPinIcon />
+        Venue essentials
+      </h3>
+      <ul className="portal-venueInfo">
+        <li>
+          <span>WiFi</span>
+          <strong>
+            {VENUE_INFO.wifiSsid} · {VENUE_INFO.wifiPassword}
+          </strong>
+        </li>
+        <li>
+          <span>Washrooms</span>
+          <strong>{VENUE_INFO.washrooms}</strong>
+        </li>
+        <li>
+          <span>Charging</span>
+          <strong>{VENUE_INFO.charging}</strong>
+        </li>
+        <li>
+          <span>Need rest?</span>
+          <strong>{VENUE_INFO.quietZone}</strong>
+        </li>
+      </ul>
+    </section>
   );
 }
 
@@ -89,7 +246,7 @@ const TrophyIcon = () => (
    right — now floating over the same painted cloud sea as that section,
    not just a flat dark page, and carrying the team's chosen problem
    statement once they have one. */
-function Ticket({ team, psTitle }) {
+function Ticket({ team, psTitle, rosterLocked }) {
   const [qrUrl, setQrUrl] = useState("");
   const cloudUrl = useHeroCloud();
 
@@ -177,7 +334,10 @@ function Ticket({ team, psTitle }) {
             )}
 
             <div className="ticket__passengers">
-              <span className="ticket__passengersLabel">Passengers</span>
+              <span className="ticket__passengersLabel">
+                Passengers
+                {rosterLocked && <span className="ticket__rosterLock">Roster locked ✓</span>}
+              </span>
               <ul>
                 {team.members.map((m) => (
                   <li key={m.id}>
@@ -197,6 +357,44 @@ function Ticket({ team, psTitle }) {
           </span>
         </div>
       </div>
+    </div>
+  );
+}
+
+/* A one-time "you got it!" moment — the allocation board already shows
+   this, but a team shouldn't have to keep refreshing to notice their own
+   request went from pending to approved. Shown once per team, tracked in
+   localStorage so it doesn't reappear on every login. */
+function ApprovalBanner({ data, teamCode }) {
+  const [show, setShow] = useState(false);
+  const key = `elevate_ps_approved_seen_${teamCode}`;
+
+  useEffect(() => {
+    if (data?.selectionStatus === "approved") {
+      let seen = false;
+      try {
+        seen = localStorage.getItem(key) === "1";
+      } catch {
+        /* private browsing etc — just show it, no harm in repeating once */
+      }
+      if (!seen) {
+        setShow(true);
+        try {
+          localStorage.setItem(key, "1");
+        } catch {
+          /* ignore */
+        }
+      }
+    }
+  }, [data?.selectionStatus, key]);
+
+  if (!show) return null;
+  return (
+    <div className="portal-approvalBanner">
+      🎉 Your problem statement request has been approved — you're locked in!
+      <button type="button" onClick={() => setShow(false)} aria-label="Dismiss">
+        ×
+      </button>
     </div>
   );
 }
@@ -397,11 +595,15 @@ function MentorFeedback({ team }) {
 
 function Leaderboard({ ownTeamCode }) {
   const [rows, setRows] = useState(null);
+  const [frozen, setFrozen] = useState(false);
   const [error, setError] = useState("");
 
   useEffect(() => {
     leaderboard()
-      .then((d) => setRows(d.leaderboard))
+      .then((d) => {
+        setRows(d.leaderboard);
+        setFrozen(Boolean(d.frozen));
+      })
       .catch((err) => setError(err.message));
   }, []);
 
@@ -411,10 +613,12 @@ function Leaderboard({ ownTeamCode }) {
     <section className="portal-card">
       <h3>
         <TrophyIcon />
-        Leaderboard
+        {frozen ? "Final results" : "Leaderboard"}
       </h3>
       <p className="portal-card__hint">
-        Round 1 doesn't carry marks — these are Round 2 mentoring scores, updated live.
+        {frozen
+          ? "Results are final — the event has wrapped and admin has frozen the board."
+          : "Round 1 doesn't carry marks — these are Round 2 mentoring scores, updated live."}
       </p>
       {error && <p className="portal-auth__error">{error}</p>}
       {rows && !anyScored && <p>No Round 2 scores entered yet — check back after your mentoring session.</p>}
@@ -491,9 +695,17 @@ function TeamHome({ session }) {
       </div>
 
       <Announcements messages={session.announcements} />
+      {session.team && <ApprovalBanner data={psData} teamCode={session.team.team_code} />}
       <Countdown />
+      <SubmissionCountdown />
 
-      {session.team && <Ticket team={session.team} psTitle={selectedPsTitle} />}
+      {session.team && (
+        <Ticket
+          team={session.team}
+          psTitle={selectedPsTitle}
+          rosterLocked={psData?.selectionStatus === "approved"}
+        />
+      )}
 
       <ProblemStatement data={psData} error={psError} picking={picking} onPick={onPick} />
 
@@ -502,6 +714,10 @@ function TeamHome({ session }) {
       <MentorFeedback team={session.team} />
 
       <Leaderboard ownTeamCode={session.team?.team_code} />
+
+      <VenueInfo />
+
+      <HelpRequest />
     </div>
   );
 }

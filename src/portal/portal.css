@@ -1279,10 +1279,9 @@
 
 .portal-regiRow {
   display: grid;
-  grid-template-columns: 7rem 1fr auto auto 1fr auto;
-  align-items: center;
-  gap: 0.8rem;
-  padding: 0.7rem 0.9rem;
+  grid-template-columns: 1fr;
+  gap: 0.7rem;
+  padding: 0.9rem 1rem;
   border-radius: 10px;
   background: var(--bg);
   border: 1px solid var(--line);
@@ -1290,32 +1289,22 @@
 
 .portal-regiRow__name {
   font-weight: 700;
-  font-size: 0.9rem;
+  font-size: 0.95rem;
 }
 
 .portal-regiRow__name em {
-  display: block;
+  display: inline-block;
+  margin-left: 0.5rem;
   font-style: normal;
   font-size: 0.65rem;
   color: var(--gold-dim);
   text-transform: uppercase;
 }
 
-.portal-regiRow__field {
-  display: grid;
-  gap: 0.25rem;
-  font-size: 0.72rem;
-  color: var(--cream-dim);
-}
-
-.portal-regiRow__field input {
-  padding: 0.4rem 0.5rem;
-  border-radius: 6px;
-  border: 1px solid var(--line);
-  background: var(--bg-alt);
-  color: var(--cream);
-  font-family: inherit;
-  font-size: 0.82rem;
+.portal-regiRow__checks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 1.1rem;
 }
 
 .portal-regiRow__check {
@@ -1326,8 +1315,223 @@
   white-space: nowrap;
 }
 
-@media (max-width: 900px) {
-  .portal-regiRow {
-    grid-template-columns: 1fr 1fr;
+.portal-regiRow__check--warn {
+  color: #f0b35c;
+  font-weight: 600;
+}
+
+.portal-regiRow__fields {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.7rem;
+}
+
+.portal-regiRow__field {
+  display: grid;
+  gap: 0.25rem;
+  font-size: 0.72rem;
+  color: var(--cream-dim);
+}
+
+.portal-regiRow__field input {
+  width: 100%;
+  padding: 0.5rem 0.6rem;
+  border-radius: 6px;
+  border: 1px solid var(--line);
+  background: var(--bg-alt);
+  color: var(--cream);
+  font-family: inherit;
+  font-size: 0.82rem;
+  box-sizing: border-box;
+}
+
+.portal-regiRow__save {
+  justify-self: start;
+}
+
+@media (max-width: 680px) {
+  .portal-regiRow__fields {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ---------- pinned announcements ---------- */
+.portal-announce p.is-pinned {
+  background: linear-gradient(90deg, rgba(240, 120, 90, 0.22), rgba(240, 120, 90, 0.08));
+  border-color: rgba(240, 120, 90, 0.45);
+  font-weight: 600;
+}
+
+.portal-announceAdmin__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  flex: none;
+}
+
+/* ---------- submission countdown ---------- */
+.portal-countdown--submission {
+  margin-top: 0.8rem;
+}
+
+.portal-countdown--submission.is-urgent .portal-countdown__parts strong {
+  color: #f0785a;
+}
+
+.portal-countdown--submission.is-urgent .portal-countdown__label {
+  color: #f0785a;
+}
+
+/* ---------- one-time PS approval banner ---------- */
+.portal-approvalBanner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1.2rem;
+  padding: 0.8rem 1rem;
+  border-radius: 10px;
+  background: linear-gradient(90deg, rgba(143, 209, 158, 0.22), rgba(143, 209, 158, 0.08));
+  border: 1px solid rgba(143, 209, 158, 0.4);
+  color: var(--cream);
+  font-size: 0.92rem;
+  font-weight: 600;
+}
+
+.portal-approvalBanner button {
+  flex: none;
+  background: none;
+  border: none;
+  color: var(--cream-dim);
+  font-size: 1.2rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+/* ---------- roster lock badge ---------- */
+.ticket__rosterLock {
+  display: inline-block;
+  margin-left: 0.6rem;
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--gold);
+}
+
+/* ---------- help / SOS ---------- */
+.portal-card--help {
+  border-left-color: #f0785a;
+}
+
+.portal-helpButton {
+  width: auto;
+  padding: 0.7rem 1.4rem;
+}
+
+/* ---------- venue essentials ---------- */
+.portal-venueInfo {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.6rem;
+}
+
+.portal-venueInfo li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.2rem 0.8rem;
+  padding: 0.6rem 0.8rem;
+  border-radius: 8px;
+  background: var(--bg);
+}
+
+.portal-venueInfo li span {
+  flex: none;
+  width: 6rem;
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--gold-dim);
+}
+
+.portal-venueInfo li strong {
+  flex: 1 1 10rem;
+  font-weight: 500;
+  color: var(--cream-dim);
+  font-size: 0.88rem;
+}
+
+/* ---------- admin overview ---------- */
+.portal-overview__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(7rem, 1fr));
+  gap: 0.8rem;
+}
+
+.portal-overview__grid > div {
+  display: grid;
+  gap: 0.2rem;
+  padding: 0.9rem 0.8rem;
+  border-radius: 10px;
+  background: var(--bg);
+  border: 1px solid var(--line);
+  text-align: center;
+}
+
+.portal-overview__grid > div.is-alert {
+  border-color: rgba(240, 120, 90, 0.5);
+  background: rgba(240, 120, 90, 0.1);
+}
+
+.portal-overview__grid strong {
+  font-family: var(--font-display);
+  font-size: 1.6rem;
+  color: var(--gold);
+}
+
+.portal-overview__grid > div.is-alert strong {
+  color: #f0785a;
+}
+
+.portal-overview__grid span {
+  font-size: 0.72rem;
+  color: var(--cream-dim);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+/* ---------- incident log / alert rows ---------- */
+tr.is-alert-row td {
+  background: rgba(240, 120, 90, 0.07);
+}
+
+/* ---------- assignment slot times ---------- */
+.portal-assignList__teamRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.portal-assignList__teamRow input[type="text"],
+.portal-assignList__teamRow .portal-feedbackInput {
+  flex: 1 1 8rem;
+  min-width: 0;
+}
+
+.portal-u-inline {
+  width: auto;
+  padding: 0.7rem 1.4rem;
+}
+
+@media (max-width: 680px) {
+  .portal-venueInfo li span {
+    width: auto;
+  }
+  .portal-overview__grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }

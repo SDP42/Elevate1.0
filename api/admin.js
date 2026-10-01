@@ -7,8 +7,17 @@ import { logAction } from "./_lib/audit.js";
 
 /* Every admin-only read and write in one function (see api/auth.js for why
    — the Hobby plan's 12-function cap). GET ?resource=... picks the read;
-   POST {action: ...} picks the write. */
+   POST {action: ...} picks the write. The volunteer role also lands here,
+   but only for the one read-only lookup it's allowed — everything else
+   403s for it, checked up front before any resource/action branch. */
 async function handler(req, res) {
+  if (req.session.role === "volunteer") {
+    const resource = searchParams(req).get("resource");
+    if (req.method === "GET" && resource === "volunteer-lookup") return volunteerLookup(req, res);
+    res.status(403).json({ error: "Not allowed" });
+    return;
+  }
+
   if (req.method === "GET") {
     const resource = searchParams(req).get("resource") || "teams";
     if (resource === "accounts") return getAccounts(req, res);
@@ -18,6 +27,9 @@ async function handler(req, res) {
     if (resource === "assignments") return getAssignments(req, res);
     if (resource === "ps-requests") return getPsRequests(req, res);
     if (resource === "export") return exportCsv(req, res);
+    if (resource === "overview") return getOverview(req, res);
+    if (resource === "settings") return getSettings(req, res);
+    if (resource === "volunteer-lookup") return volunteerLookup(req, res);
     return getTeams(req, res);
   }
 
@@ -33,6 +45,8 @@ async function handler(req, res) {
     if (action === "save-assignment") return saveAssignment(req, res);
     if (action === "approve-ps") return approvePs(req, res);
     if (action === "revoke-ps") return revokePs(req, res);
+    if (action === "set-withdrawn") return setWithdrawn(req, res);
+    if (action === "freeze-results") return freezeResults(req, res);
     res.status(400).json({ error: "Unknown action" });
     return;
   }
@@ -40,11 +54,97 @@ async function handler(req, res) {
   res.status(405).json({ error: "Method not allowed" });
 }
 
+/* a bare-bones, read-only team/PS lookup — everything a floor-walking
+   volunteer needs (which team is where, what they're building) and
+   nothing they shouldn't touch (no marks, no passwords, no settings) */
+async function volunteerLookup(req, res) {
+  const rows = await sql`
+    select t.id, t.team_code, t.seat_no, p.code as ps_code, p.title as ps_title,
+      string_agg(tm.name, ', ' order by tm.sort_order) as members
+    from teams t
+    left join team_ps_selection sel on sel.team_id = t.id and sel.status = 'approved'
+    left join ps_list p on p.id = sel.ps_id
+    left join team_members tm on tm.team_id = t.id
+    where t.withdrawn = false
+    group by t.id, p.code, p.title
+    order by t.id asc
+  `;
+  res.status(200).json({
+    teams: rows.map((r) => ({
+      id: r.id,
+      teamCode: r.team_code,
+      seatNo: r.seat_no,
+      psCode: r.ps_code,
+      psTitle: r.ps_title,
+      members: r.members || "",
+    })),
+  });
+}
+
+/* one glance at where the event stands — meant for a command-center view
+   at the organiser desk rather than clicking through every section */
+async function getOverview(req, res) {
+  const [teamCount, withdrawnCount, checkedInCount, submittedCount, psApprovedCount, mealsServedCount, openIncidents] =
+    await Promise.all([
+      sql`select count(*) as n from teams`,
+      sql`select count(*) as n from teams where withdrawn = true`,
+      sql`select count(distinct member_id) as n from registration_checkins`,
+      sql`select count(*) as n from teams where submitted_at is not null`,
+      sql`select count(*) as n from team_ps_selection where status = 'approved'`,
+      sql`select count(*) as n from meal_logs`,
+      sql`select count(*) as n from incidents where status = 'open'`,
+    ]);
+  res.status(200).json({
+    teamCount: Number(teamCount[0].n),
+    withdrawnCount: Number(withdrawnCount[0].n),
+    checkedInCount: Number(checkedInCount[0].n),
+    submittedCount: Number(submittedCount[0].n),
+    psApprovedCount: Number(psApprovedCount[0].n),
+    mealsServedCount: Number(mealsServedCount[0].n),
+    openIncidentsCount: Number(openIncidents[0].n),
+  });
+}
+
+async function getSettings(req, res) {
+  const rows = await sql`select value from settings where key = 'results_frozen'`;
+  res.status(200).json({ resultsFrozen: rows[0]?.value === true });
+}
+
+/* freeze (or unfreeze) the public leaderboard as the final result — the
+   data itself isn't snapshotted, this just tells every dashboard to show
+   it as "final" rather than "live" */
+async function freezeResults(req, res) {
+  const { frozen } = req.body || {};
+  await sql`
+    insert into settings (key, value) values ('results_frozen', ${JSON.stringify(Boolean(frozen))}::jsonb)
+    on conflict (key) do update set value = excluded.value
+  `;
+  await logAction(req.session.accountId, "results.freeze", { frozen: Boolean(frozen) });
+  res.status(200).json({ ok: true });
+}
+
+/* a team dropping out overnight — excluded from the leaderboard, and its
+   approved (or pending) PS request cleared so the seat frees up for
+   someone else, without deleting anything else about the team */
+async function setWithdrawn(req, res) {
+  const { teamId, withdrawn } = req.body || {};
+  if (!teamId) {
+    res.status(400).json({ error: "teamId is required" });
+    return;
+  }
+  await sql`update teams set withdrawn = ${Boolean(withdrawn)} where id = ${teamId}`;
+  if (withdrawn) {
+    await sql`delete from team_ps_selection where team_id = ${teamId}`;
+  }
+  await logAction(req.session.accountId, "team.set_withdrawn", { teamId, withdrawn: Boolean(withdrawn) });
+  res.status(200).json({ ok: true });
+}
+
 /* every team, its seat, and its member roster — the in-app view of the
    database the admin account is meant to have */
 async function getTeams(req, res) {
   const teams = await sql`
-    select t.id, t.team_code, t.seat_no, t.dietary, t.shortlisted,
+    select t.id, t.team_code, t.seat_no, t.dietary, t.shortlisted, t.withdrawn,
       t.submission_url, t.submission_note, t.submitted_at,
       a.display_name, a.username
     from teams t
@@ -71,6 +171,7 @@ async function getTeams(req, res) {
       seatNo: t.seat_no,
       dietary: t.dietary,
       shortlisted: t.shortlisted,
+      withdrawn: t.withdrawn,
       submissionUrl: t.submission_url,
       submissionNote: t.submission_note,
       submittedAt: t.submitted_at,
@@ -128,19 +229,32 @@ async function getAudit(req, res) {
 }
 
 async function getAnnouncements(req, res) {
-  const rows = await sql`select id, message, active, sort_order from announcements order by sort_order asc, id asc`;
+  const rows = await sql`
+    select id, message, active, pinned, sort_order from announcements order by pinned desc, sort_order asc, id asc
+  `;
   res.status(200).json({
-    announcements: rows.map((r) => ({ id: r.id, message: r.message, active: r.active, sortOrder: r.sort_order })),
+    announcements: rows.map((r) => ({
+      id: r.id,
+      message: r.message,
+      active: r.active,
+      pinned: r.pinned,
+      sortOrder: r.sort_order,
+    })),
   });
 }
 
 async function getAssignments(req, res) {
   const cores = await sql`select id, username, display_name from accounts where role = 'core' order by username`;
-  const assignments = await sql`select core_account_id, team_id from core_assignments`;
+  const assignments = await sql`select core_account_id, team_id, slot_time from core_assignments`;
   const byCore = new Map();
+  const slotsByCore = new Map();
   for (const a of assignments) {
     if (!byCore.has(a.core_account_id)) byCore.set(a.core_account_id, []);
     byCore.get(a.core_account_id).push(a.team_id);
+    if (a.slot_time) {
+      if (!slotsByCore.has(a.core_account_id)) slotsByCore.set(a.core_account_id, {});
+      slotsByCore.get(a.core_account_id)[a.team_id] = a.slot_time;
+    }
   }
   res.status(200).json({
     cores: cores.map((c) => ({
@@ -148,6 +262,7 @@ async function getAssignments(req, res) {
       username: c.username,
       displayName: c.display_name,
       teamIds: byCore.get(c.id) || [],
+      slotTimes: slotsByCore.get(c.id) || {},
     })),
   });
 }
@@ -453,20 +568,21 @@ async function resetPassword(req, res) {
 }
 
 async function saveAnnouncement(req, res) {
-  const { id, message, active, sortOrder } = req.body || {};
+  const { id, message, active, pinned, sortOrder } = req.body || {};
   if (!message || !message.trim()) {
     res.status(400).json({ error: "message is required" });
     return;
   }
   if (id) {
     await sql`
-      update announcements set message = ${message.trim()}, active = ${Boolean(active)}, sort_order = ${sortOrder ?? 0}
+      update announcements
+      set message = ${message.trim()}, active = ${Boolean(active)}, pinned = ${Boolean(pinned)}, sort_order = ${sortOrder ?? 0}
       where id = ${id}
     `;
   } else {
     await sql`
-      insert into announcements (message, active, sort_order)
-      values (${message.trim()}, ${active === undefined ? true : Boolean(active)}, ${sortOrder ?? 0})
+      insert into announcements (message, active, pinned, sort_order)
+      values (${message.trim()}, ${active === undefined ? true : Boolean(active)}, ${Boolean(pinned)}, ${sortOrder ?? 0})
     `;
   }
   await logAction(req.session.accountId, "announcement.save", { id });
@@ -474,19 +590,24 @@ async function saveAnnouncement(req, res) {
 }
 
 /* replace which teams a core account is responsible for — an empty list
-   means "no restriction", i.e. they see every team again */
+   means "no restriction", i.e. they see every team again. slotTimes is an
+   optional { teamId: "10:00 AM" } map, so a narrowed-down mentor can also
+   get a schedule instead of every assigned team at once. */
 async function saveAssignment(req, res) {
-  const { coreAccountId, teamIds } = req.body || {};
+  const { coreAccountId, teamIds, slotTimes } = req.body || {};
   if (!coreAccountId || !Array.isArray(teamIds)) {
     res.status(400).json({ error: "coreAccountId and teamIds are required" });
     return;
   }
   await sql`delete from core_assignments where core_account_id = ${coreAccountId}`;
   for (const teamId of teamIds) {
-    await sql`insert into core_assignments (core_account_id, team_id) values (${coreAccountId}, ${teamId})`;
+    const slotTime = slotTimes && slotTimes[teamId] ? String(slotTimes[teamId]).trim() : null;
+    await sql`
+      insert into core_assignments (core_account_id, team_id, slot_time) values (${coreAccountId}, ${teamId}, ${slotTime || null})
+    `;
   }
   await logAction(req.session.accountId, "assignment.save", { coreAccountId, count: teamIds.length });
   res.status(200).json({ ok: true });
 }
 
-export default requireRole(handler, ["admin"]);
+export default requireRole(handler, ["admin", "volunteer"]);

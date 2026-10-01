@@ -6,20 +6,20 @@
 
 create extension if not exists pgcrypto;
 
--- one row per login: every team, every core/admin/meal/regidesk staff member.
+-- one row per login: every team, every core/admin/meal/regidesk/volunteer staff member.
 create table if not exists accounts (
   id serial primary key,
   username text unique not null,
   password_hash text not null,
-  role text not null check (role in ('admin', 'core', 'meal', 'team', 'regidesk')),
+  role text not null check (role in ('admin', 'core', 'meal', 'team', 'regidesk', 'volunteer')),
   display_name text not null,
   created_at timestamptz not null default now()
 );
 
--- widen the role check to include regidesk, added after the original launch
+-- widen the role check to include regidesk, then volunteer, added after launch
 alter table accounts drop constraint if exists accounts_role_check;
 alter table accounts add constraint accounts_role_check
-  check (role in ('admin', 'core', 'meal', 'team', 'regidesk'));
+  check (role in ('admin', 'core', 'meal', 'team', 'regidesk', 'volunteer'));
 
 -- a team's own profile, one-to-one with its 'team' account.
 create table if not exists teams (
@@ -36,6 +36,9 @@ alter table teams add column if not exists shortlisted boolean not null default 
 alter table teams add column if not exists submission_url text;
 alter table teams add column if not exists submission_note text;
 alter table teams add column if not exists submitted_at timestamptz;
+-- a team that drops out overnight — excluded from the leaderboard and its
+-- approved PS seat freed, without deleting any of their history
+alter table teams add column if not exists withdrawn boolean not null default false;
 
 create table if not exists team_members (
   id serial primary key,
@@ -138,7 +141,21 @@ create table if not exists meal_logs (
 -- which teams a core account is responsible for judging. A core account
 -- with no rows here sees every team (the default, unassigned state) —
 -- assigning only kicks in once an admin actually narrows someone down.
+-- slot_time is an optional mentoring time slot, set alongside the
+-- assignment itself (e.g. "10:00 AM") so mentors don't all descend on
+-- every team at once.
 create table if not exists core_assignments (
+  core_account_id integer not null references accounts(id) on delete cascade,
+  team_id integer not null references teams(id) on delete cascade,
+  slot_time text,
+  primary key (core_account_id, team_id)
+);
+alter table core_assignments add column if not exists slot_time text;
+
+-- a core account recusing themselves from a specific team (conflict of
+-- interest) — independent of core_assignments, so recusing one team never
+-- flips an otherwise-unassigned mentor into "only sees this one team" mode.
+create table if not exists core_recusals (
   core_account_id integer not null references accounts(id) on delete cascade,
   team_id integer not null references teams(id) on delete cascade,
   primary key (core_account_id, team_id)
@@ -176,20 +193,53 @@ create table if not exists registration_checkins (
   govt_id_checked boolean not null default false,
   bag_checked boolean not null default false,
   kit_checked boolean not null default false,
+  medical_note text,
+  late_arrival boolean not null default false,
   notes text,
   checked_in_by integer references accounts(id),
   checked_in_at timestamptz not null default now()
 );
 alter table registration_checkins add column if not exists kit_checked boolean not null default false;
+alter table registration_checkins add column if not exists medical_note text;
+alter table registration_checkins add column if not exists late_arrival boolean not null default false;
 
 -- short admin-authored notices, read by every logged-in role (shown on
 -- the team dashboard, but available to any role that wants to check).
+-- pinned ones are shown first, visually distinct — fire-alarm-test /
+-- schedule-change territory, not routine chatter.
 create table if not exists announcements (
   id serial primary key,
   message text not null,
   active boolean not null default true,
+  pinned boolean not null default false,
   sort_order integer not null default 0,
   created_at timestamptz not null default now()
+);
+alter table announcements add column if not exists pinned boolean not null default false;
+
+-- real-world incidents and requests raised on event day — a team's SOS, a
+-- meal counter flagging low stock, registration logging a guest who
+-- isn't on the roster — separate from audit_log (which is just a trail of
+-- system actions), so organisers have one place to see what needs
+-- attention right now.
+create table if not exists incidents (
+  id serial primary key,
+  type text not null check (type in ('sos', 'low_stock', 'guest', 'late_arrival', 'other')),
+  team_id integer references teams(id) on delete cascade,
+  message text not null,
+  status text not null default 'open' check (status in ('open', 'resolved')),
+  created_by integer references accounts(id),
+  created_role text,
+  resolved_by integer references accounts(id),
+  resolved_at timestamptz,
+  created_at timestamptz not null default now()
+);
+
+-- a tiny generic key/value store for event-wide toggles — currently just
+-- whether the leaderboard has been frozen for the final results reveal.
+create table if not exists settings (
+  key text primary key,
+  value jsonb
 );
 
 -- a plain trail of who did what, for settling disputes on the day —

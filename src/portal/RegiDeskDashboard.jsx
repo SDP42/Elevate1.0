@@ -9,20 +9,38 @@ function MemberRow({ member, teamId, onSaved }) {
   const [govtIdChecked, setGovtIdChecked] = useState(member.govtIdChecked);
   const [bagChecked, setBagChecked] = useState(member.bagChecked);
   const [kitChecked, setKitChecked] = useState(member.kitChecked);
+  const [medicalNote, setMedicalNote] = useState(member.medicalNote);
+  const [lateArrival, setLateArrival] = useState(member.lateArrival);
   const [notes, setNotes] = useState(member.notes);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+
+  const fields = { githubId, govtIdChecked, bagChecked, kitChecked, medicalNote, lateArrival, notes };
 
   async function save() {
     setSaving(true);
     setSaved(false);
     try {
-      await regideskSave(member.id, teamId, { githubId, govtIdChecked, bagChecked, kitChecked, notes });
+      await regideskSave(member.id, teamId, fields);
       setSaved(true);
-      onSaved(member.id, { githubId, govtIdChecked, bagChecked, kitChecked, notes });
+      onSaved(member.id, fields);
     } finally {
       setSaving(false);
     }
+  }
+
+  function check(setter) {
+    return (e) => {
+      setter(e.target.checked);
+      setSaved(false);
+    };
+  }
+
+  function text(setter) {
+    return (e) => {
+      setter(e.target.value);
+      setSaved(false);
+    };
   }
 
   return (
@@ -31,62 +49,42 @@ function MemberRow({ member, teamId, onSaved }) {
         {member.name}
         {member.isLead && <em>Lead</em>}
       </div>
-      <label className="portal-regiRow__field">
-        <span>GitHub ID</span>
-        <input
-          value={githubId}
-          onChange={(e) => {
-            setGithubId(e.target.value);
-            setSaved(false);
-          }}
-          placeholder="username"
-        />
-      </label>
-      <label className="portal-regiRow__check">
-        <input
-          type="checkbox"
-          checked={govtIdChecked}
-          onChange={(e) => {
-            setGovtIdChecked(e.target.checked);
-            setSaved(false);
-          }}
-        />
-        Govt ID checked
-      </label>
-      <label className="portal-regiRow__check">
-        <input
-          type="checkbox"
-          checked={bagChecked}
-          onChange={(e) => {
-            setBagChecked(e.target.checked);
-            setSaved(false);
-          }}
-        />
-        Bag checked
-      </label>
-      <label className="portal-regiRow__check">
-        <input
-          type="checkbox"
-          checked={kitChecked}
-          onChange={(e) => {
-            setKitChecked(e.target.checked);
-            setSaved(false);
-          }}
-        />
-        Kit given (notebook, pen, folder)
-      </label>
-      <label className="portal-regiRow__field">
-        <span>Notes</span>
-        <input
-          value={notes}
-          onChange={(e) => {
-            setNotes(e.target.value);
-            setSaved(false);
-          }}
-          placeholder="Optional"
-        />
-      </label>
-      <button type="button" className="portal-logout" onClick={save} disabled={saving}>
+
+      <div className="portal-regiRow__checks">
+        <label className="portal-regiRow__check">
+          <input type="checkbox" checked={govtIdChecked} onChange={check(setGovtIdChecked)} />
+          Govt ID
+        </label>
+        <label className="portal-regiRow__check">
+          <input type="checkbox" checked={bagChecked} onChange={check(setBagChecked)} />
+          Bag
+        </label>
+        <label className="portal-regiRow__check">
+          <input type="checkbox" checked={kitChecked} onChange={check(setKitChecked)} />
+          Kit (notebook, pen, folder)
+        </label>
+        <label className="portal-regiRow__check portal-regiRow__check--warn">
+          <input type="checkbox" checked={lateArrival} onChange={check(setLateArrival)} />
+          Late arrival
+        </label>
+      </div>
+
+      <div className="portal-regiRow__fields">
+        <label className="portal-regiRow__field">
+          <span>GitHub ID</span>
+          <input value={githubId} onChange={text(setGithubId)} placeholder="username" />
+        </label>
+        <label className="portal-regiRow__field">
+          <span>Medical note</span>
+          <input value={medicalNote} onChange={text(setMedicalNote)} placeholder="Allergies, conditions, emergency contact…" />
+        </label>
+        <label className="portal-regiRow__field">
+          <span>Notes</span>
+          <input value={notes} onChange={text(setNotes)} placeholder="Optional" />
+        </label>
+      </div>
+
+      <button type="button" className="portal-logout portal-regiRow__save" onClick={save} disabled={saving}>
         {saving ? "Saving…" : saved ? "Saved ✓" : "Save"}
       </button>
     </li>
@@ -170,7 +168,7 @@ function RegiDeskHome({ session }) {
         <h3>Check in a team</h3>
         <p className="portal-card__hint">
           Scan the team's boarding pass, then record each member's GitHub ID, government ID check,
-          bag check, and ideation kit (notebook, pen, folder) as they arrive.
+          bag check, ideation kit, any medical note, and flag late arrivals as they come in.
         </p>
 
         {error && <p className="portal-auth__error">{error}</p>}

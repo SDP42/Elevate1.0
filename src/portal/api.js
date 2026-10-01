@@ -8,11 +8,19 @@
 // path like /api/admin serves several things, picked by method and an
 // `action`/`resource` field — see each api/*.js file for its own branches.
 async function request(path, options = {}) {
-  const res = await fetch(`/api${path}`, {
-    credentials: "include",
-    headers: { "Content-Type": "application/json" },
-    ...options,
-  });
+  let res;
+  try {
+    res = await fetch(`/api${path}`, {
+      credentials: "include",
+      headers: { "Content-Type": "application/json" },
+      ...options,
+    });
+  } catch {
+    // the venue's WiFi dropping for a few seconds shouldn't read as a
+    // broken app — this is the one message every scan/save screen shows
+    // for it, with a clear next step (retry) rather than a blank error
+    throw new Error("Network error — check your connection and try again.");
+  }
   const data = await res.json().catch(() => ({}));
   if (!res.ok) {
     throw new Error(data.error || `Request failed (${res.status})`);
@@ -29,6 +37,9 @@ export const me = () => request("/auth");
 
 export const submitProject = (submissionUrl, submissionNote) =>
   request("/auth", { method: "POST", body: JSON.stringify({ action: "submit", submissionUrl, submissionNote }) });
+
+export const requestHelp = (message) =>
+  request("/auth", { method: "POST", body: JSON.stringify({ action: "help", message }) });
 
 export const adminTeams = () => request("/admin?resource=teams");
 
@@ -111,8 +122,40 @@ export const adminResetPassword = (accountId) =>
 export const adminSaveAnnouncement = (announcement) =>
   request("/admin", { method: "POST", body: JSON.stringify({ action: "save-announcement", ...announcement }) });
 
-export const adminSaveAssignment = (coreAccountId, teamIds) =>
-  request("/admin", { method: "POST", body: JSON.stringify({ action: "save-assignment", coreAccountId, teamIds }) });
+export const adminSaveAssignment = (coreAccountId, teamIds, slotTimes) =>
+  request("/admin", {
+    method: "POST",
+    body: JSON.stringify({ action: "save-assignment", coreAccountId, teamIds, slotTimes }),
+  });
+
+export const adminOverview = () => request("/admin?resource=overview");
+
+export const adminSettings = () => request("/admin?resource=settings");
+
+export const adminFreezeResults = (frozen) =>
+  request("/admin", { method: "POST", body: JSON.stringify({ action: "freeze-results", frozen }) });
+
+export const adminSetWithdrawn = (teamId, withdrawn) =>
+  request("/admin", { method: "POST", body: JSON.stringify({ action: "set-withdrawn", teamId, withdrawn }) });
+
+export const volunteerLookup = () => request("/admin?resource=volunteer-lookup");
+
+export const incidentsList = () => request("/incidents");
+
+export const incidentRaise = (type, message, teamId) =>
+  request("/incidents", { method: "POST", body: JSON.stringify({ type, message, teamId }) });
+
+export const incidentResolve = (id) =>
+  request("/incidents", { method: "POST", body: JSON.stringify({ action: "resolve", id }) });
+
+export const coreToggleRecuse = (teamId) =>
+  request("/core", { method: "POST", body: JSON.stringify({ action: "toggle-recuse", teamId }) });
+
+export const mealFlagLowStock = (mealSlotCode, note) =>
+  request("/meal", { method: "POST", body: JSON.stringify({ action: "flag-low-stock", mealSlotCode, note }) });
+
+export const mealLogGuest = (teamId, mealSlotCode, note) =>
+  request("/meal", { method: "POST", body: JSON.stringify({ action: "log-guest", teamId, mealSlotCode, note }) });
 
 export const adminPsRequests = () => request("/admin?resource=ps-requests");
 

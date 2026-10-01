@@ -31,6 +31,23 @@ export const VENUE_MAP_URL = "https://maps.app.goo.gl/sNT9rcGjo4L1356UA?g_st=aw"
 // gates open with registration and check-in on day one
 export const EVENT_START = new Date("2026-10-10T09:00:00+05:30");
 
+// final project submission deadline — kept separate from EVENT_START so the
+// team dashboard can show a sharper, more urgent countdown to this moment
+// specifically, not just "gates open". Update this once the real cutoff
+// (near the end of the 24 hours) is confirmed.
+export const SUBMISSION_DEADLINE = new Date("2026-10-11T09:00:00+05:30");
+
+// static, venue-day essentials shown on the team dashboard — plain text
+// cards rather than another thing to click through at 3am. Update these
+// once the venue details (actual WiFi credentials, room names) are final.
+export const VENUE_INFO = {
+  wifiSsid: "Elevate-1.0",
+  wifiPassword: "To be announced at check-in",
+  washrooms: "Ground floor, near the main lobby — signposted on the day",
+  charging: "Charging points at every seating cluster and along the back wall",
+  quietZone: "A quiet/rest corner will be marked near Room 101 — ask any volunteer",
+};
+
 // registration fee per team, per round
 export const FEES = {
   online: "₹200",
