@@ -7,6 +7,9 @@ const LINKS = [
   { href: "#prizes", label: "Prizes" },
 ];
 
+// team / core / meal / admin sign-in — a separate app behind one URL
+const PORTAL_LOGIN_HREF = "/portal/login";
+
 /* Label rolls up to a duplicate and a soft plate rises behind it on hover. */
 export function NavItem({ href, children, ...rest }) {
   return (
@@ -59,6 +62,7 @@ const ALL_LINKS = [
   ...LINKS,
   { href: "#schedule", label: "Schedule" },
   { href: ORGANISER.instagram, label: ORGANISER.handle, external: true },
+  { href: PORTAL_LOGIN_HREF, label: "Login" },
 ];
 
 export default function Header() {
@@ -113,6 +117,7 @@ export default function Header() {
           <NavItem href={ORGANISER.instagram} target="_blank" rel="noopener noreferrer">
             {ORGANISER.handle}
           </NavItem>
+          <NavItem href={PORTAL_LOGIN_HREF}>Login</NavItem>
         </div>
       </div>
       <div className="jx-u24" />
