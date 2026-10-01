@@ -133,7 +133,7 @@ async function me(req, res) {
   let team = null;
   if (session.role === "team" && session.teamId) {
     const teamRows = await sql`
-      select id, team_code, seat_no, qr_token,
+      select id, team_code, seat_no, qr_token, shortlisted,
         submission_url, submission_note, submitted_at
       from teams
       where id = ${session.teamId}

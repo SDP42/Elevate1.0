@@ -399,6 +399,15 @@ function ApprovalBanner({ data, teamCode }) {
   );
 }
 
+/* Shown for as long as the team stays shortlisted — not a one-time toast
+   like the PS approval banner, since "you're shortlisted for Round 2" is
+   an ongoing status worth seeing every time they open the dashboard, not
+   just once. */
+function ShortlistBanner({ team }) {
+  if (!team?.shortlisted) return null;
+  return <div className="portal-approvalBanner portal-shortlistBanner">🏆 Your team has been shortlisted for Round 2!</div>;
+}
+
 function ProblemStatement({ data, error, picking, onPick }) {
   const locked = data?.selectionStatus === "approved";
 
@@ -695,6 +704,7 @@ function TeamHome({ session }) {
       </div>
 
       <Announcements messages={session.announcements} />
+      <ShortlistBanner team={session.team} />
       {session.team && <ApprovalBanner data={psData} teamCode={session.team.team_code} />}
       <Countdown />
       <SubmissionCountdown />

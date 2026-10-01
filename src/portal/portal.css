@@ -1408,6 +1408,12 @@
   cursor: pointer;
 }
 
+.portal-shortlistBanner {
+  background: linear-gradient(90deg, rgba(201, 168, 106, 0.26), rgba(201, 168, 106, 0.08));
+  border-color: rgba(201, 168, 106, 0.45);
+  color: var(--gold);
+}
+
 /* ---------- roster lock badge ---------- */
 .ticket__rosterLock {
   display: inline-block;
