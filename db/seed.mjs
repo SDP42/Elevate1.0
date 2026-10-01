@@ -32,6 +32,7 @@ const MEMBERS_PER_TEAM = 4; // placeholder roster size; real teams range 2-4 per
 const CORE_COUNT = 5;
 const ADMIN_COUNT = 2;
 const MEAL_COUNT = 3;
+const REGIDESK_COUNT = 3;
 
 function randomPassword() {
   // 10 chars, unambiguous alphabet (no 0/O/1/l/I) — easy to read off a sheet
@@ -106,6 +107,13 @@ async function main() {
     const password = randomPassword();
     await upsertAccount({ username, password, role: "meal", displayName: `Meal Counter ${n}` });
     credentials.push({ role: "meal", username, password, label: `Meal Counter ${n}` });
+  }
+
+  for (let n = 1; n <= REGIDESK_COUNT; n += 1) {
+    const username = `regidesk${String(n).padStart(2, "0")}`;
+    const password = randomPassword();
+    await upsertAccount({ username, password, role: "regidesk", displayName: `Registration Desk ${n}` });
+    credentials.push({ role: "regidesk", username, password, label: `Registration Desk ${n}` });
   }
 
   const outFile = path.join(__dirname, "credentials.generated.json");

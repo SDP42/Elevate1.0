@@ -5,6 +5,7 @@ import TeamDashboard from "./TeamDashboard";
 import AdminDashboard from "./AdminDashboard";
 import CoreDashboard from "./CoreDashboard";
 import MealDashboard from "./MealDashboard";
+import RegiDeskDashboard from "./RegiDeskDashboard";
 
 export default function Portal() {
   return (
@@ -14,6 +15,7 @@ export default function Portal() {
       <Route path="admin" element={<AdminDashboard />} />
       <Route path="core" element={<CoreDashboard />} />
       <Route path="meal" element={<MealDashboard />} />
+      <Route path="regidesk" element={<RegiDeskDashboard />} />
       <Route path="*" element={<Navigate to="/portal/login" replace />} />
     </Routes>
   );

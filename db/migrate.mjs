@@ -20,12 +20,31 @@ if (!connectionString) {
 const sql = neon(connectionString);
 const schema = fs.readFileSync(path.join(__dirname, "schema.sql"), "utf8");
 
-// Split on a semicolon at the end of a line — none of our statements use
-// dollar-quoted bodies, so this is safe here.
-const statements = schema
-  .split(/;\s*\n/)
-  .map((s) => s.trim())
-  .filter(Boolean);
+// Split on a semicolon at the end of a line — except inside a $$ ... $$
+// dollar-quoted body (a DO block), whose own internal semicolons must
+// stay part of the same statement.
+function splitStatements(text) {
+  const lines = text.split("\n");
+  const statements = [];
+  let current = [];
+  let inDollarBlock = false;
+
+  for (const line of lines) {
+    current.push(line);
+    const dollarCount = (line.match(/\$\$/g) || []).length;
+    if (dollarCount % 2 === 1) inDollarBlock = !inDollarBlock;
+
+    if (!inDollarBlock && /;\s*$/.test(line)) {
+      statements.push(current.join("\n"));
+      current = [];
+    }
+  }
+  if (current.some((l) => l.trim())) statements.push(current.join("\n"));
+
+  return statements.map((s) => s.trim()).filter(Boolean);
+}
+
+const statements = splitStatements(schema);
 
 async function main() {
   for (const statement of statements) {

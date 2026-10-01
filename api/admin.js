@@ -16,6 +16,7 @@ async function handler(req, res) {
     if (resource === "audit") return getAudit(req, res);
     if (resource === "announcements") return getAnnouncements(req, res);
     if (resource === "assignments") return getAssignments(req, res);
+    if (resource === "ps-requests") return getPsRequests(req, res);
     if (resource === "export") return exportCsv(req, res);
     return getTeams(req, res);
   }
@@ -30,6 +31,8 @@ async function handler(req, res) {
     if (action === "reset-password") return resetPassword(req, res);
     if (action === "save-announcement") return saveAnnouncement(req, res);
     if (action === "save-assignment") return saveAssignment(req, res);
+    if (action === "approve-ps") return approvePs(req, res);
+    if (action === "revoke-ps") return revokePs(req, res);
     res.status(400).json({ error: "Unknown action" });
     return;
   }
@@ -147,6 +150,95 @@ async function getAssignments(req, res) {
       teamIds: byCore.get(c.id) || [],
     })),
   });
+}
+
+/* every PS request, in first-come-first-served order within each PS, for
+   admin to work through and approve */
+async function getPsRequests(req, res) {
+  const rows = await sql`
+    select t.id as team_id, t.team_code, p.id as ps_id, p.code as ps_code, p.title as ps_title,
+      p.capacity, s.status, s.requested_at,
+      (select count(*) from team_ps_selection s2 where s2.ps_id = p.id and s2.status = 'approved') as taken
+    from team_ps_selection s
+    join teams t on t.id = s.team_id
+    join ps_list p on p.id = s.ps_id
+    order by p.sort_order asc, s.requested_at asc
+  `;
+  res.status(200).json({
+    requests: rows.map((r) => ({
+      teamId: r.team_id,
+      teamCode: r.team_code,
+      psId: r.ps_id,
+      psCode: r.ps_code,
+      psTitle: r.ps_title,
+      capacity: r.capacity,
+      taken: Number(r.taken),
+      status: r.status,
+      requestedAt: r.requested_at,
+    })),
+  });
+}
+
+/* approve a team's current PS request — refuses once the PS is already at
+   capacity (counting only other already-approved teams), so admin can
+   approve strictly in the first-come-first-served order shown and trust
+   the server to stop them over-filling one */
+async function approvePs(req, res) {
+  const { teamId } = req.body || {};
+  if (!teamId) {
+    res.status(400).json({ error: "teamId is required" });
+    return;
+  }
+
+  const rows = await sql`
+    select s.ps_id, s.status, p.capacity
+    from team_ps_selection s
+    join ps_list p on p.id = s.ps_id
+    where s.team_id = ${teamId}
+  `;
+  const current = rows[0];
+  if (!current) {
+    res.status(404).json({ error: "That team hasn't requested a problem statement" });
+    return;
+  }
+  if (current.status === "approved") {
+    res.status(200).json({ ok: true });
+    return;
+  }
+
+  if (current.capacity !== null) {
+    const takenRows = await sql`
+      select count(*) as n from team_ps_selection where ps_id = ${current.ps_id} and status = 'approved'
+    `;
+    if (Number(takenRows[0].n) >= current.capacity) {
+      res.status(409).json({ error: "That problem statement is already at capacity" });
+      return;
+    }
+  }
+
+  await sql`
+    update team_ps_selection
+    set status = 'approved', approved_at = now(), approved_by = ${req.session.accountId}
+    where team_id = ${teamId}
+  `;
+  await logAction(req.session.accountId, "ps.approve", { teamId, psId: current.ps_id });
+  res.status(200).json({ ok: true });
+}
+
+/* undo an approval — the team's request goes back to pending, freeing the
+   seat for someone else next in line */
+async function revokePs(req, res) {
+  const { teamId } = req.body || {};
+  if (!teamId) {
+    res.status(400).json({ error: "teamId is required" });
+    return;
+  }
+  await sql`
+    update team_ps_selection set status = 'pending', approved_at = null, approved_by = null
+    where team_id = ${teamId}
+  `;
+  await logAction(req.session.accountId, "ps.revoke", { teamId });
+  res.status(200).json({ ok: true });
 }
 
 /* a plain CSV backup of whichever table is asked for */

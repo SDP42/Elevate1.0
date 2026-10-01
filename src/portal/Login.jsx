@@ -7,6 +7,7 @@ const TABS = [
   { key: "team", label: "Team login" },
   { key: "core", label: "Core login" },
   { key: "meal", label: "Meal login" },
+  { key: "regidesk", label: "Regi desk login" },
   { key: "admin", label: "Admin login" },
 ];
 
@@ -15,6 +16,7 @@ const DASHBOARD_PATH = {
   core: "/portal/core",
   meal: "/portal/meal",
   team: "/portal/team",
+  regidesk: "/portal/regidesk",
 };
 
 /* One login form behind four tabs. The tab only changes the placeholder

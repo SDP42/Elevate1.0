@@ -202,12 +202,19 @@ function Ticket({ team, psTitle }) {
 }
 
 function ProblemStatement({ data, error, picking, onPick }) {
+  const locked = data?.selectionStatus === "approved";
+
   return (
     <section className="portal-card">
       <h3>
         <LightbulbIcon />
         Problem statement
       </h3>
+      <p className="portal-card__hint">
+        First come, first served — requesting one puts you in the queue, but it's only official once
+        admin approves it. You can switch your request freely until then; once approved, it's locked
+        in.
+      </p>
 
       {error && <p className="portal-auth__error">{error}</p>}
 
@@ -219,14 +226,18 @@ function ProblemStatement({ data, error, picking, onPick }) {
         <ul className="portal-psList">
           {data.problemStatements.map((ps) => {
             const isMine = data.selectedPsId === ps.id;
-            const disabled = (ps.full && !isMine) || picking === ps.id;
+            const disabled = (locked && !isMine) || picking === ps.id;
+            let label = picking === ps.id ? "Requesting…" : "Request";
+            if (isMine && locked) label = "Approved ✓";
+            else if (isMine) label = "Requested — pending";
+
             return (
-              <li key={ps.id} className={isMine ? "is-selected" : undefined}>
+              <li key={ps.id} className={isMine ? (locked ? "is-approved" : "is-selected") : undefined}>
                 <div className="portal-psList__head">
                   <strong>{ps.title}</strong>
                   {ps.capacity !== null && (
                     <span className="portal-psList__seats">
-                      {ps.taken}/{ps.capacity} teams
+                      {ps.taken}/{ps.capacity} approved
                     </span>
                   )}
                 </div>
@@ -234,15 +245,29 @@ function ProblemStatement({ data, error, picking, onPick }) {
                 <button
                   type="button"
                   className="portal-auth__submit"
-                  disabled={disabled}
+                  disabled={disabled || (isMine && !locked)}
                   onClick={() => onPick(ps.id)}
                 >
-                  {isMine ? "Selected ✓" : ps.full ? "Full" : picking === ps.id ? "Selecting…" : "Select"}
+                  {label}
                 </button>
               </li>
             );
           })}
         </ul>
+      )}
+
+      {data && data.allocations.length > 0 && (
+        <div className="portal-allocBoard">
+          <span className="portal-allocBoard__label">Confirmed allocations, so far</span>
+          <ul>
+            {data.allocations.map((a) => (
+              <li key={a.teamCode}>
+                <strong>{a.teamCode}</strong> → {a.psCode ? `${a.psCode} · ` : ""}
+                {a.psTitle}
+              </li>
+            ))}
+          </ul>
+        </div>
       )}
     </section>
   );

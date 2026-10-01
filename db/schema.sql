@@ -6,15 +6,20 @@
 
 create extension if not exists pgcrypto;
 
--- one row per login: every team, every core/admin/meal staff member.
+-- one row per login: every team, every core/admin/meal/regidesk staff member.
 create table if not exists accounts (
   id serial primary key,
   username text unique not null,
   password_hash text not null,
-  role text not null check (role in ('admin', 'core', 'meal', 'team')),
+  role text not null check (role in ('admin', 'core', 'meal', 'team', 'regidesk')),
   display_name text not null,
   created_at timestamptz not null default now()
 );
+
+-- widen the role check to include regidesk, added after the original launch
+alter table accounts drop constraint if exists accounts_role_check;
+alter table accounts add constraint accounts_role_check
+  check (role in ('admin', 'core', 'meal', 'team', 'regidesk'));
 
 -- a team's own profile, one-to-one with its 'team' account.
 create table if not exists teams (
@@ -51,11 +56,38 @@ create table if not exists ps_list (
   sort_order integer not null default 0
 );
 
+-- a team's PS pick is a *request* first — first come, first served by
+-- requested_at — and only becomes official once admin approves it.
+-- "status" here, not a separate table, is what every team's dashboard
+-- checks to show a live allocation board.
 create table if not exists team_ps_selection (
   team_id integer primary key references teams(id) on delete cascade,
   ps_id integer not null references ps_list(id),
-  selected_at timestamptz not null default now()
+  status text not null default 'pending' check (status in ('pending', 'approved')),
+  requested_at timestamptz not null default now(),
+  approved_at timestamptz,
+  approved_by integer references accounts(id)
 );
+
+alter table team_ps_selection add column if not exists status text not null default 'pending';
+alter table team_ps_selection drop constraint if exists team_ps_selection_status_check;
+alter table team_ps_selection add constraint team_ps_selection_status_check
+  check (status in ('pending', 'approved'));
+alter table team_ps_selection add column if not exists approved_at timestamptz;
+alter table team_ps_selection add column if not exists approved_by integer references accounts(id);
+
+-- the table used to be keyed just by team_id with a "selected_at" column;
+-- rename it to requested_at to match the request/approve model, if it's
+-- still around under its old name from before this change.
+do $$
+begin
+  if exists (
+    select 1 from information_schema.columns
+    where table_name = 'team_ps_selection' and column_name = 'selected_at'
+  ) then
+    alter table team_ps_selection rename column selected_at to requested_at;
+  end if;
+end $$;
 
 -- round 1 is the online PS round (no marks); round 2 is the on-campus
 -- mentoring round that does carry marks, per the brief.
@@ -131,6 +163,21 @@ create table if not exists event_checkins (
   checked_in_by integer references accounts(id),
   checked_in_at timestamptz not null default now(),
   unique (member_id)
+);
+
+-- registration desk, on event day: per-member verification (government ID,
+-- bag) plus a GitHub handle collected at the door — one row per member,
+-- updatable (a team walking up incomplete can be completed later without
+-- re-creating the row).
+create table if not exists registration_checkins (
+  member_id integer primary key references team_members(id) on delete cascade,
+  team_id integer not null references teams(id) on delete cascade,
+  github_id text,
+  govt_id_checked boolean not null default false,
+  bag_checked boolean not null default false,
+  notes text,
+  checked_in_by integer references accounts(id),
+  checked_in_at timestamptz not null default now()
 );
 
 -- short admin-authored notices, read by every logged-in role (shown on

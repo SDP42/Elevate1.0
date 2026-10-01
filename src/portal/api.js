@@ -113,3 +113,20 @@ export const adminSaveAnnouncement = (announcement) =>
 
 export const adminSaveAssignment = (coreAccountId, teamIds) =>
   request("/admin", { method: "POST", body: JSON.stringify({ action: "save-assignment", coreAccountId, teamIds }) });
+
+export const adminPsRequests = () => request("/admin?resource=ps-requests");
+
+export const adminApprovePs = (teamId) =>
+  request("/admin", { method: "POST", body: JSON.stringify({ action: "approve-ps", teamId }) });
+
+export const adminRevokePs = (teamId) =>
+  request("/admin", { method: "POST", body: JSON.stringify({ action: "revoke-ps", teamId }) });
+
+export const regideskLookup = (qrPayload) =>
+  request("/regidesk", { method: "POST", body: JSON.stringify({ qrPayload }) });
+
+export const regideskLookupByCode = (teamCode) =>
+  request("/regidesk", { method: "POST", body: JSON.stringify({ action: "lookup-by-code", teamCode }) });
+
+export const regideskSave = (memberId, teamId, details) =>
+  request("/regidesk", { method: "POST", body: JSON.stringify({ action: "save", memberId, teamId, ...details }) });

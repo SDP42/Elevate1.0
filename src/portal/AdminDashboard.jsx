@@ -4,12 +4,15 @@ import RequireRole from "./RequireRole";
 import {
   adminAccounts,
   adminAnnouncements,
+  adminApprovePs,
   adminAssignments,
   adminAudit,
   adminBulkImport,
   adminExport,
   adminMeals,
+  adminPsRequests,
   adminResetPassword,
+  adminRevokePs,
   adminSaveAnnouncement,
   adminSaveAssignment,
   adminSavePs,
@@ -286,6 +289,98 @@ function PsManager({ problemStatements, onSaved }) {
           Add problem statement (hidden)
         </button>
       </form>
+    </section>
+  );
+}
+
+function PsRequestsManager() {
+  const [requests, setRequests] = useState(null);
+  const [error, setError] = useState("");
+  const [busy, setBusy] = useState(null);
+
+  function load() {
+    adminPsRequests()
+      .then((d) => setRequests(d.requests))
+      .catch((err) => setError(err.message));
+  }
+
+  useEffect(load, []);
+
+  async function approve(teamId) {
+    setBusy(teamId);
+    setError("");
+    try {
+      await adminApprovePs(teamId);
+      load();
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  async function revoke(teamId) {
+    setBusy(teamId);
+    try {
+      await adminRevokePs(teamId);
+      load();
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  return (
+    <section className="portal-card">
+      <h3>PS requests</h3>
+      <p className="portal-card__hint">
+        First-come-first-served order within each problem statement. Approving locks that team in and
+        shows the allocation to every team; revoking frees it back up.
+      </p>
+      {error && <p className="portal-auth__error">{error}</p>}
+      {requests && requests.length === 0 && <p>No requests yet.</p>}
+      {requests && requests.length > 0 && (
+        <div className="portal-tableWrap">
+          <table className="portal-table">
+            <thead>
+              <tr>
+                <th>Team</th>
+                <th>Problem statement</th>
+                <th>Requested</th>
+                <th>Status</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              {requests.map((r) => (
+                <tr key={r.teamId}>
+                  <td>{r.teamCode}</td>
+                  <td>
+                    {r.psCode} · {r.psTitle}
+                    {r.capacity !== null && (
+                      <div className="portal-table__sub">
+                        {r.taken}/{r.capacity} approved
+                      </div>
+                    )}
+                  </td>
+                  <td>{new Date(r.requestedAt).toLocaleString()}</td>
+                  <td className="portal-table__role">{r.status}</td>
+                  <td>
+                    {r.status === "approved" ? (
+                      <button type="button" className="portal-logout" onClick={() => revoke(r.teamId)} disabled={busy === r.teamId}>
+                        {busy === r.teamId ? "…" : "Revoke"}
+                      </button>
+                    ) : (
+                      <button type="button" className="portal-auth__submit" onClick={() => approve(r.teamId)} disabled={busy === r.teamId}>
+                        {busy === r.teamId ? "…" : "Approve"}
+                      </button>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
     </section>
   );
 }
@@ -662,6 +757,8 @@ function AdminHome({ session }) {
       <BulkImport onDone={loadAll} />
 
       <PsManager problemStatements={problemStatements} onSaved={loadPs} />
+
+      <PsRequestsManager />
 
       <AnnouncementsManager />
 
