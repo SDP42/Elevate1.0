@@ -77,13 +77,16 @@
 }
 
 .portal-tabs {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
   gap: 0.6rem;
   margin-bottom: 1.6rem;
 }
 
 .portal-tabs__btn {
+  flex: 1 1 calc(50% - 0.3rem);
+  min-width: 9rem;
   padding: 0.7rem 0.8rem;
   border-radius: 10px;
   border: 1px solid var(--line);
