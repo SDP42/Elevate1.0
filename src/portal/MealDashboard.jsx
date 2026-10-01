@@ -1,9 +1,38 @@
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import RequireRole from "./RequireRole";
 import QrScanner from "./QrScanner";
 import { MEAL_SLOTS } from "./mealSlots";
-import { logout, mealLog, mealLookup } from "./api";
+import { logout, mealLog, mealLookup, mealLookupByCode, mealTally } from "./api";
+
+function Tally({ refreshKey }) {
+  const [slots, setSlots] = useState(null);
+
+  useEffect(() => {
+    mealTally()
+      .then((d) => setSlots(d.slots))
+      .catch(() => {});
+  }, [refreshKey]);
+
+  if (!slots) return null;
+
+  return (
+    <section className="portal-card">
+      <h3>Served so far</h3>
+      <p className="portal-card__hint">Across every team, every counter — updates after each confirm.</p>
+      <ul className="portal-tally">
+        {slots.map((s) => (
+          <li key={s.code}>
+            <span>
+              Day {s.dayNo} · {s.label}
+            </span>
+            <strong>{s.served}</strong>
+          </li>
+        ))}
+      </ul>
+    </section>
+  );
+}
 
 function MealHome({ session }) {
   const navigate = useNavigate();
@@ -13,6 +42,9 @@ function MealHome({ session }) {
   const [selected, setSelected] = useState(() => new Set());
   const [error, setError] = useState("");
   const [status, setStatus] = useState("");
+  const [manualCode, setManualCode] = useState("");
+  const [manualBusy, setManualBusy] = useState(false);
+  const [tallyKey, setTallyKey] = useState(0);
   const busyRef = useRef(false);
 
   const onDecode = useCallback(
@@ -34,6 +66,24 @@ function MealHome({ session }) {
     [scanning, slotCode]
   );
 
+  async function lookUpManually(e) {
+    e.preventDefault();
+    if (!manualCode.trim()) return;
+    setManualBusy(true);
+    setError("");
+    try {
+      const data = await mealLookupByCode(manualCode.trim(), slotCode);
+      setResult(data);
+      setSelected(new Set(data.members.filter((m) => !m.alreadyGiven).map((m) => m.id)));
+      setScanning(false);
+      setManualCode("");
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setManualBusy(false);
+    }
+  }
+
   function toggleMember(id) {
     setSelected((prev) => {
       const next = new Set(prev);
@@ -48,6 +98,7 @@ function MealHome({ session }) {
     try {
       await mealLog(result.team.id, slotCode, [...selected]);
       setStatus(`Logged ${result.slot.label} for ${result.team.teamCode} (${selected.size} member${selected.size === 1 ? "" : "s"}).`);
+      setTallyKey((k) => k + 1);
     } catch (err) {
       setError(err.message);
       return;
@@ -102,13 +153,29 @@ function MealHome({ session }) {
         {error && <p className="portal-auth__error">{error}</p>}
 
         {scanning ? (
-          <QrScanner onDecode={onDecode} paused={!scanning} />
+          <>
+            <QrScanner onDecode={onDecode} paused={!scanning} />
+            <form className="portal-manualLookup" onSubmit={lookUpManually}>
+              <span className="portal-manualLookup__label">Camera not working? Look up by team code:</span>
+              <div className="portal-manualLookup__row">
+                <input
+                  value={manualCode}
+                  onChange={(e) => setManualCode(e.target.value)}
+                  placeholder="e.g. T07"
+                />
+                <button type="submit" className="portal-logout" disabled={manualBusy || !manualCode.trim()}>
+                  {manualBusy ? "Looking up…" : "Look up"}
+                </button>
+              </div>
+            </form>
+          </>
         ) : (
           result && (
             <div className="portal-scanResult">
               <h4>
                 {result.team.teamCode} · Seat {result.team.seatNo ?? "—"}
               </h4>
+              {result.team.dietary && <p className="portal-dietaryFlag">⚠ Dietary note: {result.team.dietary}</p>}
               <p className="portal-card__hint">Tick who's actually here for {result.slot.label}.</p>
               <ul className="portal-checklist">
                 {result.members.map((m) => (
@@ -138,6 +205,8 @@ function MealHome({ session }) {
           )
         )}
       </section>
+
+      <Tally refreshKey={tallyKey} />
     </div>
   );
 }

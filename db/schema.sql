@@ -26,6 +26,12 @@ create table if not exists teams (
   created_at timestamptz not null default now()
 );
 
+alter table teams add column if not exists dietary text;
+alter table teams add column if not exists shortlisted boolean not null default false;
+alter table teams add column if not exists submission_url text;
+alter table teams add column if not exists submission_note text;
+alter table teams add column if not exists submitted_at timestamptz;
+
 create table if not exists team_members (
   id serial primary key,
   team_id integer not null references teams(id) on delete cascade,
@@ -75,6 +81,7 @@ create table if not exists marks (
 );
 
 alter table marks add column if not exists criteria jsonb;
+alter table marks add column if not exists feedback text;
 
 -- the 7 meal slots across the two event days.
 create table if not exists meal_slots (
@@ -94,6 +101,58 @@ create table if not exists meal_logs (
   given_by integer references accounts(id),
   given_at timestamptz not null default now(),
   unique (member_id, meal_slot_id)
+);
+
+-- which teams a core account is responsible for judging. A core account
+-- with no rows here sees every team (the default, unassigned state) —
+-- assigning only kicks in once an admin actually narrows someone down.
+create table if not exists core_assignments (
+  core_account_id integer not null references accounts(id) on delete cascade,
+  team_id integer not null references teams(id) on delete cascade,
+  primary key (core_account_id, team_id)
+);
+
+-- Round 1 doesn't carry marks, but core/admin can still leave a
+-- shortlisting note against a team from the online round.
+create table if not exists round1_notes (
+  id serial primary key,
+  team_id integer not null references teams(id) on delete cascade,
+  note text not null,
+  entered_by integer references accounts(id),
+  entered_at timestamptz not null default now()
+);
+
+-- door / venue check-in on event day — separate from meals, one row per
+-- member for the whole event rather than per slot.
+create table if not exists event_checkins (
+  id serial primary key,
+  team_id integer not null references teams(id) on delete cascade,
+  member_id integer not null references team_members(id) on delete cascade,
+  checked_in_by integer references accounts(id),
+  checked_in_at timestamptz not null default now(),
+  unique (member_id)
+);
+
+-- short admin-authored notices, read by every logged-in role (shown on
+-- the team dashboard, but available to any role that wants to check).
+create table if not exists announcements (
+  id serial primary key,
+  message text not null,
+  active boolean not null default true,
+  sort_order integer not null default 0,
+  created_at timestamptz not null default now()
+);
+
+-- a plain trail of who did what, for settling disputes on the day —
+-- written alongside the actions that actually matter (marks, meals,
+-- check-ins, roster/PS/shortlist changes), never read by application
+-- logic itself.
+create table if not exists audit_log (
+  id serial primary key,
+  actor_account_id integer references accounts(id),
+  action text not null,
+  detail jsonb,
+  created_at timestamptz not null default now()
 );
 
 insert into mentoring_rounds (round_no, label, carries_marks) values

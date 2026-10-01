@@ -44,6 +44,10 @@ export default function apiPlugin() {
             res.setHeader("Content-Type", "application/json");
             res.end(JSON.stringify(payload));
           },
+          send(body) {
+            res.statusCode = this.statusCode;
+            res.end(body);
+          },
         };
 
         try {

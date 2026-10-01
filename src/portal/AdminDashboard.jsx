@@ -3,14 +3,45 @@ import { useNavigate } from "react-router-dom";
 import RequireRole from "./RequireRole";
 import {
   adminAccounts,
+  adminAnnouncements,
+  adminAssignments,
+  adminAudit,
+  adminBulkImport,
+  adminExport,
   adminMeals,
+  adminResetPassword,
+  adminSaveAnnouncement,
+  adminSaveAssignment,
   adminSavePs,
   adminSaveTeamMembers,
+  adminSaveTeamNotes,
+  adminSetShortlist,
   adminTeams,
   coreTeams,
   logout,
   psList,
 } from "./api";
+
+function ExportButton({ type }) {
+  const [busy, setBusy] = useState(false);
+  return (
+    <button
+      type="button"
+      className="portal-logout"
+      disabled={busy}
+      onClick={async () => {
+        setBusy(true);
+        try {
+          await adminExport(type);
+        } finally {
+          setBusy(false);
+        }
+      }}
+    >
+      {busy ? "Exporting…" : "Export CSV"}
+    </button>
+  );
+}
 
 function RosterEditor({ team, onSaved }) {
   const [open, setOpen] = useState(false);
@@ -58,6 +89,93 @@ function RosterEditor({ team, onSaved }) {
           Cancel
         </button>
       </div>
+    </div>
+  );
+}
+
+function ShortlistToggle({ team, onChanged }) {
+  const [busy, setBusy] = useState(false);
+  async function toggle() {
+    setBusy(true);
+    try {
+      await adminSetShortlist(team.id, !team.shortlisted);
+      onChanged(team.id, !team.shortlisted);
+    } finally {
+      setBusy(false);
+    }
+  }
+  return (
+    <button type="button" className="portal-logout" onClick={toggle} disabled={busy}>
+      {team.shortlisted ? "Shortlisted ✓" : "Shortlist"}
+    </button>
+  );
+}
+
+function DietaryEditor({ team, onSaved }) {
+  const [open, setOpen] = useState(false);
+  const [value, setValue] = useState(team.dietary || "");
+  const [busy, setBusy] = useState(false);
+
+  async function save() {
+    setBusy(true);
+    try {
+      await adminSaveTeamNotes(team.id, value);
+      onSaved(team.id, value);
+      setOpen(false);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  if (!open) {
+    return (
+      <button type="button" className="portal-logout" onClick={() => setOpen(true)}>
+        {team.dietary ? "Edit dietary" : "Add dietary"}
+      </button>
+    );
+  }
+
+  return (
+    <div className="portal-rosterEditor">
+      <input
+        value={value}
+        onChange={(e) => setValue(e.target.value)}
+        placeholder="e.g. Vegan, 1 member"
+        className="portal-feedbackInput"
+      />
+      <div className="portal-scanResult__actions">
+        <button type="button" className="portal-auth__submit" onClick={save} disabled={busy}>
+          {busy ? "Saving…" : "Save"}
+        </button>
+        <button type="button" className="portal-logout" onClick={() => setOpen(false)}>
+          Cancel
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function ResetPasswordButton({ account }) {
+  const [busy, setBusy] = useState(false);
+  const [result, setResult] = useState(null);
+
+  async function reset() {
+    if (!window.confirm(`Generate a new password for ${account.username}? Their old one stops working immediately.`)) return;
+    setBusy(true);
+    try {
+      const data = await adminResetPassword(account.id);
+      setResult(data.password);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div>
+      <button type="button" className="portal-logout" onClick={reset} disabled={busy}>
+        {busy ? "Resetting…" : "Reset password"}
+      </button>
+      {result && <div className="portal-newPassword">New password: {result}</div>}
     </div>
   );
 }
@@ -172,6 +290,249 @@ function PsManager({ problemStatements, onSaved }) {
   );
 }
 
+function AnnouncementsManager() {
+  const [items, setItems] = useState(null);
+  const [message, setMessage] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+
+  function load() {
+    adminAnnouncements()
+      .then((d) => setItems(d.announcements))
+      .catch((err) => setError(err.message));
+  }
+
+  useEffect(load, []);
+
+  async function add(e) {
+    e.preventDefault();
+    if (!message.trim()) return;
+    setBusy(true);
+    setError("");
+    try {
+      await adminSaveAnnouncement({ message, active: true, sortOrder: items?.length ?? 0 });
+      setMessage("");
+      load();
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function toggleActive(a) {
+    await adminSaveAnnouncement({ id: a.id, message: a.message, active: !a.active, sortOrder: a.sortOrder });
+    load();
+  }
+
+  return (
+    <section className="portal-card">
+      <h3>Announcements</h3>
+      <p className="portal-card__hint">Shown to every logged-in team at the top of their dashboard, while active.</p>
+
+      {error && <p className="portal-auth__error">{error}</p>}
+
+      {items && items.length > 0 && (
+        <ul className="portal-announceAdmin">
+          {items.map((a) => (
+            <li key={a.id} className={a.active ? undefined : "is-inactive"}>
+              <span>{a.message}</span>
+              <button type="button" className="portal-logout" onClick={() => toggleActive(a)}>
+                {a.active ? "Deactivate" : "Activate"}
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+
+      <form className="portal-manualLookup__row portal-u-mt" onSubmit={add}>
+        <input value={message} onChange={(e) => setMessage(e.target.value)} placeholder="New announcement" />
+        <button type="submit" className="portal-auth__submit" disabled={busy || !message.trim()}>
+          Add
+        </button>
+      </form>
+    </section>
+  );
+}
+
+function AssignmentsManager({ teams }) {
+  const [cores, setCores] = useState(null);
+  const [editing, setEditing] = useState(null);
+  const [draft, setDraft] = useState(new Set());
+  const [busy, setBusy] = useState(false);
+
+  function load() {
+    adminAssignments()
+      .then((d) => setCores(d.cores))
+      .catch(() => {});
+  }
+
+  useEffect(load, []);
+
+  function startEdit(core) {
+    setEditing(core.id);
+    setDraft(new Set(core.teamIds));
+  }
+
+  function toggleTeam(id) {
+    setDraft((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+
+  async function save(coreAccountId) {
+    setBusy(true);
+    try {
+      await adminSaveAssignment(coreAccountId, [...draft]);
+      setEditing(null);
+      load();
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <section className="portal-card">
+      <h3>Core assignments</h3>
+      <p className="portal-card__hint">
+        Narrow which teams a core account judges. Leave a core with no teams picked and they see
+        every team — that's the default.
+      </p>
+
+      {cores && (
+        <ul className="portal-assignList">
+          {cores.map((c) => (
+            <li key={c.id}>
+              <div className="portal-assignList__head">
+                <strong>{c.username}</strong>
+                <span>{c.teamIds.length === 0 ? "sees all teams" : `${c.teamIds.length} team(s) assigned`}</span>
+                {editing === c.id ? (
+                  <button type="button" className="portal-logout" onClick={() => save(c.id)} disabled={busy}>
+                    {busy ? "Saving…" : "Save"}
+                  </button>
+                ) : (
+                  <button type="button" className="portal-logout" onClick={() => startEdit(c)}>
+                    Edit
+                  </button>
+                )}
+              </div>
+              {editing === c.id && teams && (
+                <div className="portal-assignList__teams">
+                  {teams.map((t) => (
+                    <label key={t.id}>
+                      <input type="checkbox" checked={draft.has(t.id)} onChange={() => toggleTeam(t.id)} />
+                      {t.teamCode}
+                    </label>
+                  ))}
+                </div>
+              )}
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
+  );
+}
+
+function AuditLog() {
+  const [entries, setEntries] = useState(null);
+
+  useEffect(() => {
+    adminAudit()
+      .then((d) => setEntries(d.entries))
+      .catch(() => {});
+  }, []);
+
+  return (
+    <section className="portal-card">
+      <h3>Audit log</h3>
+      <p className="portal-card__hint">Who did what, most recent first — for settling disputes on the day.</p>
+      {entries && (
+        <div className="portal-tableWrap">
+          <table className="portal-table">
+            <thead>
+              <tr>
+                <th>When</th>
+                <th>Who</th>
+                <th>Action</th>
+                <th>Detail</th>
+              </tr>
+            </thead>
+            <tbody>
+              {entries.map((e) => (
+                <tr key={e.id}>
+                  <td>{new Date(e.createdAt).toLocaleString()}</td>
+                  <td>{e.username ? `${e.username} (${e.role})` : "—"}</td>
+                  <td>{e.action}</td>
+                  <td className="portal-table__note">{e.detail ? JSON.stringify(e.detail) : ""}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </section>
+  );
+}
+
+function BulkImport({ onDone }) {
+  const [csvText, setCsvText] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [results, setResults] = useState(null);
+  const [error, setError] = useState("");
+
+  async function run(e) {
+    e.preventDefault();
+    if (!csvText.trim()) return;
+    setBusy(true);
+    setError("");
+    try {
+      const data = await adminBulkImport(csvText);
+      setResults(data.results);
+      onDone();
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <section className="portal-card">
+      <h3>Bulk roster import</h3>
+      <p className="portal-card__hint">
+        One team per line: <code>team_code,name1,name2,name3,name4</code> (2 to 4 names). Replaces
+        each team's roster wholesale — same as editing them one by one, just all at once.
+      </p>
+      {error && <p className="portal-auth__error">{error}</p>}
+      <form className="portal-auth__form" onSubmit={run}>
+        <textarea
+          rows={5}
+          value={csvText}
+          onChange={(e) => setCsvText(e.target.value)}
+          placeholder={"T1,Asha Rao,Vikram Shah,Dev Patel\nT2,..."}
+          className="portal-bulkTextarea"
+        />
+        <button className="portal-auth__submit" type="submit" disabled={busy || !csvText.trim()}>
+          {busy ? "Importing…" : "Import"}
+        </button>
+      </form>
+      {results && (
+        <ul className="portal-importResults">
+          {results.map((r, i) => (
+            <li key={i} className={r.ok ? "is-ok" : "is-error"}>
+              {r.teamCode}: {r.ok ? "updated" : r.error}
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
+  );
+}
+
 function AdminHome({ session }) {
   const navigate = useNavigate();
   const [teams, setTeams] = useState(null);
@@ -187,7 +548,7 @@ function AdminHome({ session }) {
       .catch((err) => setError(err.message));
   }
 
-  useEffect(() => {
+  function loadAll() {
     Promise.all([adminTeams(), adminAccounts(), coreTeams(), adminMeals()])
       .then(([t, a, m, meal]) => {
         setTeams(t.teams);
@@ -196,6 +557,10 @@ function AdminHome({ session }) {
         setMeals(meal.slots);
       })
       .catch((err) => setError(err.message));
+  }
+
+  useEffect(() => {
+    loadAll();
     loadPs();
   }, []);
 
@@ -207,6 +572,14 @@ function AdminHome({ session }) {
           : t
       )
     );
+  }
+
+  function onShortlistChanged(teamId, shortlisted) {
+    setTeams((prev) => prev.map((t) => (t.id === teamId ? { ...t, shortlisted } : t)));
+  }
+
+  function onDietarySaved(teamId, dietary) {
+    setTeams((prev) => prev.map((t) => (t.id === teamId ? { ...t, dietary } : t)));
   }
 
   async function onLogout() {
@@ -229,10 +602,13 @@ function AdminHome({ session }) {
       {error && <p className="portal-auth__error">{error}</p>}
 
       <section className="portal-card">
-        <h3>Teams ({teams?.length ?? "…"})</h3>
+        <div className="portal-card__headRow">
+          <h3>Teams ({teams?.length ?? "…"})</h3>
+          <ExportButton type="teams" />
+        </div>
         <p className="portal-card__hint">
           This is the whole teams table, straight from the database — the login a team was given,
-          their seat, and everyone on their roster.
+          their seat, roster, shortlist status, dietary notes and submission.
         </p>
         {teams && (
           <div className="portal-tableWrap">
@@ -243,6 +619,9 @@ function AdminHome({ session }) {
                   <th>Seat</th>
                   <th>Username</th>
                   <th>Members</th>
+                  <th>Submission</th>
+                  <th></th>
+                  <th></th>
                   <th></th>
                 </tr>
               </thead>
@@ -253,6 +632,22 @@ function AdminHome({ session }) {
                     <td>{t.seatNo ?? "—"}</td>
                     <td>{t.username}</td>
                     <td>{t.members.map((m) => m.name).join(", ")}</td>
+                    <td className="portal-table__note">
+                      {t.submissionUrl ? (
+                        <a href={t.submissionUrl} target="_blank" rel="noopener noreferrer">
+                          link
+                        </a>
+                      ) : (
+                        "—"
+                      )}
+                    </td>
+                    <td>
+                      <ShortlistToggle team={t} onChanged={onShortlistChanged} />
+                    </td>
+                    <td>
+                      <DietaryEditor team={t} onSaved={onDietarySaved} />
+                      {t.dietary && <div className="portal-table__note">{t.dietary}</div>}
+                    </td>
                     <td>
                       <RosterEditor team={t} onSaved={onRosterSaved} />
                     </td>
@@ -264,11 +659,17 @@ function AdminHome({ session }) {
         )}
       </section>
 
+      <BulkImport onDone={loadAll} />
+
       <PsManager problemStatements={problemStatements} onSaved={loadPs} />
+
+      <AnnouncementsManager />
+
+      <AssignmentsManager teams={teams} />
 
       <section className="portal-card">
         <h3>Staff accounts ({accounts?.length ?? "…"})</h3>
-        <p className="portal-card__hint">Core, meal and admin logins. Passwords aren't stored anywhere retrievable — only the sheet from setup has them.</p>
+        <p className="portal-card__hint">Core, meal and admin logins. Passwords aren't stored anywhere retrievable — reset generates a fresh one.</p>
         {accounts && (
           <div className="portal-tableWrap">
             <table className="portal-table">
@@ -277,6 +678,7 @@ function AdminHome({ session }) {
                   <th>Role</th>
                   <th>Username</th>
                   <th>Name</th>
+                  <th></th>
                 </tr>
               </thead>
               <tbody>
@@ -285,6 +687,9 @@ function AdminHome({ session }) {
                     <td className="portal-table__role">{a.role}</td>
                     <td>{a.username}</td>
                     <td>{a.display_name}</td>
+                    <td>
+                      <ResetPasswordButton account={a} />
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -294,7 +699,10 @@ function AdminHome({ session }) {
       </section>
 
       <section className="portal-card">
-        <h3>Round 2 marks</h3>
+        <div className="portal-card__headRow">
+          <h3>Round 2 marks</h3>
+          <ExportButton type="marks" />
+        </div>
         <p className="portal-card__hint">Same data core enters — mirrored here so admin never needs a separate report.</p>
         {marksTeams && (
           <div className="portal-tableWrap">
@@ -319,7 +727,10 @@ function AdminHome({ session }) {
       </section>
 
       <section className="portal-card">
-        <h3>Meals served</h3>
+        <div className="portal-card__headRow">
+          <h3>Meals served</h3>
+          <ExportButton type="meals" />
+        </div>
         <p className="portal-card__hint">Members served so far at each slot, across every team.</p>
         {meals && (
           <div className="portal-tableWrap">
@@ -344,6 +755,8 @@ function AdminHome({ session }) {
           </div>
         )}
       </section>
+
+      <AuditLog />
     </div>
   );
 }

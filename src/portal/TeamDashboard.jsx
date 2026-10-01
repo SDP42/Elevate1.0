@@ -2,9 +2,62 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import QRCode from "qrcode";
 import RequireRole from "./RequireRole";
-import { EVENT } from "../config";
+import { EVENT, EVENT_START } from "../config";
+import { CRITERIA } from "../../shared/criteria.js";
 import useHeroCloud from "./useHeroCloud";
-import { leaderboard, logout, psList, selectPs } from "./api";
+import { leaderboard, logout, psList, selectPs, submitProject } from "./api";
+
+/* Days/hours/minutes/seconds to a target — the same mechanic as the
+   marketing site's own "Gates open in" timer (src/components/BoardingPass),
+   reused here so the portal always agrees with the public site about how
+   much time is left. */
+function useCountdown(target) {
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    const id = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(id);
+  }, []);
+  const left = Math.max(target.getTime() - now, 0);
+  return {
+    done: left === 0,
+    parts: [
+      ["Days", Math.floor(left / 86400000)],
+      ["Hrs", Math.floor((left % 86400000) / 3600000)],
+      ["Min", Math.floor((left % 3600000) / 60000)],
+      ["Sec", Math.floor((left % 60000) / 1000)],
+    ],
+  };
+}
+
+function Countdown() {
+  const countdown = useCountdown(EVENT_START);
+  return (
+    <section className="portal-countdown">
+      <span className="portal-countdown__label">
+        {countdown.done ? "Gates are open" : "Gates open in"}
+      </span>
+      <div className="portal-countdown__parts">
+        {countdown.parts.map(([label, value]) => (
+          <div key={label}>
+            <strong>{String(value).padStart(2, "0")}</strong>
+            <span>{label}</span>
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function Announcements({ messages }) {
+  if (!messages || messages.length === 0) return null;
+  return (
+    <div className="portal-announce">
+      {messages.map((m, i) => (
+        <p key={i}>📣 {m}</p>
+      ))}
+    </div>
+  );
+}
 
 const LightbulbIcon = () => (
   <svg className="portal-card__icon" viewBox="0 0 24 24" fill="none" aria-hidden="true">
@@ -195,6 +248,128 @@ function ProblemStatement({ data, error, picking, onPick }) {
   );
 }
 
+const SubmitIcon = () => (
+  <svg className="portal-card__icon" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+    <path
+      d="M12 16V4m0 0 4 4m-4-4-4 4M4 16v3a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-3"
+      stroke="currentColor"
+      strokeWidth="1.6"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+  </svg>
+);
+
+const FeedbackIcon = () => (
+  <svg className="portal-card__icon" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+    <path
+      d="M21 11.5a8.4 8.4 0 0 1-8.5 8.5 8.7 8.7 0 0 1-3.5-.73L3 21l1.73-6A8.4 8.4 0 0 1 4 11.5 8.4 8.4 0 0 1 12.5 3 8.4 8.4 0 0 1 21 11.5Z"
+      stroke="currentColor"
+      strokeWidth="1.6"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+  </svg>
+);
+
+function ProjectSubmission({ team }) {
+  const [url, setUrl] = useState(team?.submission_url || "");
+  const [note, setNote] = useState(team?.submission_note || "");
+  const [busy, setBusy] = useState(false);
+  const [saved, setSaved] = useState(false);
+  const [error, setError] = useState("");
+
+  async function save(e) {
+    e.preventDefault();
+    if (!url.trim()) return;
+    setBusy(true);
+    setError("");
+    try {
+      await submitProject(url.trim(), note.trim());
+      setSaved(true);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <section className="portal-card">
+      <h3>
+        <SubmitIcon />
+        Submission
+      </h3>
+      <p className="portal-card__hint">
+        A repo link, deployed URL, or deck — whatever best shows your work. You can update this any
+        time before the deadline; saving again just replaces the last one.
+      </p>
+
+      <form className="portal-auth__form" onSubmit={save}>
+        <label className="portal-field">
+          <span>Link</span>
+          <input
+            value={url}
+            onChange={(e) => {
+              setUrl(e.target.value);
+              setSaved(false);
+            }}
+            placeholder="https://github.com/your-team/project"
+            type="url"
+            required
+          />
+        </label>
+        <label className="portal-field">
+          <span>Note (optional)</span>
+          <input
+            value={note}
+            onChange={(e) => {
+              setNote(e.target.value);
+              setSaved(false);
+            }}
+            placeholder="Anything the judges should know"
+          />
+        </label>
+        {error && <p className="portal-auth__error">{error}</p>}
+        <button className="portal-auth__submit" type="submit" disabled={busy}>
+          {busy ? "Saving…" : saved ? "Saved ✓" : team?.submission_url ? "Update submission" : "Submit"}
+        </button>
+        {team?.submitted_at && (
+          <p className="portal-submission__saved">Last saved {new Date(team.submitted_at).toLocaleString()}</p>
+        )}
+      </form>
+    </section>
+  );
+}
+
+function MentorFeedback({ team }) {
+  if (!team || team.score === null || team.score === undefined) return null;
+  return (
+    <section className="portal-card">
+      <h3>
+        <FeedbackIcon />
+        Mentor feedback
+      </h3>
+      <p className="portal-card__hint">Your Round 2 breakdown, straight from the judging rubric.</p>
+      <ul className="portal-criteriaBreakdown">
+        {CRITERIA.map((c) => (
+          <li key={c.key}>
+            <span>{c.label}</span>
+            <strong>
+              {team.criteria?.[c.key] ?? "—"}/{c.max}
+            </strong>
+          </li>
+        ))}
+        <li className="portal-criteriaBreakdown__total">
+          <span>Total</span>
+          <strong>{team.score}</strong>
+        </li>
+      </ul>
+      {team.feedback && <p className="portal-feedbackNote">“{team.feedback}”</p>}
+    </section>
+  );
+}
+
 function Leaderboard({ ownTeamCode }) {
   const [rows, setRows] = useState(null);
   const [error, setError] = useState("");
@@ -290,9 +465,16 @@ function TeamHome({ session }) {
         </button>
       </div>
 
+      <Announcements messages={session.announcements} />
+      <Countdown />
+
       {session.team && <Ticket team={session.team} psTitle={selectedPsTitle} />}
 
       <ProblemStatement data={psData} error={psError} picking={picking} onPick={onPick} />
+
+      <ProjectSubmission team={session.team} />
+
+      <MentorFeedback team={session.team} />
 
       <Leaderboard ownTeamCode={session.team?.team_code} />
     </div>
