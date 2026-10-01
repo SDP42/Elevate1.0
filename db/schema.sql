@@ -166,19 +166,21 @@ create table if not exists event_checkins (
 );
 
 -- registration desk, on event day: per-member verification (government ID,
--- bag) plus a GitHub handle collected at the door — one row per member,
--- updatable (a team walking up incomplete can be completed later without
--- re-creating the row).
+-- bag, ideation kit) plus a GitHub handle collected at the door — one row
+-- per member, updatable (a team walking up incomplete can be completed
+-- later without re-creating the row).
 create table if not exists registration_checkins (
   member_id integer primary key references team_members(id) on delete cascade,
   team_id integer not null references teams(id) on delete cascade,
   github_id text,
   govt_id_checked boolean not null default false,
   bag_checked boolean not null default false,
+  kit_checked boolean not null default false,
   notes text,
   checked_in_by integer references accounts(id),
   checked_in_at timestamptz not null default now()
 );
+alter table registration_checkins add column if not exists kit_checked boolean not null default false;
 
 -- short admin-authored notices, read by every logged-in role (shown on
 -- the team dashboard, but available to any role that wants to check).

@@ -8,6 +8,7 @@ function MemberRow({ member, teamId, onSaved }) {
   const [githubId, setGithubId] = useState(member.githubId);
   const [govtIdChecked, setGovtIdChecked] = useState(member.govtIdChecked);
   const [bagChecked, setBagChecked] = useState(member.bagChecked);
+  const [kitChecked, setKitChecked] = useState(member.kitChecked);
   const [notes, setNotes] = useState(member.notes);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -16,9 +17,9 @@ function MemberRow({ member, teamId, onSaved }) {
     setSaving(true);
     setSaved(false);
     try {
-      await regideskSave(member.id, teamId, { githubId, govtIdChecked, bagChecked, notes });
+      await regideskSave(member.id, teamId, { githubId, govtIdChecked, bagChecked, kitChecked, notes });
       setSaved(true);
-      onSaved(member.id, { githubId, govtIdChecked, bagChecked, notes });
+      onSaved(member.id, { githubId, govtIdChecked, bagChecked, kitChecked, notes });
     } finally {
       setSaving(false);
     }
@@ -62,6 +63,17 @@ function MemberRow({ member, teamId, onSaved }) {
           }}
         />
         Bag checked
+      </label>
+      <label className="portal-regiRow__check">
+        <input
+          type="checkbox"
+          checked={kitChecked}
+          onChange={(e) => {
+            setKitChecked(e.target.checked);
+            setSaved(false);
+          }}
+        />
+        Kit given (notebook, pen, folder)
       </label>
       <label className="portal-regiRow__field">
         <span>Notes</span>
@@ -158,7 +170,7 @@ function RegiDeskHome({ session }) {
         <h3>Check in a team</h3>
         <p className="portal-card__hint">
           Scan the team's boarding pass, then record each member's GitHub ID, government ID check,
-          and bag check as they arrive.
+          bag check, and ideation kit (notebook, pen, folder) as they arrive.
         </p>
 
         {error && <p className="portal-auth__error">{error}</p>}

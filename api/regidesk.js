@@ -6,8 +6,9 @@ const QR_PREFIX = "ELEVATE1:";
 
 /* Registration desk (and admin) only: scan a team's boarding pass on
    arrival, then record per-member details — GitHub handle, government ID
-   checked, bag checked, any note — one row per member, updatable (a team
-   that shows up incomplete can be finished later without starting over).
+   checked, bag checked, ideation kit (notebook, pen, folder) handed over,
+   any note — one row per member, updatable (a team that shows up
+   incomplete can be finished later without starting over).
    POST {action: "save", ...} saves one member's details; anything else
    (the default) is the lookup. */
 async function handler(req, res) {
@@ -24,7 +25,7 @@ async function handler(req, res) {
 async function membersFor(team) {
   return sql`
     select tm.id, tm.name, tm.is_lead,
-      rc.github_id, rc.govt_id_checked, rc.bag_checked, rc.notes
+      rc.github_id, rc.govt_id_checked, rc.bag_checked, rc.kit_checked, rc.notes
     from team_members tm
     left join registration_checkins rc on rc.member_id = tm.id
     where tm.team_id = ${team.id}
@@ -42,6 +43,7 @@ function respond(res, team, members) {
       githubId: m.github_id || "",
       govtIdChecked: m.govt_id_checked || false,
       bagChecked: m.bag_checked || false,
+      kitChecked: m.kit_checked || false,
       notes: m.notes || "",
     })),
   });
@@ -84,7 +86,7 @@ async function lookupByCode(req, res) {
 
 /* one member's registration-desk details, upserted */
 async function save(req, res) {
-  const { memberId, teamId, githubId, govtIdChecked, bagChecked, notes } = req.body || {};
+  const { memberId, teamId, githubId, govtIdChecked, bagChecked, kitChecked, notes } = req.body || {};
   if (!memberId || !teamId) {
     res.status(400).json({ error: "memberId and teamId are required" });
     return;
@@ -99,12 +101,13 @@ async function save(req, res) {
   }
 
   await sql`
-    insert into registration_checkins (member_id, team_id, github_id, govt_id_checked, bag_checked, notes, checked_in_by)
-    values (${memberId}, ${teamId}, ${githubId || null}, ${Boolean(govtIdChecked)}, ${Boolean(bagChecked)}, ${notes || null}, ${req.session.accountId})
+    insert into registration_checkins (member_id, team_id, github_id, govt_id_checked, bag_checked, kit_checked, notes, checked_in_by)
+    values (${memberId}, ${teamId}, ${githubId || null}, ${Boolean(govtIdChecked)}, ${Boolean(bagChecked)}, ${Boolean(kitChecked)}, ${notes || null}, ${req.session.accountId})
     on conflict (member_id) do update set
       github_id = excluded.github_id,
       govt_id_checked = excluded.govt_id_checked,
       bag_checked = excluded.bag_checked,
+      kit_checked = excluded.kit_checked,
       notes = excluded.notes,
       checked_in_by = excluded.checked_in_by,
       checked_in_at = now()
