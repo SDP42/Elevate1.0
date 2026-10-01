@@ -13,17 +13,33 @@
 }
 
 .portal-auth {
+  position: relative;
   min-height: 100vh;
   display: grid;
   place-items: center;
-  background: var(--bg);
+  overflow: hidden;
+  background: linear-gradient(180deg, #050403 0%, #0f2c47 45%, #1d5489 100%);
   padding: 1.5rem;
   font-family: var(--font-body);
 }
 
+.portal-auth__cloud {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  opacity: 0.55;
+  pointer-events: none;
+}
+
 .portal-auth__card {
+  position: relative;
+  z-index: 1;
   width: min(100%, 30rem);
-  background: var(--bg-alt);
+  background: rgba(18, 17, 16, 0.86);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
   border: 1px solid var(--line);
   border-radius: 20px;
   padding: 2.6rem;
@@ -207,11 +223,21 @@
 }
 
 .portal-card h3 {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
   margin: 0 0 0.8rem;
   font-family: var(--font-display);
   font-size: 1.25rem;
   font-weight: 600;
   letter-spacing: 0.01em;
+  color: var(--gold);
+}
+
+.portal-card__icon {
+  width: 1.3rem;
+  height: 1.3rem;
+  flex: none;
   color: var(--gold);
 }
 
@@ -227,13 +253,35 @@
 }
 
 /* ---------- boarding pass (ticket) ---------- */
+/* the ticket sits on the same painted cloud sea as the marketing site's
+   own boarding pass, not a flat panel — a little sky behind the one piece
+   of the portal that's meant to feel like a keepsake, not a form */
+.ticket-stage {
+  position: relative;
+  overflow: hidden;
+  border-radius: 18px;
+  padding: clamp(1.5rem, 4vw, 3rem) clamp(1rem, 3vw, 2rem);
+  margin-bottom: 1.6rem;
+  background: linear-gradient(180deg, #0f2c47 0%, #1d5489 45%, #3f86c6 100%);
+}
+
+.ticket-stage__cloud {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  opacity: 0.8;
+  pointer-events: none;
+}
+
 .ticket {
   --ink: #0b1b3a;
   --notch: 16px;
   --qr-w: clamp(140px, 22%, 190px);
+  position: relative;
   display: flex;
-  margin-bottom: 1.4rem;
-  filter: drop-shadow(0 20px 40px rgba(6, 22, 44, 0.35));
+  filter: drop-shadow(0 20px 40px rgba(6, 22, 44, 0.45));
 }
 
 .ticket__body {
@@ -362,6 +410,27 @@
   font-size: 0.85rem;
   font-weight: 700;
   white-space: nowrap;
+}
+
+.ticket__ps {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+  padding: 0.6rem 0.8rem;
+  border-radius: 8px;
+  background: rgba(201, 168, 106, 0.1);
+  font-size: 0.85rem;
+}
+
+.ticket__ps span {
+  color: #8a92a6;
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.ticket__ps strong {
+  color: var(--ink);
 }
 
 .ticket__passengers {

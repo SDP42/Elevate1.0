@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { login } from "./api";
+import useHeroCloud from "./useHeroCloud";
 
 const TABS = [
   { key: "team", label: "Team login" },
@@ -27,6 +28,7 @@ export default function Login() {
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   const navigate = useNavigate();
+  const cloudUrl = useHeroCloud();
 
   async function onSubmit(e) {
     e.preventDefault();
@@ -44,6 +46,7 @@ export default function Login() {
 
   return (
     <div className="portal-auth">
+      {cloudUrl && <img className="portal-auth__cloud" src={cloudUrl} alt="" aria-hidden="true" />}
       <div className="portal-auth__card">
         <a className="portal-auth__back" href="/">
           ← Elevate 1.0
