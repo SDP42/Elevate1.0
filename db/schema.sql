@@ -64,11 +64,17 @@ create table if not exists marks (
   id serial primary key,
   team_id integer not null references teams(id) on delete cascade,
   round_id integer not null references mentoring_rounds(id),
-  score numeric not null,
+  score numeric not null,          -- the total — sum of criteria, kept as
+                                    -- its own column so the leaderboard and
+                                    -- older code never need to know the
+                                    -- rubric shape
+  criteria jsonb,                  -- { "innovation": 20, "technical": 22, ... } — see shared/criteria.js
   entered_by integer references accounts(id),
   entered_at timestamptz not null default now(),
   unique (team_id, round_id)
 );
+
+alter table marks add column if not exists criteria jsonb;
 
 -- the 7 meal slots across the two event days.
 create table if not exists meal_slots (

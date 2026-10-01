@@ -594,6 +594,14 @@
   font-size: 0.75rem;
 }
 
+.portal-checklist li.is-served label {
+  opacity: 0.55;
+}
+
+.portal-checklist input:disabled {
+  cursor: not-allowed;
+}
+
 .portal-scanResult__actions {
   display: flex;
   gap: 0.7rem;
@@ -607,8 +615,8 @@
 
 /* ---------- marks + leaderboard ---------- */
 .portal-marksInput {
-  width: 5rem;
-  padding: 0.4rem 0.55rem;
+  width: 4.2rem;
+  padding: 0.4rem 0.5rem;
   border-radius: 8px;
   border: 1px solid var(--line);
   background: var(--bg);
@@ -616,8 +624,76 @@
   font-family: inherit;
 }
 
+.portal-marksTotal {
+  font-family: var(--font-display);
+  font-weight: 700;
+  color: var(--gold);
+}
+
+.portal-marksError {
+  margin-top: 0.3rem;
+  max-width: 10rem;
+  white-space: normal;
+  font-size: 0.72rem;
+  color: #f29a86;
+}
+
+.portal-table__sub {
+  font-size: 0.62rem;
+  color: var(--cream-dim);
+  text-transform: none;
+  letter-spacing: normal;
+  font-weight: 500;
+}
+
+.portal-card__headRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 0.8rem;
+}
+
+.portal-card__headRow h3 {
+  margin: 0;
+}
+
 .portal-table__own {
   background: rgba(201, 168, 106, 0.1);
+}
+
+/* ---------- print backup ---------- */
+.portal-print-table {
+  display: none;
+}
+
+@media print {
+  .portal-page {
+    background: #fff;
+    color: #111;
+    max-width: none;
+    padding: 0;
+  }
+  .portal-no-print {
+    display: none !important;
+  }
+  .portal-print-table {
+    display: table;
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 11pt;
+  }
+  .portal-print-table caption {
+    text-align: left;
+    font-weight: 700;
+    margin-bottom: 0.6rem;
+  }
+  .portal-print-table th,
+  .portal-print-table td {
+    border: 1px solid #999;
+    padding: 0.35rem 0.5rem;
+    text-align: left;
+  }
 }
 
 /* ---------- problem statements ---------- */

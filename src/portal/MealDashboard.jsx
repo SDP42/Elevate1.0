@@ -112,11 +112,12 @@ function MealHome({ session }) {
               <p className="portal-card__hint">Tick who's actually here for {result.slot.label}.</p>
               <ul className="portal-checklist">
                 {result.members.map((m) => (
-                  <li key={m.id}>
+                  <li key={m.id} className={m.alreadyGiven ? "is-served" : undefined}>
                     <label>
                       <input
                         type="checkbox"
                         checked={selected.has(m.id)}
+                        disabled={m.alreadyGiven}
                         onChange={() => toggleMember(m.id)}
                       />
                       {m.name}

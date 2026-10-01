@@ -40,8 +40,8 @@ export const mealLog = (teamId, mealSlotCode, memberIds) =>
 
 export const coreTeams = () => request("/core");
 
-export const coreSubmitMark = (teamId, score) =>
-  request("/core", { method: "POST", body: JSON.stringify({ teamId, score }) });
+export const coreSubmitMark = (teamId, criteria) =>
+  request("/core", { method: "POST", body: JSON.stringify({ teamId, criteria }) });
 
 export const leaderboard = () => request("/leaderboard");
 
