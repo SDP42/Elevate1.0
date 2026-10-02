@@ -37,6 +37,7 @@ async function handler(req, res) {
     const { action } = req.body || {};
     if (action === "save-ps") return savePs(req, res);
     if (action === "save-team-members") return saveTeamMembers(req, res);
+    if (action === "save-team-name") return saveTeamName(req, res);
     if (action === "set-shortlist") return setShortlist(req, res);
     if (action === "save-team-notes") return saveTeamNotes(req, res);
     if (action === "bulk-import") return bulkImport(req, res);
@@ -146,7 +147,7 @@ async function getTeams(req, res) {
   const teams = await sql`
     select t.id, t.team_code, t.seat_no, t.dietary, t.shortlisted, t.withdrawn,
       t.submission_url, t.submission_note, t.submitted_at,
-      a.display_name, a.username
+      a.id as account_id, a.display_name, a.username
     from teams t
     join accounts a on a.id = t.account_id
     order by t.id asc
@@ -175,6 +176,7 @@ async function getTeams(req, res) {
       submissionUrl: t.submission_url,
       submissionNote: t.submission_note,
       submittedAt: t.submitted_at,
+      accountId: t.account_id,
       displayName: t.display_name,
       username: t.username,
       members: byTeam.get(t.id) || [],
@@ -473,6 +475,28 @@ async function saveTeamMembers(req, res) {
   res.status(200).json({ ok: true });
 }
 
+/* rename a team's own display name (e.g. "Team 1" → their real chosen
+   name once finalised) — touches accounts.display_name only, never the
+   username, password, or qr_token, so nothing they've already been
+   given (login, boarding pass) needs reissuing */
+async function saveTeamName(req, res) {
+  const { accountId, displayName } = req.body || {};
+  if (!accountId || !displayName || !displayName.trim()) {
+    res.status(400).json({ error: "accountId and displayName are required" });
+    return;
+  }
+  const rows = await sql`
+    update accounts set display_name = ${displayName.trim()} where id = ${accountId} and role = 'team'
+    returning id
+  `;
+  if (!rows[0]) {
+    res.status(404).json({ error: "No team account with that id" });
+    return;
+  }
+  await logAction(req.session.accountId, "team.rename", { accountId });
+  res.status(200).json({ ok: true });
+}
+
 /* mark which teams are the official Round 2 shortlist */
 async function setShortlist(req, res) {
   const { teamId, shortlisted } = req.body || {};
@@ -563,6 +587,9 @@ async function resetPassword(req, res) {
     res.status(404).json({ error: "No such account" });
     return;
   }
+  // a fresh password should actually let them back in — clear any lockout
+  // from attempts against the old one
+  await sql`delete from login_attempts where username = ${rows[0].username}`;
   await logAction(req.session.accountId, "account.reset_password", { accountId });
   res.status(200).json({ ok: true, username: rows[0].username, password });
 }

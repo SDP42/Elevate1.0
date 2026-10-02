@@ -74,11 +74,12 @@ async function lookup(req, res) {
     return;
   }
 
-  const qrToken = qrPayload.startsWith(QR_PREFIX) ? qrPayload.slice(QR_PREFIX.length) : qrPayload;
+  const trimmed = qrPayload.trim();
+  const qrToken = trimmed.startsWith(QR_PREFIX) ? trimmed.slice(QR_PREFIX.length) : trimmed;
   const teamRows = await sql`select id, team_code, seat_no, dietary from teams where qr_token = ${qrToken}`;
   const team = teamRows[0];
   if (!team) {
-    res.status(404).json({ error: "No team matches this QR code" });
+    res.status(404).json({ error: `No team matches this QR code (scanned: "${trimmed.slice(0, 60)}")` });
     return;
   }
 

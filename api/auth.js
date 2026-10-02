@@ -72,26 +72,58 @@ async function submitProject(req, res) {
   res.status(200).json({ ok: true });
 }
 
+const LOGIN_ATTEMPT_LIMIT = 8;
+const LOGIN_ATTEMPT_WINDOW_MINUTES = 15;
+
+/* how many failed attempts this username has racked up in the last
+   LOGIN_ATTEMPT_WINDOW_MINUTES — also sweeps anything older than that
+   window so the table never accumulates stale rows */
+async function recentFailedAttempts(username) {
+  await sql`delete from login_attempts where attempted_at < now() - interval '1 hour'`;
+  const rows = await sql`
+    select count(*) as n from login_attempts
+    where username = ${username} and attempted_at > now() - make_interval(mins => ${LOGIN_ATTEMPT_WINDOW_MINUTES})
+  `;
+  return Number(rows[0].n);
+}
+
 async function login(req, res) {
   const { username, password } = req.body || {};
   if (!username || !password) {
     res.status(400).json({ error: "Username and password are required" });
     return;
   }
+  const cleanUsername = username.trim().toLowerCase();
+
+  // locked out after too many wrong passwords in a row, for a short
+  // cooldown — the account itself is never disabled, just slowed down
+  const failures = await recentFailedAttempts(cleanUsername);
+  if (failures >= LOGIN_ATTEMPT_LIMIT) {
+    res.status(429).json({
+      error: `Too many failed attempts. Try again in a few minutes, or ask admin to reset the password.`,
+    });
+    return;
+  }
 
   const rows = await sql`
     select id, username, password_hash, role, display_name
     from accounts
-    where username = ${username.trim().toLowerCase()}
+    where username = ${cleanUsername}
   `;
   const account = rows[0];
 
   // Same response whether the username doesn't exist or the password is
   // wrong, so a login attempt can't be used to fish for valid usernames.
   if (!account || !(await bcrypt.compare(password, account.password_hash))) {
+    await sql`insert into login_attempts (username) values (${cleanUsername})`;
+    await logAction(null, "auth.login_failed", { username: cleanUsername });
     res.status(401).json({ error: "Incorrect username or password" });
     return;
   }
+
+  // a clean login clears this account's slate — no reason to keep
+  // counting against someone who just proved they know the password
+  await sql`delete from login_attempts where username = ${cleanUsername}`;
 
   let team = null;
   if (account.role === "team") {
@@ -110,6 +142,7 @@ async function login(req, res) {
     teamId: team?.id,
   });
 
+  await logAction(account.id, "auth.login", { username: account.username, role: account.role });
   res.setHeader("Set-Cookie", sessionCookie(token));
   res.status(200).json({
     role: account.role,
@@ -119,6 +152,8 @@ async function login(req, res) {
 }
 
 async function logout(req, res) {
+  const session = readSession(req);
+  if (session) await logAction(session.accountId, "auth.logout", { username: session.displayName });
   res.setHeader("Set-Cookie", clearSessionCookie());
   res.status(200).json({ ok: true });
 }

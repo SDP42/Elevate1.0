@@ -19,6 +19,7 @@ import {
   adminSaveAssignment,
   adminSavePs,
   adminSaveTeamMembers,
+  adminSaveTeamName,
   adminSaveTeamNotes,
   adminSetShortlist,
   adminSetWithdrawn,
@@ -332,6 +333,50 @@ function DietaryEditor({ team, onSaved }) {
       />
       <div className="portal-scanResult__actions">
         <button type="button" className="portal-auth__submit" onClick={save} disabled={busy}>
+          {busy ? "Saving…" : "Save"}
+        </button>
+        <button type="button" className="portal-logout" onClick={() => setOpen(false)}>
+          Cancel
+        </button>
+      </div>
+    </div>
+  );
+}
+
+/* rename a team's display name (e.g. "Team 1" → their real chosen name)
+   without touching username, password, or QR token — the one thing
+   organisers need once teams are finalised closer to the event, so
+   already-issued logins and boarding passes never need reissuing */
+function TeamNameEditor({ team, onSaved }) {
+  const [open, setOpen] = useState(false);
+  const [value, setValue] = useState(team.displayName);
+  const [busy, setBusy] = useState(false);
+
+  async function save() {
+    if (!value.trim()) return;
+    setBusy(true);
+    try {
+      await adminSaveTeamName(team.accountId, value.trim());
+      onSaved(team.id, value.trim());
+      setOpen(false);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  if (!open) {
+    return (
+      <button type="button" className="portal-logout" onClick={() => setOpen(true)}>
+        Rename
+      </button>
+    );
+  }
+
+  return (
+    <div className="portal-rosterEditor">
+      <input value={value} onChange={(e) => setValue(e.target.value)} className="portal-feedbackInput" />
+      <div className="portal-scanResult__actions">
+        <button type="button" className="portal-auth__submit" onClick={save} disabled={busy || !value.trim()}>
           {busy ? "Saving…" : "Save"}
         </button>
         <button type="button" className="portal-logout" onClick={() => setOpen(false)}>
@@ -902,6 +947,10 @@ function AdminHome({ session }) {
     setTeams((prev) => prev.map((t) => (t.id === teamId ? { ...t, withdrawn } : t)));
   }
 
+  function onTeamNameSaved(teamId, displayName) {
+    setTeams((prev) => prev.map((t) => (t.id === teamId ? { ...t, displayName } : t)));
+  }
+
   async function onLogout() {
     await logout();
     navigate("/portal/login", { replace: true });
@@ -938,10 +987,12 @@ function AdminHome({ session }) {
               <thead>
                 <tr>
                   <th>Team</th>
+                  <th>Name</th>
                   <th>Seat</th>
                   <th>Username</th>
                   <th>Members</th>
                   <th>Submission</th>
+                  <th></th>
                   <th></th>
                   <th></th>
                   <th></th>
@@ -954,6 +1005,12 @@ function AdminHome({ session }) {
                     <td>
                       {t.teamCode}
                       {t.withdrawn && <div className="portal-table__sub">Withdrawn</div>}
+                    </td>
+                    <td>
+                      {t.displayName}
+                      <div className="portal-table__sub">
+                        <TeamNameEditor team={t} onSaved={onTeamNameSaved} />
+                      </div>
                     </td>
                     <td>{t.seatNo ?? "—"}</td>
                     <td>{t.username}</td>
@@ -979,6 +1036,9 @@ function AdminHome({ session }) {
                     </td>
                     <td>
                       <WithdrawToggle team={t} onChanged={onWithdrawnChanged} />
+                    </td>
+                    <td>
+                      <ResetPasswordButton account={{ id: t.accountId, username: t.username }} />
                     </td>
                   </tr>
                 ))}

@@ -242,6 +242,17 @@ create table if not exists settings (
   value jsonb
 );
 
+-- failed login attempts, per username — login() checks and prunes this on
+-- every call, so a wrong password repeatedly thrown at one account locks
+-- it out for a short cooldown instead of being retryable forever. Never
+-- grows unbounded: old rows are deleted as part of the same check.
+create table if not exists login_attempts (
+  id serial primary key,
+  username text not null,
+  attempted_at timestamptz not null default now()
+);
+create index if not exists login_attempts_username_idx on login_attempts (username, attempted_at);
+
 -- a plain trail of who did what, for settling disputes on the day —
 -- written alongside the actions that actually matter (marks, meals,
 -- check-ins, roster/PS/shortlist changes), never read by application

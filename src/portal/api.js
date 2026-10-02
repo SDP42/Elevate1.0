@@ -107,6 +107,9 @@ export const adminSavePs = (ps) =>
 export const adminSaveTeamMembers = (teamId, members) =>
   request("/admin", { method: "POST", body: JSON.stringify({ action: "save-team-members", teamId, members }) });
 
+export const adminSaveTeamName = (accountId, displayName) =>
+  request("/admin", { method: "POST", body: JSON.stringify({ action: "save-team-name", accountId, displayName }) });
+
 export const adminSetShortlist = (teamId, shortlisted) =>
   request("/admin", { method: "POST", body: JSON.stringify({ action: "set-shortlist", teamId, shortlisted }) });
 
