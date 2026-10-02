@@ -141,8 +141,6 @@ export const adminFreezeResults = (frozen) =>
 export const adminSetWithdrawn = (teamId, withdrawn) =>
   request("/admin", { method: "POST", body: JSON.stringify({ action: "set-withdrawn", teamId, withdrawn }) });
 
-export const volunteerLookup = () => request("/admin?resource=volunteer-lookup");
-
 export const incidentsList = () => request("/incidents");
 
 export const incidentRaise = (type, message, teamId) =>

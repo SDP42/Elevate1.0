@@ -33,7 +33,6 @@ const CORE_COUNT = 5;
 const ADMIN_COUNT = 2;
 const MEAL_COUNT = 3;
 const REGIDESK_COUNT = 3;
-const VOLUNTEER_COUNT = 4;
 
 function randomPassword() {
   // 10 chars, unambiguous alphabet (no 0/O/1/l/I) — easy to read off a sheet
@@ -115,13 +114,6 @@ async function main() {
     const password = randomPassword();
     await upsertAccount({ username, password, role: "regidesk", displayName: `Registration Desk ${n}` });
     credentials.push({ role: "regidesk", username, password, label: `Registration Desk ${n}` });
-  }
-
-  for (let n = 1; n <= VOLUNTEER_COUNT; n += 1) {
-    const username = `volunteer${String(n).padStart(2, "0")}`;
-    const password = randomPassword();
-    await upsertAccount({ username, password, role: "volunteer", displayName: `Volunteer ${n}` });
-    credentials.push({ role: "volunteer", username, password, label: `Volunteer ${n}` });
   }
 
   const outFile = path.join(__dirname, "credentials.generated.json");

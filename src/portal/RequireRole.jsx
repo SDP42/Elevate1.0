@@ -7,7 +7,6 @@ const DASHBOARD_PATH = {
   meal: "/portal/meal",
   team: "/portal/team",
   regidesk: "/portal/regidesk",
-  volunteer: "/portal/volunteer",
 };
 
 /* Gate a dashboard behind a logged-in session with the right role. Not

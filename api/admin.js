@@ -7,17 +7,8 @@ import { logAction } from "./_lib/audit.js";
 
 /* Every admin-only read and write in one function (see api/auth.js for why
    — the Hobby plan's 12-function cap). GET ?resource=... picks the read;
-   POST {action: ...} picks the write. The volunteer role also lands here,
-   but only for the one read-only lookup it's allowed — everything else
-   403s for it, checked up front before any resource/action branch. */
+   POST {action: ...} picks the write. */
 async function handler(req, res) {
-  if (req.session.role === "volunteer") {
-    const resource = searchParams(req).get("resource");
-    if (req.method === "GET" && resource === "volunteer-lookup") return volunteerLookup(req, res);
-    res.status(403).json({ error: "Not allowed" });
-    return;
-  }
-
   if (req.method === "GET") {
     const resource = searchParams(req).get("resource") || "teams";
     if (resource === "accounts") return getAccounts(req, res);
@@ -29,7 +20,6 @@ async function handler(req, res) {
     if (resource === "export") return exportCsv(req, res);
     if (resource === "overview") return getOverview(req, res);
     if (resource === "settings") return getSettings(req, res);
-    if (resource === "volunteer-lookup") return volunteerLookup(req, res);
     return getTeams(req, res);
   }
 
@@ -53,33 +43,6 @@ async function handler(req, res) {
   }
 
   res.status(405).json({ error: "Method not allowed" });
-}
-
-/* a bare-bones, read-only team/PS lookup — everything a floor-walking
-   volunteer needs (which team is where, what they're building) and
-   nothing they shouldn't touch (no marks, no passwords, no settings) */
-async function volunteerLookup(req, res) {
-  const rows = await sql`
-    select t.id, t.team_code, t.seat_no, p.code as ps_code, p.title as ps_title,
-      string_agg(tm.name, ', ' order by tm.sort_order) as members
-    from teams t
-    left join team_ps_selection sel on sel.team_id = t.id and sel.status = 'approved'
-    left join ps_list p on p.id = sel.ps_id
-    left join team_members tm on tm.team_id = t.id
-    where t.withdrawn = false
-    group by t.id, p.code, p.title
-    order by t.id asc
-  `;
-  res.status(200).json({
-    teams: rows.map((r) => ({
-      id: r.id,
-      teamCode: r.team_code,
-      seatNo: r.seat_no,
-      psCode: r.ps_code,
-      psTitle: r.ps_title,
-      members: r.members || "",
-    })),
-  });
 }
 
 /* one glance at where the event stands — meant for a command-center view
@@ -637,4 +600,4 @@ async function saveAssignment(req, res) {
   res.status(200).json({ ok: true });
 }
 
-export default requireRole(handler, ["admin", "volunteer"]);
+export default requireRole(handler, ["admin"]);
