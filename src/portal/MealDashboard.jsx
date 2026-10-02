@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import RequireRole from "./RequireRole";
 import QrScanner from "./QrScanner";
 import { MEAL_SLOTS } from "./mealSlots";
-import { logout, mealFlagLowStock, mealLog, mealLogGuest, mealLookup, mealLookupByCode, mealTally } from "./api";
+import { logout, mealFlagLowStock, mealLog, mealLogGuest, mealLookup, mealLookupByCode, mealTally, mealUndo } from "./api";
 
 function LowStockFlag({ slotCode }) {
   const [open, setOpen] = useState(false);
@@ -143,6 +143,7 @@ function MealHome({ session }) {
   const [manualCode, setManualCode] = useState("");
   const [manualBusy, setManualBusy] = useState(false);
   const [tallyKey, setTallyKey] = useState(0);
+  const [undoing, setUndoing] = useState(null);
   const busyRef = useRef(false);
 
   const onDecode = useCallback(
@@ -202,6 +203,27 @@ function MealHome({ session }) {
       return;
     }
     reset();
+  }
+
+  async function handleUndo(memberId, memberName) {
+    if (!window.confirm(`Undo meal for ${memberName}?`)) return;
+    setUndoing(memberId);
+    setError("");
+    try {
+      await mealUndo(result.team.id, slotCode, memberId);
+      setStatus(`Reverted ${result.slot.label} for ${memberName}.`);
+      setResult((prev) => ({
+        ...prev,
+        members: prev.members.map((m) =>
+          m.id === memberId ? { ...m, alreadyGiven: false } : m
+        ),
+      }));
+      setTallyKey((k) => k + 1);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setUndoing(null);
+    }
   }
 
   function reset() {
@@ -272,11 +294,18 @@ function MealHome({ session }) {
         ) : (
           result && (
             <div className="portal-scanResult">
-              <h4>
-                {result.team.teamCode} · Seat {result.team.seatNo ?? "—"}
-              </h4>
-              {result.team.dietary && <p className="portal-dietaryFlag">⚠ Dietary note: {result.team.dietary}</p>}
-              <p className="portal-card__hint">Tick who's actually here for {result.slot.label}.</p>
+              <div className="portal-scanResult__header">
+                <h4>
+                  {result.team.teamName || result.team.displayName || `Team ${result.team.teamCode}`}
+                </h4>
+                <div className="portal-table__sub" style={{ fontSize: "0.95rem", marginTop: "0.2rem" }}>
+                  <strong>{result.team.teamCode}</strong>
+                  {result.team.seatNo ? <span> · Seat {result.team.seatNo}</span> : null}
+                  {result.team.username ? <span> · <code>{result.team.username}</code></span> : null}
+                </div>
+              </div>
+              {result.team.dietary && <p className="portal-dietaryFlag portal-u-mt">⚠ Dietary note: {result.team.dietary}</p>}
+              <p className="portal-card__hint portal-u-mt">Tick who's actually here for {result.slot.label}.</p>
               <ul className="portal-checklist">
                 {result.members.map((m) => (
                   <li key={m.id} className={m.alreadyGiven ? "is-served" : undefined}>
@@ -290,6 +319,16 @@ function MealHome({ session }) {
                       {m.name}
                       {m.alreadyGiven && <em> · already served</em>}
                     </label>
+                    {m.alreadyGiven && (
+                      <button
+                        type="button"
+                        className="portal-logout portal-u-ml"
+                        onClick={() => handleUndo(m.id, m.name)}
+                        disabled={undoing === m.id}
+                      >
+                        {undoing === m.id ? "Reverting…" : "Undo"}
+                      </button>
+                    )}
                   </li>
                 ))}
               </ul>

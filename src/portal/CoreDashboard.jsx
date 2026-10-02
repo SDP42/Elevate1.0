@@ -1,11 +1,8 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import RequireRole from "./RequireRole";
-import QrScanner from "./QrScanner";
 import { CRITERIA, MAX_TOTAL } from "../../shared/criteria.js";
 import {
-  coreCheckinLog,
-  coreCheckinLookup,
   coreSaveRound1Note,
   coreSubmitMark,
   coreTeams,
@@ -234,117 +231,22 @@ function Round1Notes({ teams, onSaved }) {
   );
 }
 
-function CheckIn() {
-  const [scanning, setScanning] = useState(true);
-  const [result, setResult] = useState(null);
-  const [selected, setSelected] = useState(() => new Set());
-  const [error, setError] = useState("");
-  const [status, setStatus] = useState("");
-  const busyRef = useRef(false);
-
-  const onDecode = useCallback(
-    async (payload) => {
-      if (busyRef.current || !scanning) return;
-      busyRef.current = true;
-      setError("");
-      try {
-        const data = await coreCheckinLookup(payload);
-        setResult(data);
-        setSelected(new Set(data.members.filter((m) => !m.alreadyIn).map((m) => m.id)));
-        setScanning(false);
-      } catch (err) {
-        setError(err.message);
-      } finally {
-        busyRef.current = false;
-      }
-    },
-    [scanning]
-  );
-
-  function toggle(id) {
-    setSelected((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
-  }
-
-  async function confirm() {
-    if (!result || selected.size === 0) return;
-    try {
-      await coreCheckinLog(result.team.id, [...selected]);
-      setStatus(`Checked in ${selected.size} from ${result.team.teamCode}.`);
-    } catch (err) {
-      setError(err.message);
-      return;
-    }
-    reset();
-  }
-
-  function reset() {
-    setResult(null);
-    setSelected(new Set());
-    setScanning(true);
-  }
-
-  return (
-    <section className="portal-card portal-no-print">
-      <h3>Door check-in</h3>
-      <p className="portal-card__hint">Scan a team's boarding pass to mark who's actually arrived on event day.</p>
-
-      {status && <p className="portal-status">{status}</p>}
-      {error && <p className="portal-auth__error">{error}</p>}
-
-      {scanning ? (
-        <QrScanner onDecode={onDecode} paused={!scanning} />
-      ) : (
-        result && (
-          <div className="portal-scanResult">
-            <h4>
-              {result.team.teamCode} · Seat {result.team.seatNo ?? "—"}
-            </h4>
-            <ul className="portal-checklist">
-              {result.members.map((m) => (
-                <li key={m.id} className={m.alreadyIn ? "is-served" : undefined}>
-                  <label>
-                    <input
-                      type="checkbox"
-                      checked={selected.has(m.id)}
-                      disabled={m.alreadyIn}
-                      onChange={() => toggle(m.id)}
-                    />
-                    {m.name}
-                    {m.alreadyIn && <em> · already checked in</em>}
-                  </label>
-                </li>
-              ))}
-            </ul>
-            <div className="portal-scanResult__actions">
-              <button type="button" className="portal-auth__submit" onClick={confirm} disabled={selected.size === 0}>
-                Confirm ({selected.size})
-              </button>
-              <button type="button" className="portal-logout" onClick={reset}>
-                Cancel / scan next
-              </button>
-            </div>
-          </div>
-        )
-      )}
-    </section>
-  );
-}
-
 function CoreHome({ session }) {
   const navigate = useNavigate();
   const [teams, setTeams] = useState(null);
   const [error, setError] = useState("");
 
-  useEffect(() => {
+  const loadTeams = useCallback(() => {
     coreTeams()
       .then((d) => setTeams(d.teams))
       .catch((err) => setError(err.message));
   }, []);
+
+  useEffect(() => {
+    loadTeams();
+    const timer = setInterval(loadTeams, 12000);
+    return () => clearInterval(timer);
+  }, [loadTeams]);
 
   function onSaved(teamId, { score, criteria, feedback }) {
     setTeams((prev) => prev.map((t) => (t.id === teamId ? { ...t, score, criteria, feedback } : t)));
@@ -394,7 +296,13 @@ function CoreHome({ session }) {
 
         {error && <p className="portal-auth__error">{error}</p>}
 
-        {teams && (
+        {teams && teams.filter((t) => t.shortlisted).length === 0 && (
+          <p className="portal-card__hint portal-u-mt">
+            No teams have been shortlisted for Round 2 yet. Once administrators shortlist teams, their scoring sheets will appear here.
+          </p>
+        )}
+
+        {teams && teams.filter((t) => t.shortlisted).length > 0 && (
           <div className="portal-tableWrap">
             <table className="portal-table">
               <thead>
@@ -415,9 +323,11 @@ function CoreHome({ session }) {
                 </tr>
               </thead>
               <tbody>
-                {teams.map((t) => (
-                  <MarksRow key={t.id} team={t} onSaved={onSaved} onRecused={onRecused} />
-                ))}
+                {teams
+                  .filter((t) => t.shortlisted)
+                  .map((t) => (
+                    <MarksRow key={t.id} team={t} onSaved={onSaved} onRecused={onRecused} />
+                  ))}
               </tbody>
             </table>
           </div>
@@ -426,9 +336,12 @@ function CoreHome({ session }) {
 
       {teams && <Round1Notes teams={teams} onSaved={onRound1Saved} />}
 
-      <CheckIn />
-
-      {teams && <PrintBackup teams={teams} generatedAt={new Date().toLocaleString()} />}
+      {teams && (
+        <PrintBackup
+          teams={teams.filter((t) => t.shortlisted)}
+          generatedAt={new Date().toLocaleString()}
+        />
+      )}
     </div>
   );
 }

@@ -37,7 +37,14 @@ async function membersFor(team) {
 
 function respond(res, team, members) {
   res.status(200).json({
-    team: { id: team.id, teamCode: team.team_code, seatNo: team.seat_no },
+    team: {
+      id: team.id,
+      teamCode: team.team_code,
+      teamName: team.display_name,
+      displayName: team.display_name,
+      username: team.username,
+      seatNo: team.seat_no,
+    },
     members: members.map((m) => ({
       id: m.id,
       name: m.name,
@@ -61,12 +68,21 @@ async function lookup(req, res) {
   }
   const trimmed = qrPayload.trim();
   const qrToken = trimmed.startsWith(QR_PREFIX) ? trimmed.slice(QR_PREFIX.length) : trimmed;
-  const teamRows = await sql`select id, team_code, seat_no from teams where qr_token = ${qrToken}`;
+  const teamRows = await sql`
+    select t.id, t.team_code, t.seat_no, t.shortlisted, t.withdrawn, a.display_name, a.username
+    from teams t
+    join accounts a on a.id = t.account_id
+    where t.qr_token = ${qrToken}
+  `;
   const team = teamRows[0];
   if (!team) {
     // scanned payload included (truncated) so staff can tell at a glance
     // whether this is a stale/unrelated QR code rather than a real bug
     res.status(404).json({ error: `No team matches this QR code (scanned: "${trimmed.slice(0, 60)}")` });
+    return;
+  }
+  if (team.withdrawn) {
+    res.status(403).json({ error: `Team ${team.team_code} has withdrawn` });
     return;
   }
   respond(res, team, await membersFor(team));
@@ -81,11 +97,18 @@ async function lookupByCode(req, res) {
     return;
   }
   const teamRows = await sql`
-    select id, team_code, seat_no from teams where upper(team_code) = upper(${teamCode.trim()})
+    select t.id, t.team_code, t.seat_no, t.shortlisted, t.withdrawn, a.display_name, a.username
+    from teams t
+    join accounts a on a.id = t.account_id
+    where upper(t.team_code) = upper(${teamCode.trim()})
   `;
   const team = teamRows[0];
   if (!team) {
     res.status(404).json({ error: "No team matches that code" });
+    return;
+  }
+  if (team.withdrawn) {
+    res.status(403).json({ error: `Team ${team.team_code} has withdrawn` });
     return;
   }
   respond(res, team, await membersFor(team));

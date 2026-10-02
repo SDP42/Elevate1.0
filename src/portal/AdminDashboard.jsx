@@ -1,5 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import QRCode from "qrcode";
+import JSZip from "jszip";
 import RequireRole from "./RequireRole";
 import {
   adminAccounts,
@@ -8,6 +10,7 @@ import {
   adminAssignments,
   adminAudit,
   adminBulkImport,
+  adminCreateTeam,
   adminExport,
   adminFreezeResults,
   adminMeals,
@@ -70,13 +73,13 @@ function Overview() {
   if (!data) return null;
 
   const stats = [
-    ["Teams", data.teamCount],
-    ["Withdrawn", data.withdrawnCount],
-    ["Checked in", data.checkedInCount],
-    ["Submitted", data.submittedCount],
-    ["PS approved", data.psApprovedCount],
-    ["Meals served", data.mealsServedCount],
-    ["Open incidents", data.openIncidentsCount],
+    ["Teams", data.teamCount ?? 0],
+    ["Withdrawn", data.withdrawnCount ?? 0],
+    ["Checked in", data.checkedInCount ?? 0],
+    ["Submitted", data.submittedCount ?? 0],
+    ["PS approved", data.psApprovedCount ?? 0],
+    ["Meals served", data.mealsServedCount ?? 0],
+    ["Open incidents", data.openIncidentsCount ?? 0],
   ];
 
   return (
@@ -294,7 +297,7 @@ function ShortlistToggle({ team, onChanged }) {
   }
   return (
     <button type="button" className="portal-logout" onClick={toggle} disabled={busy}>
-      {team.shortlisted ? "Shortlisted ✓" : "Shortlist"}
+      {team.shortlisted ? "Round 2 ✓" : "Shortlist for R2"}
     </button>
   );
 }
@@ -356,8 +359,8 @@ function TeamNameEditor({ team, onSaved }) {
     if (!value.trim()) return;
     setBusy(true);
     try {
-      await adminSaveTeamName(team.accountId, value.trim());
-      onSaved(team.id, value.trim());
+      const res = await adminSaveTeamName(team.accountId, value.trim());
+      onSaved(team.id, value.trim(), res?.username);
       setOpen(false);
     } finally {
       setBusy(false);
@@ -387,7 +390,7 @@ function TeamNameEditor({ team, onSaved }) {
   );
 }
 
-function ResetPasswordButton({ account }) {
+function ResetPasswordButton({ account, onReset }) {
   const [busy, setBusy] = useState(false);
   const [result, setResult] = useState(null);
 
@@ -397,6 +400,7 @@ function ResetPasswordButton({ account }) {
     try {
       const data = await adminResetPassword(account.id);
       setResult(data.password);
+      if (onReset) onReset(data.password);
     } finally {
       setBusy(false);
     }
@@ -405,9 +409,269 @@ function ResetPasswordButton({ account }) {
   return (
     <div>
       <button type="button" className="portal-logout" onClick={reset} disabled={busy}>
-        {busy ? "Resetting…" : "Reset password"}
+        {busy ? "…" : "Reset"}
       </button>
-      {result && <div className="portal-newPassword">New password: {result}</div>}
+      {result && <div className="portal-newPassword">New: {result}</div>}
+    </div>
+  );
+}
+
+function QrModal({ team, onClose }) {
+  const [qrUrl, setQrUrl] = useState("");
+
+  useEffect(() => {
+    if (!team?.qrToken) return;
+    QRCode.toDataURL(`ELEVATE1:${team.qrToken}`, { margin: 1, width: 360 }).then(setQrUrl);
+  }, [team]);
+
+  function download() {
+    if (!qrUrl) return;
+    const a = document.createElement("a");
+    a.href = qrUrl;
+    a.download = `${team.username || team.teamCode}.png`;
+    a.click();
+  }
+
+  return (
+    <div className="portal-modalBackdrop" onClick={onClose}>
+      <div className="portal-modalCard" onClick={(e) => e.stopPropagation()}>
+        <div className="portal-modalHead">
+          <h4>{team.teamCode} — QR Boarding Pass</h4>
+          <button type="button" className="portal-logout" onClick={onClose}>
+            ✕
+          </button>
+        </div>
+        <p className="portal-card__hint">
+          {team.displayName} {team.seatNo ? `· Seat ${team.seatNo}` : ""} · <code>{team.username}.png</code>
+        </p>
+        <div className="portal-qrPreview">
+          {qrUrl ? <img src={qrUrl} alt={`QR for ${team.teamCode}`} /> : <p>Generating QR…</p>}
+        </div>
+        <div className="portal-scanResult__actions portal-u-mt">
+          <button type="button" className="portal-auth__submit" onClick={download} disabled={!qrUrl}>
+            Download PNG
+          </button>
+          <button type="button" className="portal-logout" onClick={onClose}>
+            Close
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function AllQrsModal({ teams, onClose }) {
+  const [qrMap, setQrMap] = useState({});
+  const [zipBusy, setZipBusy] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    async function gen() {
+      const map = {};
+      for (const t of teams) {
+        if (t.qrToken) {
+          try {
+            map[t.id] = await QRCode.toDataURL(`ELEVATE1:${t.qrToken}`, { margin: 1, width: 280 });
+          } catch {
+            // ignore
+          }
+        }
+      }
+      if (!cancelled) setQrMap(map);
+    }
+    gen();
+    return () => {
+      cancelled = true;
+    };
+  }, [teams]);
+
+  async function downloadZip() {
+    setZipBusy(true);
+    try {
+      const zip = new JSZip();
+      for (const t of teams) {
+        if (t.qrToken) {
+          const dataUrl = qrMap[t.id] || (await QRCode.toDataURL(`ELEVATE1:${t.qrToken}`, { margin: 1, width: 400 }));
+          const base64 = dataUrl.replace(/^data:image\/png;base64,/, "");
+          zip.file(`${t.username || t.teamCode}.png`, base64, { base64: true });
+        }
+      }
+      const content = await zip.generateAsync({ type: "blob" });
+      const url = URL.createObjectURL(content);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `elevate-all-teams-qrs.zip`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } finally {
+      setZipBusy(false);
+    }
+  }
+
+  return (
+    <div className="portal-modalBackdrop" onClick={onClose}>
+      <div className="portal-modalCard portal-modalCard--wide" onClick={(e) => e.stopPropagation()}>
+        <div className="portal-modalHead">
+          <h4>All Team QR Passes ({teams.length})</h4>
+          <button type="button" className="portal-logout" onClick={onClose}>
+            ✕
+          </button>
+        </div>
+        <div className="portal-scanResult__actions portal-u-mt portal-no-print">
+          <button type="button" className="portal-auth__submit" onClick={downloadZip} disabled={zipBusy}>
+            {zipBusy ? "Generating ZIP…" : "Download All (ZIP)"}
+          </button>
+          <button type="button" className="portal-logout" onClick={() => window.print()}>
+            Print Passes / Save PDF
+          </button>
+          <button type="button" className="portal-logout" onClick={onClose}>
+            Close
+          </button>
+        </div>
+        <div className="portal-allQrGrid portal-u-mt">
+          {teams.map((t) => (
+            <div key={t.id} className="portal-allQrCard">
+              <div className="portal-allQrCard__head">
+                <strong>{t.teamCode}</strong>
+                {t.seatNo ? <span>Seat {t.seatNo}</span> : null}
+              </div>
+              <div className="portal-allQrCard__name">{t.displayName}</div>
+              <div className="portal-table__sub"><code>{t.username}</code></div>
+              <div className="portal-allQrCard__qr">
+                {qrMap[t.id] ? (
+                  <img src={qrMap[t.id]} alt={`QR for ${t.teamCode}`} />
+                ) : (
+                  <span>Generating…</span>
+                )}
+              </div>
+              <div className="portal-allQrCard__footer portal-no-print">
+                {qrMap[t.id] && (
+                  <a href={qrMap[t.id]} download={`${t.username || t.teamCode}.png`} className="portal-link-btn">
+                    Download PNG
+                  </a>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function CreateTeamModal({ onCreated, onClose }) {
+  const [teamCode, setTeamCode] = useState("");
+  const [displayName, setDisplayName] = useState("");
+  const [seatNo, setSeatNo] = useState("");
+  const [membersText, setMembersText] = useState("");
+  const [shortlisted, setShortlisted] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  const [createdResult, setCreatedResult] = useState(null);
+
+  async function submit(e) {
+    e.preventDefault();
+    if (!teamCode.trim()) return;
+    setBusy(true);
+    setError("");
+    try {
+      const res = await adminCreateTeam({
+        teamCode: teamCode.trim(),
+        displayName: displayName.trim(),
+        seatNo: seatNo ? Number(seatNo) : null,
+        members: membersText.split("\n").map((s) => s.trim()).filter(Boolean),
+        shortlisted,
+      });
+      setCreatedResult(res);
+      onCreated(res);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div className="portal-modalBackdrop" onClick={onClose}>
+      <div className="portal-modalCard" onClick={(e) => e.stopPropagation()}>
+        <div className="portal-modalHead">
+          <h4>Create New Team</h4>
+          <button type="button" className="portal-modalClose" onClick={onClose} aria-label="Close modal">
+            ✕
+          </button>
+        </div>
+
+        {createdResult ? (
+          <div className="portal-status portal-u-mt">
+            <p><strong>Team {createdResult.teamCode} created successfully!</strong></p>
+            <p>Username: <code>{createdResult.username}</code></p>
+            <p>Password: <code>{createdResult.password}</code> (save this now!)</p>
+            <p>Status: Round 1 team with active QR code{createdResult.shortlisted ? " (Shortlisted for Round 2)" : ""}</p>
+            <div className="portal-scanResult__actions portal-u-mt">
+              <button type="button" className="portal-auth__submit" onClick={onClose}>
+                Done
+              </button>
+            </div>
+          </div>
+        ) : (
+          <form className="portal-auth__form" onSubmit={submit}>
+            {error && <p className="portal-auth__error">{error}</p>}
+            <div className="portal-formRow">
+              <label className="portal-field">
+                <span>Team Code *</span>
+                <input
+                  value={teamCode}
+                  onChange={(e) => setTeamCode(e.target.value)}
+                  placeholder="e.g. T36"
+                  required
+                />
+              </label>
+              <label className="portal-field">
+                <span>Seat No</span>
+                <input
+                  type="number"
+                  value={seatNo}
+                  onChange={(e) => setSeatNo(e.target.value)}
+                  placeholder="e.g. 36"
+                />
+              </label>
+            </div>
+            <label className="portal-field">
+              <span>Display / Team Name</span>
+              <input
+                value={displayName}
+                onChange={(e) => setDisplayName(e.target.value)}
+                placeholder="e.g. CyberKnights"
+              />
+            </label>
+            <label className="portal-field">
+              <span>Roster Members (one per line, up to 4)</span>
+              <textarea
+                rows={3}
+                value={membersText}
+                onChange={(e) => setMembersText(e.target.value)}
+                placeholder={"Alex Smith (Lead)\nJordan Lee"}
+              />
+            </label>
+            <label className="portal-checkboxLabel">
+              <input
+                type="checkbox"
+                checked={shortlisted}
+                onChange={(e) => setShortlisted(e.target.checked)}
+              />
+              <span>Shortlist for Round 2 immediately (default is unchecked — all teams start in Round 1)</span>
+            </label>
+            <div className="portal-scanResult__actions portal-u-mt">
+              <button type="submit" className="portal-auth__submit" disabled={busy}>
+                {busy ? "Creating…" : "Create team"}
+              </button>
+              <button type="button" className="portal-logout" onClick={onClose}>
+                Cancel
+              </button>
+            </div>
+          </form>
+        )}
+      </div>
     </div>
   );
 }
@@ -529,7 +793,10 @@ function PsRequestsManager() {
 
   function load() {
     adminPsRequests()
-      .then((d) => setRequests(d.requests))
+      .then((d) => {
+        setRequests(d.requests);
+        setError("");
+      })
       .catch((err) => setError(err.message));
   }
 
@@ -623,7 +890,10 @@ function AnnouncementsManager() {
 
   function load() {
     adminAnnouncements()
-      .then((d) => setItems(d.announcements))
+      .then((d) => {
+        setItems(d.announcements);
+        setError("");
+      })
       .catch((err) => setError(err.message));
   }
 
@@ -865,16 +1135,17 @@ function BulkImport({ onDone }) {
     <section className="portal-card">
       <h3>Bulk roster import</h3>
       <p className="portal-card__hint">
-        One team per line: <code>team_code,name1,name2,name3,name4</code> (2 to 4 names). Replaces
-        each team's roster wholesale — same as editing them one by one, just all at once.
+        One team per line: <code>team_code,team_name,name1,name2,name3,name4</code>.
+        Providing <code>team_name</code> automatically sets their team name, regenerates their username to <code>&lt;team_name&gt;_&lt;digits&gt;</code>,
+        and names their QR code PNG accordingly. You can also paste directly from Excel / Google Sheets.
       </p>
       {error && <p className="portal-auth__error">{error}</p>}
       <form className="portal-auth__form" onSubmit={run}>
         <textarea
-          rows={5}
+          rows={6}
           value={csvText}
           onChange={(e) => setCsvText(e.target.value)}
-          placeholder={"T1,Asha Rao,Vikram Shah,Dev Patel\nT2,..."}
+          placeholder={"T1,CyberKnights,Asha Rao,Vikram Shah,Dev Patel\nT2,AlphaCoders,John Doe,Jane Doe\n..."}
           className="portal-bulkTextarea"
         />
         <button className="portal-auth__submit" type="submit" disabled={busy || !csvText.trim()}>
@@ -901,6 +1172,10 @@ function AdminHome({ session }) {
   const [marksTeams, setMarksTeams] = useState(null);
   const [meals, setMeals] = useState(null);
   const [problemStatements, setProblemStatements] = useState(null);
+  const [viewQrTeam, setViewQrTeam] = useState(null);
+  const [showAddTeam, setShowAddTeam] = useState(false);
+  const [showAllQrs, setShowAllQrs] = useState(false);
+  const [zipBusy, setZipBusy] = useState(false);
   const [error, setError] = useState("");
 
   function loadPs() {
@@ -925,6 +1200,42 @@ function AdminHome({ session }) {
     loadPs();
   }, []);
 
+  async function downloadAllZip() {
+    if (!teams) return;
+    setZipBusy(true);
+    try {
+      const zip = new JSZip();
+      for (const t of teams) {
+        if (t.qrToken) {
+          const dataUrl = await QRCode.toDataURL(`ELEVATE1:${t.qrToken}`, { margin: 1, width: 400 });
+          const base64 = dataUrl.replace(/^data:image\/png;base64,/, "");
+          zip.file(`${t.username || t.teamCode}.png`, base64, { base64: true });
+        }
+      }
+      const content = await zip.generateAsync({ type: "blob" });
+      const url = URL.createObjectURL(content);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "elevate-all-teams-qrs.zip";
+      a.click();
+      URL.revokeObjectURL(url);
+    } finally {
+      setZipBusy(false);
+    }
+  }
+
+  function onPasswordReset(teamId, newPassword) {
+    setTeams((prev) =>
+      prev.map((t) => (t.id === teamId ? { ...t, initialPassword: newPassword } : t))
+    );
+  }
+
+  function onStaffPasswordReset(accountId, newPassword) {
+    setAccounts((prev) =>
+      prev.map((a) => (a.id === accountId ? { ...a, initialPassword: newPassword } : a))
+    );
+  }
+
   function onRosterSaved(teamId, names) {
     setTeams((prev) =>
       prev.map((t) =>
@@ -947,8 +1258,14 @@ function AdminHome({ session }) {
     setTeams((prev) => prev.map((t) => (t.id === teamId ? { ...t, withdrawn } : t)));
   }
 
-  function onTeamNameSaved(teamId, displayName) {
-    setTeams((prev) => prev.map((t) => (t.id === teamId ? { ...t, displayName } : t)));
+  function onTeamNameSaved(teamId, displayName, username) {
+    setTeams((prev) =>
+      prev.map((t) =>
+        t.id === teamId
+          ? { ...t, displayName, ...(username ? { username } : {}) }
+          : t
+      )
+    );
   }
 
   async function onLogout() {
@@ -975,7 +1292,35 @@ function AdminHome({ session }) {
       <section className="portal-card">
         <div className="portal-card__headRow">
           <h3>Teams ({teams?.length ?? "…"})</h3>
-          <ExportButton type="teams" />
+          <div className="portal-scanResult__actions" style={{ margin: 0, gap: "0.5rem" }}>
+            <button
+              type="button"
+              className="portal-auth__submit"
+              style={{ padding: "0.35rem 0.8rem", fontSize: "0.85rem" }}
+              onClick={() => setShowAddTeam(true)}
+            >
+              + Add Team
+            </button>
+            <button
+              type="button"
+              className="portal-logout"
+              style={{ padding: "0.35rem 0.8rem", fontSize: "0.85rem" }}
+              onClick={() => setShowAllQrs(true)}
+              disabled={!teams || teams.length === 0}
+            >
+              View All QRs
+            </button>
+            <button
+              type="button"
+              className="portal-logout"
+              style={{ padding: "0.35rem 0.8rem", fontSize: "0.85rem" }}
+              onClick={downloadAllZip}
+              disabled={zipBusy || !teams || teams.length === 0}
+            >
+              {zipBusy ? "Generating ZIP…" : "Download All QRs (ZIP)"}
+            </button>
+            <ExportButton type="teams" />
+          </div>
         </div>
         <p className="portal-card__hint">
           This is the whole teams table, straight from the database — the login a team was given,
@@ -992,11 +1337,12 @@ function AdminHome({ session }) {
                   <th>Username</th>
                   <th>Members</th>
                   <th>Submission</th>
-                  <th></th>
-                  <th></th>
-                  <th></th>
-                  <th></th>
-                  <th></th>
+                  <th>QR Pass</th>
+                  <th>Round 2 Shortlist</th>
+                  <th>Dietary</th>
+                  <th>Roster</th>
+                  <th>Withdraw</th>
+                  <th>Password</th>
                 </tr>
               </thead>
               <tbody>
@@ -1025,6 +1371,20 @@ function AdminHome({ session }) {
                       )}
                     </td>
                     <td>
+                      {t.qrToken ? (
+                        <button
+                          type="button"
+                          className="portal-logout"
+                          style={{ borderColor: "#f0b35c", color: "#f0b35c", padding: "0.25rem 0.6rem" }}
+                          onClick={() => setViewQrTeam(t)}
+                        >
+                          View QR
+                        </button>
+                      ) : (
+                        <span className="portal-table__sub">Standby</span>
+                      )}
+                    </td>
+                    <td>
                       <ShortlistToggle team={t} onChanged={onShortlistChanged} />
                     </td>
                     <td>
@@ -1038,7 +1398,13 @@ function AdminHome({ session }) {
                       <WithdrawToggle team={t} onChanged={onWithdrawnChanged} />
                     </td>
                     <td>
-                      <ResetPasswordButton account={{ id: t.accountId, username: t.username }} />
+                      <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                        <code style={{ fontSize: "0.85rem", color: "#f0b35c" }}>{t.initialPassword || "—"}</code>
+                        <ResetPasswordButton
+                          account={{ id: t.accountId, username: t.username }}
+                          onReset={(newPass) => onPasswordReset(t.id, newPass)}
+                        />
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -1060,7 +1426,7 @@ function AdminHome({ session }) {
 
       <section className="portal-card">
         <h3>Staff accounts ({accounts?.length ?? "…"})</h3>
-        <p className="portal-card__hint">Core, meal and admin logins. Passwords aren't stored anywhere retrievable — reset generates a fresh one.</p>
+        <p className="portal-card__hint">Core, meal, regidesk and admin logins with current credentials.</p>
         {accounts && (
           <div className="portal-tableWrap">
             <table className="portal-table">
@@ -1069,7 +1435,7 @@ function AdminHome({ session }) {
                   <th>Role</th>
                   <th>Username</th>
                   <th>Name</th>
-                  <th></th>
+                  <th>Password</th>
                 </tr>
               </thead>
               <tbody>
@@ -1079,7 +1445,13 @@ function AdminHome({ session }) {
                     <td>{a.username}</td>
                     <td>{a.display_name}</td>
                     <td>
-                      <ResetPasswordButton account={a} />
+                      <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                        <code style={{ fontSize: "0.85rem", color: "#f0b35c" }}>{a.initialPassword || "—"}</code>
+                        <ResetPasswordButton
+                          account={a}
+                          onReset={(newPass) => onStaffPasswordReset(a.id, newPass)}
+                        />
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -1152,6 +1524,15 @@ function AdminHome({ session }) {
       <FreezeResultsToggle />
 
       <AuditLog />
+
+      {viewQrTeam && <QrModal team={viewQrTeam} onClose={() => setViewQrTeam(null)} />}
+      {showAllQrs && <AllQrsModal teams={teams || []} onClose={() => setShowAllQrs(false)} />}
+      {showAddTeam && (
+        <CreateTeamModal
+          onCreated={() => loadAll()}
+          onClose={() => setShowAddTeam(false)}
+        />
+      )}
     </div>
   );
 }

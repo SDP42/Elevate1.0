@@ -55,7 +55,7 @@ export default function apiPlugin() {
         } catch (err) {
           console.error(err);
           res.statusCode = 500;
-          res.end(JSON.stringify({ error: "Internal error" }));
+          res.end(JSON.stringify({ error: err.message || "Internal error" }));
         }
       });
     },

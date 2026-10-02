@@ -189,15 +189,22 @@ function RegiDeskHome({ session }) {
         ) : (
           result && (
             <div className="portal-scanResult">
-              <h4>
-                {result.team.teamCode} · Seat {result.team.seatNo ?? "—"}
-              </h4>
-              <ul className="portal-regiList">
+              <div className="portal-scanResult__header">
+                <h4>
+                  {result.team.teamName || result.team.displayName || `Team ${result.team.teamCode}`}
+                </h4>
+                <div className="portal-table__sub" style={{ fontSize: "0.95rem", marginTop: "0.2rem" }}>
+                  <strong>{result.team.teamCode}</strong>
+                  {result.team.seatNo ? <span> · Seat {result.team.seatNo}</span> : null}
+                  {result.team.username ? <span> · <code>{result.team.username}</code></span> : null}
+                </div>
+              </div>
+              <ul className="portal-regiList portal-u-mt">
                 {result.members.map((m) => (
                   <MemberRow key={m.id} member={m} teamId={result.team.id} onSaved={onMemberSaved} />
                 ))}
               </ul>
-              <button type="button" className="portal-logout" onClick={reset}>
+              <button type="button" className="portal-logout portal-u-mt" onClick={reset}>
                 Done / scan next team
               </button>
             </div>

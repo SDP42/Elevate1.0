@@ -18,14 +18,38 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const connectionString = process.env.DATABASE_URL || process.env.POSTGRES_URL;
+const connectionString = (process.env.DATABASE_URL || process.env.POSTGRES_URL)?.trim();
 
 if (!connectionString) {
   console.error("Set DATABASE_URL (or POSTGRES_URL) before running this script — see db/SETUP.md.");
   process.exit(1);
 }
 
-const sql = neon(connectionString);
+const rawSql = neon(connectionString);
+
+async function execWithRetry(fn) {
+  for (let attempt = 1; attempt <= 4; attempt++) {
+    try {
+      return await fn();
+    } catch (err) {
+      if (attempt === 4) throw err;
+      await new Promise((r) => setTimeout(r, 250 * attempt));
+    }
+  }
+}
+
+const sql = new Proxy(rawSql, {
+  apply(target, thisArg, args) {
+    return execWithRetry(() => Reflect.apply(target, thisArg, args));
+  },
+  get(target, prop, receiver) {
+    const val = Reflect.get(target, prop, receiver);
+    if (typeof val === "function") {
+      return (...args) => execWithRetry(() => val.apply(target, args));
+    }
+    return val;
+  },
+});
 
 const TEAM_COUNT = 35;
 const MEMBERS_PER_TEAM = 4; // placeholder roster size; real teams range 2-4 per the site's FAQ
@@ -46,11 +70,12 @@ function randomPassword() {
 async function upsertAccount({ username, password, role, displayName }) {
   const passwordHash = await bcrypt.hash(password, 10);
   const rows = await sql`
-    insert into accounts (username, password_hash, role, display_name)
-    values (${username}, ${passwordHash}, ${role}, ${displayName})
+    insert into accounts (username, password_hash, role, display_name, initial_password)
+    values (${username}, ${passwordHash}, ${role}, ${displayName}, ${password})
     on conflict (username) do update set
       password_hash = excluded.password_hash,
-      display_name = excluded.display_name
+      display_name = excluded.display_name,
+      initial_password = excluded.initial_password
     returning id
   `;
   return rows[0].id;
@@ -59,9 +84,12 @@ async function upsertAccount({ username, password, role, displayName }) {
 async function main() {
   const credentials = [];
 
-  // --- teams -------------------------------------------------------------
+  // Clean slate before seeding
+  await sql`truncate table audit_log, registration_checkins, meal_logs, round1_notes, marks, incidents, core_assignments, core_recusals, team_ps_selection, team_members, teams, accounts restart identity cascade`;
+
   for (let n = 1; n <= TEAM_COUNT; n += 1) {
-    const username = `team${String(n).padStart(2, "0")}`;
+    const randDigits = Math.floor(10 + Math.random() * 90);
+    const username = `team${n}_${randDigits}`;
     const password = randomPassword();
     const displayName = `Team ${n}`;
 
@@ -69,9 +97,12 @@ async function main() {
 
     const qrToken = crypto.randomBytes(16).toString("hex");
     const teamRows = await sql`
-      insert into teams (account_id, team_code, seat_no, qr_token)
-      values (${accountId}, ${`T${n}`}, ${n}, ${qrToken})
-      on conflict (account_id) do update set team_code = excluded.team_code
+      insert into teams (account_id, team_code, seat_no, qr_token, shortlisted)
+      values (${accountId}, ${`T${n}`}, ${n}, ${qrToken}, false)
+      on conflict (account_id) do update set
+        team_code = excluded.team_code,
+        qr_token = coalesce(teams.qr_token, ${qrToken}),
+        shortlisted = false
       returning id
     `;
     const teamId = teamRows[0].id;

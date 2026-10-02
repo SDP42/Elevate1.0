@@ -46,11 +46,13 @@ async function listTeams(req, res) {
 
   const teams = await sql`
     select
-      t.id, t.team_code, t.seat_no,
+      t.id, t.team_code, t.seat_no, t.shortlisted,
+      a.display_name, a.username,
       m.score, m.criteria, m.feedback,
       p.code as ps_code, p.title as ps_title, p.description as ps_description,
       rn.note as round1_note
     from teams t
+    join accounts a on a.id = t.account_id
     left join marks m
       on m.team_id = t.id
       and m.round_id = (select id from mentoring_rounds where round_no = 2)
@@ -59,6 +61,8 @@ async function listTeams(req, res) {
     left join lateral (
       select note from round1_notes where team_id = t.id order by entered_at desc limit 1
     ) rn on true
+    where t.withdrawn = false
+      and exists (select 1 from registration_checkins rc where rc.team_id = t.id)
     order by t.id asc
   `;
 
@@ -71,7 +75,11 @@ async function listTeams(req, res) {
     teams: filtered.map((t) => ({
       id: t.id,
       teamCode: t.team_code,
+      teamName: t.display_name,
+      displayName: t.display_name,
+      username: t.username,
       seatNo: t.seat_no,
+      shortlisted: t.shortlisted,
       score: t.score === null ? null : Number(t.score),
       criteria: t.criteria || null,
       feedback: t.feedback || "",

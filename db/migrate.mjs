@@ -10,7 +10,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const connectionString = process.env.DATABASE_URL || process.env.POSTGRES_URL;
+const connectionString = (process.env.DATABASE_URL || process.env.POSTGRES_URL)?.trim();
 
 if (!connectionString) {
   console.error("Set DATABASE_URL (or POSTGRES_URL) before running this script — see db/SETUP.md.");
@@ -46,9 +46,20 @@ function splitStatements(text) {
 
 const statements = splitStatements(schema);
 
+async function executeWithRetry(fn) {
+  for (let attempt = 1; attempt <= 4; attempt++) {
+    try {
+      return await fn();
+    } catch (err) {
+      if (attempt === 4) throw err;
+      await new Promise((r) => setTimeout(r, 250 * attempt));
+    }
+  }
+}
+
 async function main() {
   for (const statement of statements) {
-    await sql.query(statement);
+    await executeWithRetry(() => sql.query(statement));
   }
   console.log(`Applied ${statements.length} statements from schema.sql.`);
 }

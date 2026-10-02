@@ -79,6 +79,9 @@ export const mealLookupByCode = (teamCode, mealSlotCode) =>
 export const mealLog = (teamId, mealSlotCode, memberIds) =>
   request("/meal", { method: "POST", body: JSON.stringify({ action: "log", teamId, mealSlotCode, memberIds }) });
 
+export const mealUndo = (teamId, mealSlotCode, memberId) =>
+  request("/meal", { method: "POST", body: JSON.stringify({ action: "undo", teamId, mealSlotCode, memberId }) });
+
 export const mealTally = () => request("/meal");
 
 export const coreTeams = () => request("/core");
@@ -112,6 +115,9 @@ export const adminSaveTeamName = (accountId, displayName) =>
 
 export const adminSetShortlist = (teamId, shortlisted) =>
   request("/admin", { method: "POST", body: JSON.stringify({ action: "set-shortlist", teamId, shortlisted }) });
+
+export const adminCreateTeam = (payload) =>
+  request("/admin", { method: "POST", body: JSON.stringify({ action: "create-team", ...payload }) });
 
 export const adminSaveTeamNotes = (teamId, dietary) =>
   request("/admin", { method: "POST", body: JSON.stringify({ action: "save-team-notes", teamId, dietary }) });

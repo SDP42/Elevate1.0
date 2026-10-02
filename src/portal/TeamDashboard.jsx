@@ -252,6 +252,10 @@ function Ticket({ team, psTitle, rosterLocked }) {
 
   useEffect(() => {
     let cancelled = false;
+    if (!team.qr_token) {
+      setQrUrl("");
+      return;
+    }
     QRCode.toDataURL(`ELEVATE1:${team.qr_token}`, { margin: 1, width: 320 }).then((url) => {
       if (!cancelled) setQrUrl(url);
     });
@@ -266,8 +270,17 @@ function Ticket({ team, psTitle, rosterLocked }) {
       <div className="ticket">
         <div className="ticket__body">
           <div className="ticket__qr">
-            {qrUrl && <img src={qrUrl} alt={`QR code for ${team.team_code}`} />}
-            <span className="ticket__qrLabel">Scan at meals &amp; check-in</span>
+            {team.qr_token && qrUrl ? (
+              <>
+                <img src={qrUrl} alt={`QR code for ${team.team_code}`} />
+                <span className="ticket__qrLabel">Scan at meals &amp; check-in</span>
+              </>
+            ) : (
+              <div className="ticket__qrStandby">
+                <span className="ticket__standbyBadge">STANDBY</span>
+                <span className="ticket__qrLabel">Awaiting Shortlist</span>
+              </div>
+            )}
           </div>
 
           <div className="ticket__perf" aria-hidden="true" />
@@ -641,7 +654,7 @@ function Leaderboard({ ownTeamCode }) {
                 <span className="portal-leaderboard__rank">{r.rank ?? "—"}</span>
                 <span className="portal-leaderboard__team">
                   <span className="portal-leaderboard__code">
-                    {r.teamCode}
+                    {r.teamName ? `${r.teamName} (${r.teamCode})` : r.teamCode}
                     {isOwn && <span className="portal-leaderboard__you">You</span>}
                   </span>
                 </span>

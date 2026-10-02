@@ -22,15 +22,19 @@ alter table accounts drop constraint if exists accounts_role_check;
 alter table accounts add constraint accounts_role_check
   check (role in ('admin', 'core', 'meal', 'team', 'regidesk'));
 
+alter table accounts add column if not exists initial_password text;
+
 -- a team's own profile, one-to-one with its 'team' account.
 create table if not exists teams (
   id serial primary key,
   account_id integer not null unique references accounts(id) on delete cascade,
   team_code text unique not null,          -- e.g. "T1"
   seat_no integer,
-  qr_token text unique not null,           -- opaque random string encoded in the QR
+  qr_token text unique,                    -- opaque random string encoded in the QR (null until shortlisted)
   created_at timestamptz not null default now()
 );
+
+alter table teams alter column qr_token drop not null;
 
 alter table teams add column if not exists dietary text;
 alter table teams add column if not exists shortlisted boolean not null default false;
@@ -79,6 +83,9 @@ alter table team_ps_selection add constraint team_ps_selection_status_check
   check (status in ('pending', 'approved'));
 alter table team_ps_selection add column if not exists approved_at timestamptz;
 alter table team_ps_selection add column if not exists approved_by integer references accounts(id);
+alter table team_ps_selection drop constraint if exists team_ps_selection_ps_id_fkey;
+alter table team_ps_selection add constraint team_ps_selection_ps_id_fkey
+  foreign key (ps_id) references ps_list(id) on delete cascade;
 
 -- the table used to be keyed just by team_id with a "selected_at" column;
 -- rename it to requested_at to match the request/approve model, if it's
