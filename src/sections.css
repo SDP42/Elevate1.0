@@ -1478,23 +1478,21 @@
   font-weight: 700;
 }
 
+/* phones: one sponsor per line — each row stacks its tiles vertically, and
+   every tile but the very last gets a bottom divider instead of the
+   side dividers used at desktop width */
 @media (max-width: 760px) {
-  .sponsors__list {
-    grid-template-columns: 1fr;
+  .sponsors__row {
+    flex-direction: column;
   }
-  .sponsors__card {
-    border-left: none;
+  .sponsors__row > .sponsors__card {
     border-right: none;
     border-bottom: 1px solid #d7dbe3;
   }
-  /* matches the lone-last-row selector's specificity so it actually wins
-     here — a plain .sponsors__card rule above is too weak to override it */
-  .sponsors__list > .sponsors__card:last-child:nth-child(3n + 1) {
-    grid-column: auto;
-    border-left: none;
-    border-right: none;
+  .sponsors__row:last-child > .sponsors__card:last-child {
+    border-bottom: none;
   }
-  .sponsors__card:last-child {
+  .sponsors__row:not(:last-child) {
     border-bottom: none;
   }
 }
