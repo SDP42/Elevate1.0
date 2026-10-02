@@ -75,7 +75,7 @@ export const SPONSORS = [
     logo: "/xyz-logo-purple.png",
   },
   {
-    role: "AI Partner",
+    role: "Hands Free Coding Partner",
     name: "Infina",
     url: "https://www.infina.so/",
     logo: "/infina-logo.svg",
@@ -85,6 +85,12 @@ export const SPONSORS = [
     name: "Voroa",
     url: "https://getvoroa.com/",
     logo: "/voroa-logo.svg",
+  },
+  {
+    role: "AI & Automation Partner",
+    name: "n8n",
+    url: "https://n8n.io/",
+    logo: "/n8n-logo.svg",
   },
   {
     role: "Community Partner",
