@@ -1384,13 +1384,15 @@
   font-weight: 800;
 }
 
-/* fixed 3-column grid: with 5 tiles that reads as a row of 3 then a row
-   of 2, rather than an uneven auto-fit wrap. The outer box draws all four
-   edges; each cell draws its own right/bottom divider and drops it where
-   that divider would double up with the outer edge instead. */
+/* rows of up to 3 tiles each, stacked — each row is its own flex line so
+   a short trailing row (e.g. 2 of 8) splits its width evenly between
+   however many tiles it has (1/2 each, not pinned into two of three
+   same-size columns with an empty gap). The outer box draws all four
+   edges; each row/cell drops its own divider where it would double up
+   with the outer edge instead. */
 .sponsors__list {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  display: flex;
+  flex-direction: column;
   border: 1px solid #d7dbe3;
   border-radius: 8px;
   overflow: hidden;
@@ -1399,7 +1401,16 @@
   margin: 0 auto;
 }
 
+.sponsors__row {
+  display: flex;
+}
+
+.sponsors__row:not(:last-child) {
+  border-bottom: 1px solid #d7dbe3;
+}
+
 .sponsors__card {
+  flex: 1 1 0;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -1407,34 +1418,15 @@
   gap: 0.7rem;
   padding: 1.4rem 1rem 1.2rem;
   border-right: 1px solid #d7dbe3;
-  border-bottom: 1px solid #d7dbe3;
   background: #fff;
   color: var(--ink);
   text-decoration: none;
   transition: background 0.3s ease;
 }
 
-/* last column, and whichever tile trails a short final row, needs no
-   right divider — the outer border (or the blank space beside it) does */
-.sponsors__card:nth-child(3n),
-.sponsors__card:last-child {
+/* last tile in each row needs no right divider — the outer edge does */
+.sponsors__row > .sponsors__card:last-child {
   border-right: none;
-}
-
-/* the last row — 2 of the current 8 sponsors — needs no bottom divider;
-   update the -n+2 count (sponsor count mod 3) if the number changes */
-.sponsors__card:nth-last-child(-n + 2) {
-  border-bottom: none;
-}
-
-/* a lone tile lands alone in the last row (it opens a row — nth-child
-   3n+1 — and is also the final item) — centre it under the middle
-   column instead of pinning it to the left, with its own side borders
-   since it no longer touches the outer box's edges */
-.sponsors__list > .sponsors__card:last-child:nth-child(3n + 1) {
-  grid-column: 2;
-  border-left: 1px solid #d7dbe3;
-  border-right: 1px solid #d7dbe3;
 }
 
 .sponsors__card:hover,
@@ -1507,71 +1499,3 @@
   }
 }
 
-/* =====================================================================
-   Announcements: a departures-board ticker pinned under the nav
-   ===================================================================== */
-.announce {
-  position: fixed;
-  left: 0;
-  right: 0;
-  z-index: 98;
-  overflow: hidden;
-  background: linear-gradient(90deg, #e0b354, var(--gold, #c9a86a) 50%, #e0b354);
-  color: #201804;
-  border-bottom: 1px solid rgba(32, 24, 4, 0.15);
-}
-
-.announce__track {
-  display: flex;
-  width: max-content;
-  animation: announce-scroll 22s linear infinite;
-}
-
-.announce__track.is-static {
-  animation: none;
-  width: 100%;
-  flex-wrap: wrap;
-  justify-content: center;
-}
-
-.announce__set {
-  display: flex;
-  align-items: center;
-  flex: none;
-  white-space: nowrap;
-}
-
-.announce__item {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.5em;
-  padding: 0.5rem 1.4rem;
-  font-size: 0.82rem;
-  font-weight: 700;
-  letter-spacing: 0.01em;
-  white-space: nowrap;
-}
-
-.announce__dot {
-  width: 5px;
-  height: 5px;
-  border-radius: 50%;
-  background: #201804;
-  opacity: 0.6;
-  flex: none;
-}
-
-@keyframes announce-scroll {
-  from {
-    transform: translateX(0);
-  }
-  to {
-    transform: translateX(-50%);
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .announce__track {
-    animation: none;
-  }
-}
