@@ -30,3 +30,4 @@ db/volunteer-credentials.generated.json
 *.sln
 *.sw?
 db/elevate-login-credentials.csv
+db/superadmin-credentials.csv

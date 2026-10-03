@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import RequireRole from "./RequireRole";
+import SuperAdminOversight from "./SuperAdminOversight";
 import {
   adminAccounts,
   adminAnnouncements,
@@ -894,7 +895,7 @@ function BulkImport({ onDone }) {
   );
 }
 
-function AdminHome({ session }) {
+export function AdminHome({ session, superAdmin = false }) {
   const navigate = useNavigate();
   const [teams, setTeams] = useState(null);
   const [accounts, setAccounts] = useState(null);
@@ -960,7 +961,9 @@ function AdminHome({ session }) {
     <div className="portal-page">
       <div className="portal-page__head">
         <div>
-          <span className="portal-page__eyebrow">Elevate 1.0 · Admin · Full Access</span>
+          <span className="portal-page__eyebrow">
+            Elevate 1.0 · {superAdmin ? "Super Admin · Oversight + Full Access" : "Admin · Full Access"}
+          </span>
           <h1>{session.displayName}</h1>
         </div>
         <button type="button" className="portal-logout" onClick={onLogout}>
@@ -969,6 +972,8 @@ function AdminHome({ session }) {
       </div>
 
       {error && <p className="portal-auth__error">{error}</p>}
+
+      {superAdmin && <SuperAdminOversight />}
 
       <Overview />
 
