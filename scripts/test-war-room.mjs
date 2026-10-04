@@ -40,9 +40,11 @@ async function loginAs(username, password) {
 
 async function cleanupTestData() {
   await sql.query(
-    "delete from accounts where id in (select account_id from teams where team_code in ('T97', 'T98', 'T99'))"
+    "delete from accounts where id in (select account_id from teams where team_code in ('T97', 'T98', 'T99')) or username in ('meal_vip', 'meal04', 'meal05') or display_name = 'Auxiliary Meal Counter'"
   );
   await sql.query("delete from ps_list where code in ('PS01', 'PS02')");
+  await sql.query("delete from team_ps_selection where team_id = 1 and ps_id not in (select id from ps_list)");
+  await sql.query("delete from team_ps_selection where team_id = 1");
 }
 
 async function runComprehensiveTest() {
@@ -122,6 +124,21 @@ async function runComprehensiveTest() {
     "Admin accounts view exposes cleartext passwords for all accounts"
   );
 
+  // Test Admin: Generate Staff Login
+  const createStaffRes = await api(
+    "/admin",
+    {
+      method: "POST",
+      body: JSON.stringify({
+        action: "create-staff",
+        role: "meal",
+        displayName: "Auxiliary Meal Counter",
+      }),
+    },
+    adminLog.cookie
+  );
+  assert(createStaffRes.status === 200 && Boolean(createStaffRes.data.account?.initialPassword), "Admin can generate new staff logins");
+
   // Test Admin: Announcements
   const annRes = await api(
     "/admin",
@@ -173,6 +190,9 @@ async function runComprehensiveTest() {
     },
     adminLog.cookie
   );
+  if (renameRes.data?.username) {
+    createdTeam.username = renameRes.data.username;
+  }
   console.log("  [DEBUG] Rename with teamId status:", renameRes.status, renameRes.data);
 
   // Test Admin: Bulk Import with Team Names
@@ -356,6 +376,76 @@ async function runComprehensiveTest() {
 
   // 6. TEAM DASHBOARD & PROBLEM STATEMENTS
   console.log("\n--- 6. Team Experience & Problem Statements ---");
+  // Team profile must NOT reveal feedback until admin approves it
+  const createdTeamLog = await loginAs(createdTeam.username, createdTeam.password);
+  const teamMeBeforeApproval = await api("/auth", {}, createdTeamLog.cookie);
+  assert(
+    teamMeBeforeApproval.status === 200 &&
+    teamMeBeforeApproval.data.team &&
+    teamMeBeforeApproval.data.team.score === null &&
+    teamMeBeforeApproval.data.team.feedback === null,
+    "Mentor feedback is hidden from team until admin approves"
+  );
+
+  // Admin approves feedback individually
+  const approveFeedbackRes = await api(
+    "/admin",
+    {
+      method: "POST",
+      body: JSON.stringify({
+        action: "approve-feedback",
+        teamId: createdTeam.teamId,
+        approved: true,
+      }),
+    },
+    adminLog.cookie
+  );
+  assert(approveFeedbackRes.status === 200 && approveFeedbackRes.data.approved === true, "Admin can approve mentor feedback for team");
+
+  // Admin hides all results at once
+  const hideAllRes = await api(
+    "/admin",
+    {
+      method: "POST",
+      body: JSON.stringify({
+        action: "approve-feedback",
+        all: true,
+        approved: false,
+      }),
+    },
+    adminLog.cookie
+  );
+  assert(hideAllRes.status === 200 && hideAllRes.data.approved === false, "Admin can hide all results from participants at once");
+
+  // Verify team no longer sees results
+  const teamMeHidden = await api("/auth", {}, createdTeamLog.cookie);
+  assert(teamMeHidden.data.team?.score === null, "Team cannot see results after admin hides all");
+
+  // Admin releases ALL results to participants with 1 button (all: true)
+  const releaseAllRes = await api(
+    "/admin",
+    {
+      method: "POST",
+      body: JSON.stringify({
+        action: "approve-feedback",
+        all: true,
+        approved: true,
+      }),
+    },
+    adminLog.cookie
+  );
+  assert(releaseAllRes.status === 200 && releaseAllRes.data.approved === true, "Admin can release all results to participants all at once");
+
+  // Team profile now sees approved score and feedback
+  const teamMeAfterApproval = await api("/auth", {}, createdTeamLog.cookie);
+  assert(
+    teamMeAfterApproval.status === 200 &&
+    teamMeAfterApproval.data.team &&
+    teamMeAfterApproval.data.team.score === 92 &&
+    teamMeAfterApproval.data.team.feedback.includes("Impressive"),
+    "Team can view mentor feedback after admin approval"
+  );
+
   const teamMe = await api("/auth", {}, teamLog.cookie);
   assert(teamMe.status === 200 && teamMe.data.team, "Team can fetch /api/auth me profile");
   // Admin creates problem statements

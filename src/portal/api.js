@@ -180,3 +180,13 @@ export const regideskLookupByCode = (teamCode) =>
 
 export const regideskSave = (memberId, teamId, details) =>
   request("/regidesk", { method: "POST", body: JSON.stringify({ action: "save", memberId, teamId, ...details }) });
+
+export const adminApproveFeedback = (teamId, approved) =>
+  request("/admin", { method: "POST", body: JSON.stringify({ action: "approve-feedback", teamId, approved }) });
+
+export const adminApproveAllFeedback = (approved = true) =>
+  request("/admin", { method: "POST", body: JSON.stringify({ action: "approve-feedback", all: true, approved }) });
+
+export const adminCreateStaff = (payload) =>
+  request("/admin", { method: "POST", body: JSON.stringify({ action: "create-staff", ...payload }) });
+

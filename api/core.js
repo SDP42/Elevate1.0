@@ -48,7 +48,7 @@ async function listTeams(req, res) {
     select
       t.id, t.team_code, t.seat_no, t.shortlisted,
       a.display_name, a.username,
-      m.score, m.criteria, m.feedback,
+      m.score, m.criteria, m.feedback, m.feedback_approved,
       p.code as ps_code, p.title as ps_title, p.description as ps_description,
       rn.note as round1_note
     from teams t
@@ -83,6 +83,7 @@ async function listTeams(req, res) {
       score: t.score === null ? null : Number(t.score),
       criteria: t.criteria || null,
       feedback: t.feedback || "",
+      feedbackApproved: Boolean(t.feedback_approved),
       psCode: t.ps_code,
       psTitle: t.ps_title,
       psDescription: t.ps_description || "",

@@ -182,15 +182,22 @@ async function me(req, res) {
         order by sort_order asc, id asc
       `;
       const markRows = await sql`
-        select score, criteria, feedback
+        select score, criteria, feedback, feedback_approved
         from marks
         where team_id = ${team.id}
           and round_id = (select id from mentoring_rounds where round_no = 2)
       `;
       const mark = markRows[0];
-      team.score = mark ? Number(mark.score) : null;
-      team.criteria = mark?.criteria || null;
-      team.feedback = mark?.feedback || null;
+      // Only reveal feedback and marks breakdown to the team once admin approves it
+      if (mark && mark.feedback_approved) {
+        team.score = Number(mark.score);
+        team.criteria = mark.criteria || null;
+        team.feedback = mark.feedback || null;
+      } else {
+        team.score = null;
+        team.criteria = null;
+        team.feedback = null;
+      }
     }
   }
 

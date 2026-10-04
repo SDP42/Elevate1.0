@@ -6,10 +6,13 @@ import RequireRole from "./RequireRole";
 import {
   adminAccounts,
   adminAnnouncements,
+  adminApproveAllFeedback,
+  adminApproveFeedback,
   adminApprovePs,
   adminAssignments,
   adminAudit,
   adminBulkImport,
+  adminCreateStaff,
   adminCreateTeam,
   adminExport,
   adminFreezeResults,
@@ -676,6 +679,100 @@ function CreateTeamModal({ onCreated, onClose }) {
   );
 }
 
+function CreateStaffModal({ onCreated, onClose }) {
+  const [role, setRole] = useState("core");
+  const [username, setUsername] = useState("");
+  const [displayName, setDisplayName] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  const [createdResult, setCreatedResult] = useState(null);
+
+  async function submit(e) {
+    e.preventDefault();
+    setBusy(true);
+    setError("");
+    try {
+      const res = await adminCreateStaff({
+        role,
+        username: username.trim() || undefined,
+        displayName: displayName.trim() || undefined,
+      });
+      setCreatedResult(res.account);
+      onCreated(res.account);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div className="portal-modalBackdrop" onClick={onClose}>
+      <div className="portal-modalCard" onClick={(e) => e.stopPropagation()}>
+        <div className="portal-modalHead">
+          <h4>Generate Staff Login</h4>
+          <button type="button" className="portal-modalClose" onClick={onClose} aria-label="Close modal">
+            ✕
+          </button>
+        </div>
+
+        {createdResult ? (
+          <div className="portal-status portal-u-mt">
+            <p><strong>Staff account created successfully!</strong></p>
+            <p>Role: <code>{createdResult.role}</code></p>
+            <p>Name: <strong>{createdResult.displayName}</strong></p>
+            <p>Username: <code>{createdResult.username}</code></p>
+            <p>Password: <code>{createdResult.initialPassword}</code> (save this now!)</p>
+            <div className="portal-scanResult__actions portal-u-mt">
+              <button type="button" className="portal-auth__submit" onClick={onClose}>
+                Done
+              </button>
+            </div>
+          </div>
+        ) : (
+          <form className="portal-auth__form" onSubmit={submit}>
+            {error && <p className="portal-auth__error">{error}</p>}
+            <label className="portal-field">
+              <span>Account Role *</span>
+              <select value={role} onChange={(e) => setRole(e.target.value)} required>
+                <option value="core">Core Judge (Mentoring &amp; Scoring)</option>
+                <option value="regidesk">Registration Desk (Check-in &amp; Verification)</option>
+                <option value="meal">Meal Counter (Food QR Scanner)</option>
+                <option value="admin">Administrator (Full Access)</option>
+              </select>
+            </label>
+            <label className="portal-field">
+              <span>Username (optional — blank to auto-generate)</span>
+              <input
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+                placeholder={`e.g. ${role}06`}
+              />
+            </label>
+            <label className="portal-field">
+              <span>Display / Staff Name (optional)</span>
+              <input
+                value={displayName}
+                onChange={(e) => setDisplayName(e.target.value)}
+                placeholder="e.g. Judge John Doe"
+              />
+            </label>
+            <div className="portal-scanResult__actions portal-u-mt">
+              <button type="submit" className="portal-auth__submit" disabled={busy}>
+                {busy ? "Generating…" : "Generate Account"}
+              </button>
+              <button type="button" className="portal-logout" onClick={onClose}>
+                Cancel
+              </button>
+            </div>
+          </form>
+        )}
+      </div>
+    </div>
+  );
+}
+
+
 function PsManager({ problemStatements, onSaved }) {
   const [form, setForm] = useState({ code: "", title: "", description: "", capacity: "" });
   const [busy, setBusy] = useState(false);
@@ -1174,8 +1271,10 @@ function AdminHome({ session }) {
   const [problemStatements, setProblemStatements] = useState(null);
   const [viewQrTeam, setViewQrTeam] = useState(null);
   const [showAddTeam, setShowAddTeam] = useState(false);
+  const [showAddStaff, setShowAddStaff] = useState(false);
   const [showAllQrs, setShowAllQrs] = useState(false);
   const [zipBusy, setZipBusy] = useState(false);
+  const [feedbackBusy, setFeedbackBusy] = useState(null);
   const [error, setError] = useState("");
 
   function loadPs() {
@@ -1234,6 +1333,36 @@ function AdminHome({ session }) {
     setAccounts((prev) =>
       prev.map((a) => (a.id === accountId ? { ...a, initialPassword: newPassword } : a))
     );
+  }
+
+  async function toggleFeedbackApproval(teamId, currentStatus) {
+    setFeedbackBusy(teamId);
+    try {
+      await adminApproveFeedback(teamId, !currentStatus);
+      setMarksTeams((prev) =>
+        prev.map((t) => (t.id === teamId ? { ...t, feedbackApproved: !currentStatus } : t))
+      );
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setFeedbackBusy(null);
+    }
+  }
+
+  async function setAllResultsVisibility(approved) {
+    const actionName = approved ? "release all results to participants" : "hide all results from participants";
+    if (!window.confirm(`Are you sure you want to ${actionName}?`)) return;
+    setFeedbackBusy("all");
+    try {
+      await adminApproveAllFeedback(approved);
+      setMarksTeams((prev) =>
+        prev.map((t) => (t.score !== null ? { ...t, feedbackApproved: approved } : t))
+      );
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setFeedbackBusy(null);
+    }
   }
 
   function onRosterSaved(teamId, names) {
@@ -1425,7 +1554,17 @@ function AdminHome({ session }) {
       <AssignmentsManager teams={teams} />
 
       <section className="portal-card">
-        <h3>Staff accounts ({accounts?.length ?? "…"})</h3>
+        <div className="portal-card__headRow">
+          <h3>Staff accounts ({accounts?.length ?? "…"})</h3>
+          <button
+            type="button"
+            className="portal-auth__submit"
+            style={{ width: "auto", padding: "0.45rem 1rem", fontSize: "0.85rem" }}
+            onClick={() => setShowAddStaff(true)}
+          >
+            + Generate Staff Login
+          </button>
+        </div>
         <p className="portal-card__hint">Core, meal, regidesk and admin logins with current credentials.</p>
         {accounts && (
           <div className="portal-tableWrap">
@@ -1463,10 +1602,41 @@ function AdminHome({ session }) {
 
       <section className="portal-card">
         <div className="portal-card__headRow">
-          <h3>Round 2 marks</h3>
-          <ExportButton type="marks" />
+          <h3>Round 2 marks &amp; feedback</h3>
+          <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", flexWrap: "wrap" }}>
+            <button
+              type="button"
+              className="portal-auth__submit"
+              style={{
+                width: "auto",
+                padding: "0.45rem 1.1rem",
+                fontSize: "0.85rem",
+                background: "#27c93f",
+                borderColor: "#27c93f",
+                color: "#000",
+                fontWeight: 600,
+              }}
+              disabled={feedbackBusy === "all"}
+              onClick={() => setAllResultsVisibility(true)}
+            >
+              {feedbackBusy === "all" ? "Releasing…" : "📢 Release All Results to Participants"}
+            </button>
+            <button
+              type="button"
+              className="portal-logout"
+              style={{ width: "auto", padding: "0.45rem 0.9rem", fontSize: "0.85rem" }}
+              disabled={feedbackBusy === "all"}
+              onClick={() => setAllResultsVisibility(false)}
+            >
+              Hide All Results
+            </button>
+            <ExportButton type="marks" />
+          </div>
         </div>
-        <p className="portal-card__hint">Same data core enters — mirrored here so admin never needs a separate report.</p>
+        <p className="portal-card__hint">
+          Scores and mentor feedback entered by Core. Mentoring feedback stays hidden from participants
+          until you hit &ldquo;Release All Results to Participants&rdquo; (or approve them individually).
+        </p>
         {marksTeams && (
           <div className="portal-tableWrap">
             <table className="portal-table">
@@ -1474,13 +1644,46 @@ function AdminHome({ session }) {
                 <tr>
                   <th>Team</th>
                   <th>Score</th>
+                  <th>Mentor feedback</th>
+                  <th>Participant visibility</th>
                 </tr>
               </thead>
               <tbody>
                 {marksTeams.map((t) => (
                   <tr key={t.id}>
-                    <td>{t.teamCode}</td>
+                    <td>
+                      <strong>{t.teamCode}</strong>
+                      {t.teamName && <div className="portal-table__sub">{t.teamName}</div>}
+                    </td>
                     <td>{t.score ?? "—"}</td>
+                    <td className="portal-table__note" style={{ maxWidth: "320px" }}>
+                      {t.feedback ? `“${t.feedback}”` : "—"}
+                    </td>
+                    <td>
+                      {t.score !== null ? (
+                        <button
+                          type="button"
+                          className={t.feedbackApproved ? "portal-logout" : "portal-auth__submit"}
+                          style={{
+                            padding: "0.3rem 0.75rem",
+                            fontSize: "0.8rem",
+                            width: "auto",
+                            borderColor: t.feedbackApproved ? "#27c93f" : undefined,
+                            color: t.feedbackApproved ? "#27c93f" : undefined,
+                          }}
+                          disabled={feedbackBusy === t.id}
+                          onClick={() => toggleFeedbackApproval(t.id, t.feedbackApproved)}
+                        >
+                          {feedbackBusy === t.id
+                            ? "…"
+                            : t.feedbackApproved
+                            ? "Approved (Visible to Team) ✓"
+                            : "Approve for Team"}
+                        </button>
+                      ) : (
+                        <span className="portal-table__sub">Unscored</span>
+                      )}
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -1531,6 +1734,12 @@ function AdminHome({ session }) {
         <CreateTeamModal
           onCreated={() => loadAll()}
           onClose={() => setShowAddTeam(false)}
+        />
+      )}
+      {showAddStaff && (
+        <CreateStaffModal
+          onCreated={() => loadAll()}
+          onClose={() => setShowAddStaff(false)}
         />
       )}
     </div>

@@ -125,6 +125,7 @@ create table if not exists marks (
 
 alter table marks add column if not exists criteria jsonb;
 alter table marks add column if not exists feedback text;
+alter table marks add column if not exists feedback_approved boolean not null default false;
 
 -- the 7 meal slots across the two event days.
 create table if not exists meal_slots (
@@ -236,9 +237,9 @@ create table if not exists incidents (
   team_id integer references teams(id) on delete cascade,
   message text not null,
   status text not null default 'open' check (status in ('open', 'resolved')),
-  created_by integer references accounts(id),
+  created_by integer references accounts(id) on delete set null,
   created_role text,
-  resolved_by integer references accounts(id),
+  resolved_by integer references accounts(id) on delete set null,
   resolved_at timestamptz,
   created_at timestamptz not null default now()
 );
@@ -267,7 +268,7 @@ create index if not exists login_attempts_username_idx on login_attempts (userna
 -- logic itself.
 create table if not exists audit_log (
   id serial primary key,
-  actor_account_id integer references accounts(id),
+  actor_account_id integer references accounts(id) on delete set null,
   action text not null,
   detail jsonb,
   created_at timestamptz not null default now()

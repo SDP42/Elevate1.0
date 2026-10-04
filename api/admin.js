@@ -37,6 +37,8 @@ async function handler(req, res) {
     if (action === "approve-ps") return approvePs(req, res);
     if (action === "revoke-ps") return revokePs(req, res);
     if (action === "create-team") return createTeam(req, res);
+    if (action === "create-staff") return createStaff(req, res);
+    if (action === "approve-feedback") return approveFeedback(req, res);
     if (action === "set-withdrawn") return setWithdrawn(req, res);
     if (action === "freeze-results") return freezeResults(req, res);
     res.status(400).json({ error: "Unknown action" });
@@ -802,4 +804,107 @@ async function saveAssignment(req, res) {
   res.status(200).json({ ok: true });
 }
 
+/* create a new staff account (admin, core, meal, regidesk) */
+async function createStaff(req, res) {
+  const { role, username, displayName } = req.body || {};
+  const validRoles = ["admin", "core", "meal", "regidesk"];
+  if (!role || !validRoles.includes(role)) {
+    res.status(400).json({ error: `role must be one of: ${validRoles.join(", ")}` });
+    return;
+  }
+  let cleanUsername = username ? username.trim().toLowerCase().replace(/[^a-z0-9_]/g, "") : "";
+  if (!cleanUsername) {
+    // Auto-generate username from role + next available index
+    const existing = await sql`select username from accounts where role = ${role}`;
+    let idx = existing.length + 1;
+    let candidate = `${role}${String(idx).padStart(2, "0")}`;
+    const taken = new Set(existing.map((e) => e.username));
+    while (taken.has(candidate)) {
+      idx += 1;
+      candidate = `${role}${String(idx).padStart(2, "0")}`;
+    }
+    cleanUsername = candidate;
+  } else {
+    const existing = await sql`select id from accounts where username = ${cleanUsername}`;
+    if (existing[0]) {
+      res.status(409).json({ error: `Username ${cleanUsername} already exists` });
+      return;
+    }
+  }
+
+  const roleLabels = {
+    admin: "Admin",
+    core: "Core Judge",
+    meal: "Meal Counter",
+    regidesk: "Registration Desk",
+  };
+  const cleanName = displayName?.trim() || `${roleLabels[role] || role} ${cleanUsername}`;
+  const password = randomPassword();
+  const hash = await bcrypt.hash(password, 10);
+
+  const rows = await sql`
+    insert into accounts (username, password_hash, role, display_name, initial_password)
+    values (${cleanUsername}, ${hash}, ${role}, ${cleanName}, ${password})
+    returning id, username, role, display_name, initial_password, created_at
+  `;
+
+  await logAction(req.session.accountId, "account.create_staff", {
+    accountId: rows[0].id,
+    username: cleanUsername,
+    role,
+  });
+
+  res.status(200).json({
+    ok: true,
+    account: {
+      id: rows[0].id,
+      username: rows[0].username,
+      role: rows[0].role,
+      displayName: rows[0].display_name,
+      initialPassword: rows[0].initial_password,
+      createdAt: rows[0].created_at,
+    },
+  });
+}
+
+/* approve or withhold mentor feedback from being shown to teams.
+   Supports releasing all results at once with { all: true, approved: true/false },
+   or targeting a single team with { teamId, approved }. */
+async function approveFeedback(req, res) {
+  const { teamId, approved, all } = req.body || {};
+  const isApproved = approved === undefined ? true : Boolean(approved);
+
+  if (all) {
+    const rows = await sql`
+      update marks
+      set feedback_approved = ${isApproved}
+      where round_id = (select id from mentoring_rounds where round_no = 2)
+      returning id
+    `;
+    await logAction(req.session.accountId, "feedback.approve_all", { count: rows.length, approved: isApproved });
+    res.status(200).json({ ok: true, count: rows.length, approved: isApproved });
+    return;
+  }
+
+  if (!teamId) {
+    res.status(400).json({ error: "teamId or all: true is required" });
+    return;
+  }
+
+  const rows = await sql`
+    update marks
+    set feedback_approved = ${isApproved}
+    where team_id = ${teamId}
+      and round_id = (select id from mentoring_rounds where round_no = 2)
+    returning score, feedback_approved
+  `;
+  if (!rows[0]) {
+    res.status(404).json({ error: "No Round 2 marks found for this team yet" });
+    return;
+  }
+  await logAction(req.session.accountId, "feedback.approve", { teamId, approved: isApproved });
+  res.status(200).json({ ok: true, approved: isApproved });
+}
+
 export default requireRole(handler, ["admin"]);
+
