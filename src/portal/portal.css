@@ -1784,3 +1784,262 @@ tr.is-alert-row td {
     display: none !important;
   }
 }
+
+/* ==========================================================================
+   MOBILE & TABLET RESPONSIVE ENHANCEMENTS (max-width: 768px & 480px)
+   ========================================================================== */
+
+@media (max-width: 768px) {
+  /* Layout & Page Container */
+  .portal-page {
+    padding: 1.2rem 1rem 3rem;
+  }
+
+  .portal-page__head {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.8rem;
+    margin-bottom: 1.5rem;
+    padding-bottom: 1rem;
+  }
+
+  .portal-page__head h1 {
+    font-size: 1.6rem;
+  }
+
+  .portal-logout {
+    align-self: flex-start;
+  }
+
+  /* Cards & Sections */
+  .portal-card {
+    padding: 1.2rem 1rem;
+    border-radius: 12px;
+    margin-bottom: 1.2rem;
+  }
+
+  .portal-card__headRow {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.8rem;
+  }
+
+  .portal-card__headRow .portal-scanResult__actions,
+  .portal-card__headRow > div {
+    width: 100%;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+
+  /* Button bar wrapping */
+  .portal-scanResult__actions {
+    flex-wrap: wrap;
+  }
+
+  /* Modals */
+  .portal-modalBackdrop {
+    padding: 0.75rem;
+    align-items: flex-end;
+  }
+
+  .portal-modalCard {
+    max-height: 85vh;
+    padding: 1.2rem 1rem;
+    border-radius: 16px 16px 12px 12px;
+    width: 100%;
+  }
+
+  .portal-formRow {
+    grid-template-columns: 1fr;
+    gap: 0.8rem;
+  }
+
+  /* Tables & Touch Scrolling */
+  .portal-tableWrap {
+    -webkit-overflow-scrolling: touch;
+    margin: 0 -0.5rem;
+    padding: 0 0.5rem;
+    border-radius: 8px;
+  }
+
+  .portal-table th,
+  .portal-table td {
+    padding: 0.6rem 0.6rem;
+    font-size: 0.88rem;
+  }
+
+  /* Food / Regi Scanner */
+  .portal-scanner {
+    width: 100%;
+    max-width: 100%;
+    aspect-ratio: 1;
+    border-radius: 12px;
+  }
+
+  /* Manual Lookup Rows */
+  .portal-manualLookup__row {
+    flex-wrap: wrap;
+  }
+
+  .portal-manualLookup__row input {
+    width: 100%;
+    flex: 1 1 100%;
+  }
+
+  .portal-manualLookup__row button {
+    flex: 1 1 auto;
+  }
+
+  /* Assign list & Problem statement items */
+  .portal-assignList__head {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.4rem;
+  }
+
+  .portal-psList__head {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.4rem;
+  }
+}
+
+@media (max-width: 480px) {
+  /* Auth / Login Page */
+  .portal-auth {
+    padding: 1rem 0.75rem;
+  }
+
+  .portal-auth__card {
+    padding: 1.5rem 1.1rem;
+    border-radius: 14px;
+    width: 100%;
+  }
+
+  .portal-auth__title {
+    font-size: 1.65rem;
+    margin-bottom: 1.2rem;
+  }
+
+  .portal-tabs {
+    gap: 0.4rem;
+  }
+
+  .portal-tabs__btn {
+    min-width: 0;
+    flex: 1 1 calc(50% - 0.2rem);
+    padding: 0.6rem 0.5rem;
+    font-size: 0.78rem;
+  }
+
+  /* Boarding Pass / Ticket */
+  .ticket__main {
+    padding: 1rem 0.9rem;
+    gap: 0.9rem;
+  }
+
+  .ticket__code {
+    font-size: 1.5rem;
+  }
+
+  .ticket__rows {
+    grid-template-columns: 1fr 1fr;
+    gap: 0.6rem;
+  }
+
+  .ticket__rows dd {
+    font-size: 0.8rem;
+    white-space: normal;
+    word-break: break-word;
+  }
+
+  .ticket__qr img {
+    width: 120px;
+    height: 120px;
+  }
+
+  /* Countdown banner */
+  .portal-countdown {
+    flex-direction: column;
+    align-items: flex-start;
+    padding: 0.8rem 1rem;
+    gap: 0.6rem;
+  }
+
+  .portal-countdown__parts {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .portal-countdown__parts div {
+    min-width: 2.2rem;
+    flex: 1;
+  }
+
+  /* Full-width action buttons on tiny screens */
+  .portal-scanResult__actions button,
+  .portal-helpButton,
+  .portal-u-inline {
+    width: 100%;
+    text-align: center;
+    justify-content: center;
+  }
+
+  /* Leaderboard item */
+  .portal-leaderboard li {
+    padding: 0.75rem 0.85rem;
+    gap: 0.75rem;
+  }
+
+  .portal-leaderboard__rank {
+    width: 2.2rem;
+    height: 2.2rem;
+    font-size: 0.92rem;
+  }
+
+  .portal-leaderboard__code {
+    font-size: 0.95rem;
+  }
+
+  .portal-leaderboard__score {
+    font-size: 1.1rem;
+  }
+
+  /* Overview 2 columns */
+  .portal-overview__grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.5rem;
+  }
+
+  .portal-overview__grid strong {
+    font-size: 1.35rem;
+  }
+
+  /* Roster / Registration Row */
+  .portal-regiRow {
+    padding: 0.75rem 0.75rem;
+  }
+
+  .portal-regiRow__checks {
+    gap: 0.4rem 0.8rem;
+  }
+
+  .portal-regiRow__check {
+    font-size: 0.74rem;
+  }
+
+  .portal-qrPreview img {
+    width: 170px;
+    height: 170px;
+  }
+
+  .portal-allQrGrid {
+    grid-template-columns: 1fr 1fr;
+    gap: 0.6rem;
+  }
+
+  .portal-allQrCard__qr img {
+    width: 95px;
+    height: 95px;
+  }
+}
