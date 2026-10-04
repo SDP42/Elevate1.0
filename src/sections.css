@@ -1450,6 +1450,34 @@
   object-fit: contain;
 }
 
+/* for mark-only logos that carry no wordmark of their own: the mark and
+   the partner's name sit side by side at the same height as every other
+   tile's logo, so the row doesn't grow taller than its neighbours */
+.sponsors__lockup {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  height: 2.8rem;
+  max-width: 100%;
+}
+
+.sponsors__name {
+  font-size: 1.35rem;
+  font-weight: 800;
+  letter-spacing: 0.01em;
+  line-height: 1;
+  color: var(--ink);
+}
+
+/* three narrow columns on tablets: a smaller name keeps the lockup inside
+   its tile */
+@media (max-width: 960px) {
+  .sponsors__name {
+    font-size: 0.85rem;
+  }
+}
+
 .sponsors__perks {
   list-style: none;
   text-align: left;
