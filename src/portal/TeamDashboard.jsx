@@ -8,7 +8,7 @@ import RequireRole from "./RequireRole";
 import { EVENT, EVENT_START, SUBMISSION_DEADLINE, SPONSORS, HELP_CONTACTS } from "../config";
 import { CRITERIA } from "../../shared/criteria.js";
 import useHeroCloud from "./useHeroCloud";
-import { leaderboard, logout, psList, selectPs } from "./api";
+import { leaderboard, logout, psList, selectPs, submitProject } from "./api";
 
 /* Days/hours/minutes/seconds to a target — the same mechanic as the
    marketing site's own "Gates open in" timer (src/components/BoardingPass),
@@ -440,11 +440,33 @@ const FeedbackIcon = () => (
 );
 
 function ProjectSubmission({ team }) {
+  const [url, setUrl] = useState(team?.submission_url || "");
+  const [comments, setComments] = useState(team?.submission_note || "");
+  const [busy, setBusy] = useState(false);
+  const [saved, setSaved] = useState(false);
+  const [error, setError] = useState("");
+
+  async function save(e) {
+    e.preventDefault();
+    setBusy(true); setError(""); setSaved(false);
+    try {
+      await submitProject(url.trim(), comments.trim());
+      setSaved(true);
+    } catch (err) { setError(err.message); }
+    finally { setBusy(false); }
+  }
+
   return (
     <section className="portal-card">
       <h3><SubmitIcon />Submission</h3>
       <SubmissionFiles editable />
-      {team?.submission_url && <a href={team.submission_url} target="_blank" rel="noopener noreferrer">Previously saved project link</a>}
+      <form className="portal-auth__form" onSubmit={save}>
+        <label className="portal-field"><span>Project link</span><input type="url" value={url} placeholder="https://github.com/your-team/project" onChange={e => { setUrl(e.target.value); setSaved(false); }} /></label>
+        <label className="portal-field"><span>Comments</span><textarea className="portal-submission__comments" value={comments} rows={4} maxLength={10000} placeholder="Anything the judges should know" onChange={e => { setComments(e.target.value); setSaved(false); }} /></label>
+        {error && <p role="alert" className="portal-auth__error">{error}</p>}
+        {saved && <p role="status" className="portal-submission__saved">Link and comments saved.</p>}
+        <button type="submit" className="portal-auth__submit" disabled={busy}>{busy ? "Saving…" : "Save submission"}</button>
+      </form>
     </section>
   );
 }
