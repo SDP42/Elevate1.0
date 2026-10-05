@@ -1,61 +1,60 @@
+import fs from "node:fs";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 
-/* Lets `vite dev` serve the /api/*.js serverless functions itself, in the
-   same process — no `vercel dev` login needed for local development. Not
-   used in production: Vercel deploys api/*.js as real serverless functions
-   on its own, this plugin only exists so localhost works the same way. */
+// Local adapter for the top-level Vercel API functions. Private _lib modules
+// and filesystem paths are never exposed as routes.
 export default function apiPlugin() {
   return {
     name: "elevate-api-dev-middleware",
     configureServer(server) {
+      const apiDirectory = path.resolve(server.config.root, "api");
       server.middlewares.use(async (req, res, next) => {
         if (!req.url?.startsWith("/api/")) return next();
-
-        const [urlPath] = req.url.split("?");
-        const filePath = path.join(process.cwd(), urlPath.replace(/^\/api\//, "api/") + ".js");
-
-        let mod;
-        try {
-          mod = await import(`${pathToFileURL(filePath).href}?t=${Date.now()}`);
-        } catch {
-          res.statusCode = 404;
-          res.end(JSON.stringify({ error: "Not found" }));
-          return;
+        function json(status, payload) {
+          res.statusCode = status;
+          res.setHeader("Content-Type", "application/json");
+          res.setHeader("Cache-Control", "no-store");
+          res.end(JSON.stringify(payload));
         }
-
-        // collect and parse the JSON body, mirroring Vercel's Node runtime
-        const chunks = [];
-        for await (const chunk of req) chunks.push(chunk);
-        const raw = Buffer.concat(chunks).toString("utf8");
-        req.body = raw ? JSON.parse(raw) : undefined;
-
-        const vercelRes = {
-          statusCode: 200,
-          status(code) {
-            this.statusCode = code;
-            return this;
-          },
-          setHeader(key, value) {
-            res.setHeader(key, value);
-          },
-          json(payload) {
-            res.statusCode = this.statusCode;
-            res.setHeader("Content-Type", "application/json");
-            res.end(JSON.stringify(payload));
-          },
-          send(body) {
-            res.statusCode = this.statusCode;
-            res.end(body);
-          },
-        };
-
+        const route = req.url.split("?")[0].match(/^\/api\/([a-z][a-z0-9-]*)$/);
+        if (!route) return json(404, { error: "Not found" });
+        const filePath = path.join(apiDirectory, route[1] + ".js");
+        if (!fs.existsSync(filePath)) return json(404, { error: "Not found" });
         try {
-          await mod.default(req, vercelRes);
+          const chunks = [];
+          let bytes = 0;
+          for await (const chunk of req) {
+            bytes += chunk.length;
+            if (bytes <= 4.4 * 1024 * 1024) chunks.push(chunk);
+          }
+          if (bytes > 4.4 * 1024 * 1024) return json(413, { error: "Request is too large" });
+          const raw = Buffer.concat(chunks).toString("utf8");
+          try {
+            req.body = raw ? JSON.parse(raw) : undefined;
+          } catch {
+            return json(400, { error: "Invalid JSON body" });
+          }
+          if (req.body !== undefined && (req.body === null || typeof req.body !== "object" || Array.isArray(req.body))) {
+            return json(400, { error: "A JSON object is required" });
+          }
+          if (!(process.env.DATABASE_URL || process.env.POSTGRES_URL)?.trim() || !process.env.SESSION_SECRET?.trim()) {
+            return json(503, { error: "Sign-in is temporarily unavailable. Please contact an organiser.", code: "BACKEND_NOT_CONFIGURED" });
+          }
+          const mod = await import(`${pathToFileURL(filePath).href}?t=${fs.statSync(filePath).mtimeMs}`);
+          if (typeof mod.default !== "function") throw new Error("Invalid API handler");
+          const adapter = {
+            statusCode: 200,
+            status(code) { this.statusCode = code; return this; },
+            setHeader(key, value) { res.setHeader(key, value); },
+            json(payload) { json(this.statusCode, payload); },
+            send(body) { res.statusCode = this.statusCode; res.end(body); },
+          };
+          await mod.default(req, adapter);
         } catch (err) {
-          console.error(err);
-          res.statusCode = 500;
-          res.end(JSON.stringify({ error: "Internal error" }));
+          // Do not send database messages, connection strings or stack traces to clients.
+          console.error(`Local API /${route[1]} failed (${err?.code || err?.name || "Error"}).`);
+          if (!res.writableEnded) json(500, { error: "Unable to complete this request. Please try again." });
         }
       });
     },

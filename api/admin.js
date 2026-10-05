@@ -9,6 +9,7 @@ import { logAction } from "./_lib/audit.js";
    — the Hobby plan's 12-function cap). GET ?resource=... picks the read;
    POST {action: ...} picks the write. */
 async function handler(req, res) {
+  res.setHeader("Cache-Control", "no-store");
   const isSuper = req.session.role === "superadmin";
 
   if (req.method === "GET") {
@@ -49,6 +50,9 @@ async function handler(req, res) {
     if (action === "save-assignment") return saveAssignment(req, res);
     if (action === "approve-ps") return approvePs(req, res);
     if (action === "revoke-ps") return revokePs(req, res);
+    if (action === "create-team") return createTeam(req, res);
+    if (action === "create-staff") return createStaff(req, res);
+    if (action === "approve-feedback") return approveFeedback(req, res);
     if (action === "set-withdrawn") return setWithdrawn(req, res);
     if (action === "freeze-results") return freezeResults(req, res);
     res.status(400).json({ error: "Unknown action" });
@@ -122,7 +126,7 @@ async function setWithdrawn(req, res) {
 async function getTeams(req, res) {
   const teams = await sql`
     select t.id, t.team_code, t.seat_no, t.dietary, t.shortlisted, t.withdrawn,
-      t.submission_url, t.submission_note, t.submitted_at,
+      t.submission_url, t.submission_note, t.submitted_at, t.qr_token,
       a.id as account_id, a.display_name, a.username
     from teams t
     join accounts a on a.id = t.account_id
@@ -152,6 +156,7 @@ async function getTeams(req, res) {
       submissionUrl: t.submission_url,
       submissionNote: t.submission_note,
       submittedAt: t.submitted_at,
+      qrToken: t.qr_token,
       accountId: t.account_id,
       displayName: t.display_name,
       username: t.username,
@@ -169,7 +174,15 @@ async function getAccounts(req, res) {
     where role != 'team' and (${isSuper} or role != 'superadmin')
     order by role asc, username asc
   `;
-  res.status(200).json({ accounts });
+  res.status(200).json({
+    accounts: accounts.map((a) => ({
+      id: a.id,
+      username: a.username,
+      role: a.role,
+      display_name: a.display_name,
+      created_at: a.created_at,
+    })),
+  });
 }
 
 /* how many members have been served at each meal slot so far */
@@ -569,38 +582,137 @@ async function saveTeamMembers(req, res) {
   res.status(200).json({ ok: true });
 }
 
-/* rename a team's own display name (e.g. "Team 1" → their real chosen
-   name once finalised) — touches accounts.display_name only, never the
-   username, password, or qr_token, so nothing they've already been
-   given (login, boarding pass) needs reissuing */
+function generateTeamUsername(displayName, teamCode) {
+  const base = (displayName || teamCode || "team")
+    .toLowerCase()
+    .replace(/\s+/g, "")
+    .replace(/[^a-z0-9]/g, "");
+  return `${base || "team"}_${crypto.randomBytes(3).toString("hex")}`;
+}
+
+/* rename a team's display name (e.g. "Team 1" → their real chosen
+   name once finalised), preserving the issued username and QR token */
 async function saveTeamName(req, res) {
-  const { accountId, displayName } = req.body || {};
-  if (!accountId || !displayName || !displayName.trim()) {
-    res.status(400).json({ error: "accountId and displayName are required" });
+  let { accountId, teamId, displayName } = req.body || {};
+  if (!displayName || !displayName.trim()) {
+    res.status(400).json({ error: "displayName is required" });
     return;
   }
+
+  if (!accountId && teamId) {
+    const tRows = await sql`select account_id from teams where id = ${teamId}`;
+    accountId = tRows[0]?.account_id;
+  }
+
+  if (!accountId) {
+    res.status(400).json({ error: "accountId or teamId is required" });
+    return;
+  }
+
+  const cleanDisplayName = displayName.trim();
   const rows = await sql`
-    update accounts set display_name = ${displayName.trim()} where id = ${accountId} and role = 'team'
-    returning id
+    update accounts
+    set display_name = ${cleanDisplayName}
+    where id = ${accountId} and role = 'team'
+    returning id, username, display_name
   `;
   if (!rows[0]) {
     res.status(404).json({ error: "No team account with that id" });
     return;
   }
-  await logAction(req.session.accountId, "team.rename", { accountId });
-  res.status(200).json({ ok: true });
+  await logAction(req.session.accountId, "team.rename", { accountId, displayName: cleanDisplayName });
+  res.status(200).json({ ok: true, username: rows[0].username, displayName: cleanDisplayName });
 }
 
-/* mark which teams are the official Round 2 shortlist */
+/* mark which teams are the official Round 2 shortlist — auto-generates a QR token
+   when shortlisted, and clears it when un-shortlisted */
 async function setShortlist(req, res) {
   const { teamId, shortlisted } = req.body || {};
   if (!teamId) {
     res.status(400).json({ error: "teamId is required" });
     return;
   }
-  await sql`update teams set shortlisted = ${Boolean(shortlisted)} where id = ${teamId}`;
-  await logAction(req.session.accountId, "shortlist.set", { teamId, shortlisted: Boolean(shortlisted) });
-  res.status(200).json({ ok: true });
+  const isShortlisted = Boolean(shortlisted);
+  const rows = await sql`
+    update teams
+    set shortlisted = ${isShortlisted},
+        qr_token = coalesce(qr_token, ${crypto.randomBytes(16).toString("hex")})
+    where id = ${teamId}
+    returning qr_token
+  `;
+  await logAction(req.session.accountId, "shortlist.set", { teamId, shortlisted: isShortlisted });
+  res.status(200).json({ ok: true, qrToken: rows[0]?.qr_token });
+}
+
+/* manually create a new team account directly from the admin panel */
+async function createTeam(req, res) {
+  const { teamCode, displayName, seatNo, members, shortlisted } = req.body || {};
+  if (!teamCode || !teamCode.trim()) {
+    res.status(400).json({ error: "teamCode is required" });
+    return;
+  }
+  const cleanCode = teamCode.trim().toUpperCase();
+  const existingTeam = await sql`select id from teams where upper(team_code) = upper(${cleanCode})`;
+  if (existingTeam[0]) {
+    res.status(409).json({ error: `Team code ${cleanCode} already exists` });
+    return;
+  }
+
+  const cleanName = displayName?.trim() || `Team ${cleanCode}`;
+  let username = generateTeamUsername(cleanName, cleanCode);
+  let existingAccount = await sql`select id from accounts where username = ${username}`;
+  while (existingAccount[0]) {
+    username = generateTeamUsername(cleanName, cleanCode);
+    existingAccount = await sql`select id from accounts where username = ${username}`;
+  }
+
+  const password = randomPassword();
+  const passwordHash = await bcrypt.hash(password, 10);
+  const isShortlisted = Boolean(shortlisted);
+  // All Round 1 teams get a QR code immediately upon creation
+  const qrToken = crypto.randomBytes(16).toString("hex");
+
+  const accountRows = await sql`
+    insert into accounts (username, password_hash, role, display_name)
+    values (${username}, ${passwordHash}, 'team', ${cleanName})
+    returning id
+  `;
+  const accountId = accountRows[0].id;
+
+  const cleanSeat = seatNo !== "" && seatNo != null ? Number(seatNo) : null;
+  const teamRows = await sql`
+    insert into teams (account_id, team_code, seat_no, qr_token, shortlisted)
+    values (${accountId}, ${cleanCode}, ${cleanSeat}, ${qrToken}, ${isShortlisted})
+    returning id
+  `;
+  const teamId = teamRows[0].id;
+
+  const rawNames = Array.isArray(members) ? members : (members || "").split("\n");
+  const cleanNames = rawNames.map((n) => String(n).trim()).filter(Boolean);
+  const memberList = cleanNames.length > 0 ? cleanNames.slice(0, 4) : [`${cleanCode} Member 1`, `${cleanCode} Member 2`];
+
+  for (let i = 0; i < memberList.length; i += 1) {
+    await sql`
+      insert into team_members (team_id, name, is_lead, sort_order)
+      values (${teamId}, ${memberList[i]}, ${i === 0}, ${i + 1})
+    `;
+  }
+
+  await logAction(req.session.accountId, "team.create", { teamId, teamCode: cleanCode, shortlisted: isShortlisted });
+
+  res.status(200).json({
+    ok: true,
+    teamId,
+    accountId,
+    teamCode: cleanCode,
+    username,
+    password,
+    displayName: cleanName,
+    seatNo: cleanSeat,
+    shortlisted: isShortlisted,
+    qrToken,
+    members: memberList.map((name, i) => ({ id: i + 1, name, isLead: i === 0 })),
+  });
 }
 
 /* dietary note against a team — shown to meal counters at scan time */
@@ -615,8 +727,8 @@ async function saveTeamNotes(req, res) {
   res.status(200).json({ ok: true });
 }
 
-/* paste a CSV export (team_code,name1,name2,name3,name4) and populate every
-   roster in one go instead of editing team-by-team */
+/* paste a CSV export (team_code,team_name,name1,name2,name3,name4 or team_code,name1,name2,name3,name4)
+   and populate teams, display names, usernames, and rosters in one go */
 async function bulkImport(req, res) {
   const { csvText } = req.body || {};
   if (!csvText || !csvText.trim()) {
@@ -628,20 +740,78 @@ async function bulkImport(req, res) {
   const results = [];
 
   for (const line of lines) {
-    const cols = line.split(",").map((c) => c.trim());
-    const [teamCode, ...names] = cols;
-    const cleanNames = names.filter(Boolean).slice(0, 4);
+    // Skip optional CSV header line if present
+    if (/^team_?code/i.test(line)) continue;
 
-    if (!teamCode || cleanNames.length < 2) {
-      results.push({ teamCode: teamCode || "(blank)", ok: false, error: "needs a team code and 2-4 names" });
+    const cols = line.split(",").map((c) => c.trim()).filter((c) => c.length > 0);
+    if (cols.length < 2) {
+      results.push({ teamCode: cols[0] || "(blank)", ok: false, error: "needs team code and members" });
       continue;
     }
 
-    const teamRows = await sql`select id from teams where upper(team_code) = upper(${teamCode})`;
-    const team = teamRows[0];
-    if (!team) {
-      results.push({ teamCode, ok: false, error: "no team with that code" });
+    const teamCode = cols[0];
+    let teamName = null;
+    let names = [];
+
+    // Check if line has at least 3 columns (teamCode, teamName, name1, [name2...])
+    // If cols.length >= 3:
+    // Format A: teamCode, teamName, member1, member2, ...
+    // Format B (legacy): teamCode, member1, member2, member3, member4
+    // We treat cols[1] as teamName if cols.length >= 3 and cols[1] is non-empty.
+    if (cols.length >= 3) {
+      teamName = cols[1];
+      names = cols.slice(2, 6);
+    } else {
+      names = cols.slice(1, 5);
+    }
+
+    const cleanNames = names.filter(Boolean);
+    if (cleanNames.length < 1) {
+      results.push({ teamCode, ok: false, error: "needs at least 1-2 member names" });
       continue;
+    }
+
+    const teamRows = await sql`
+      select t.id, t.account_id, a.username, a.display_name
+      from teams t
+      join accounts a on a.id = t.account_id
+      where upper(t.team_code) = upper(${teamCode})
+    `;
+    let team = teamRows[0];
+    let createdCredentials = null;
+
+    if (!team) {
+      // Create team on the fly if it doesn't exist
+      const cleanCode = teamCode.toUpperCase();
+      const displayName = teamName?.trim() || `Team ${cleanCode}`;
+      let username = generateTeamUsername(displayName, cleanCode);
+      let existingAccount = await sql`select id from accounts where username = ${username}`;
+      while (existingAccount[0]) {
+        username = generateTeamUsername(displayName, cleanCode);
+        existingAccount = await sql`select id from accounts where username = ${username}`;
+      }
+
+      const password = randomPassword();
+      const passwordHash = await bcrypt.hash(password, 10);
+      const qrToken = crypto.randomBytes(16).toString("hex");
+
+      const accountRows = await sql`
+        insert into accounts (username, password_hash, role, display_name)
+        values (${username}, ${passwordHash}, 'team', ${displayName})
+        returning id
+      `;
+      const accountId = accountRows[0].id;
+
+      const newTeamRows = await sql`
+        insert into teams (account_id, team_code, seat_no, qr_token, shortlisted)
+        values (${accountId}, ${cleanCode}, null, ${qrToken}, false)
+        returning id
+      `;
+      team = { id: newTeamRows[0].id, account_id: accountId, username, display_name: displayName };
+      createdCredentials = { username, password };
+    } else if (teamName && teamName.trim()) {
+      const cleanDisplayName = teamName.trim();
+      await sql`update accounts set display_name = ${cleanDisplayName} where id = ${team.account_id}`;
     }
 
     await sql`delete from team_members where team_id = ${team.id}`;
@@ -651,7 +821,7 @@ async function bulkImport(req, res) {
         values (${team.id}, ${cleanNames[i]}, ${i === 0}, ${i + 1})
       `;
     }
-    results.push({ teamCode, ok: true });
+    results.push({ teamCode, ok: true, ...(createdCredentials || {}) });
   }
 
   await logAction(req.session.accountId, "roster.bulk_import", { rows: results.length });
@@ -683,7 +853,12 @@ async function resetPassword(req, res) {
   }
   const password = randomPassword();
   const hash = await bcrypt.hash(password, 10);
-  const rows = await sql`update accounts set password_hash = ${hash} where id = ${accountId} returning username`;
+  const rows = await sql`
+    update accounts
+    set password_hash = ${hash}
+    where id = ${accountId}
+    returning username
+  `;
   if (!rows[0]) {
     res.status(404).json({ error: "No such account" });
     return;
@@ -738,4 +913,107 @@ async function saveAssignment(req, res) {
   res.status(200).json({ ok: true });
 }
 
+/* create a new staff account (admin, core, meal, regidesk) */
+async function createStaff(req, res) {
+  const { role, username, displayName } = req.body || {};
+  const validRoles = ["admin", "core", "meal", "regidesk"];
+  if (!role || !validRoles.includes(role)) {
+    res.status(400).json({ error: `role must be one of: ${validRoles.join(", ")}` });
+    return;
+  }
+  let cleanUsername = username ? username.trim().toLowerCase().replace(/[^a-z0-9_]/g, "") : "";
+  if (!cleanUsername) {
+    // Auto-generate username from role + next available index
+    const existing = await sql`select username from accounts where role = ${role}`;
+    let idx = existing.length + 1;
+    let candidate = `${role}${String(idx).padStart(2, "0")}`;
+    const taken = new Set(existing.map((e) => e.username));
+    while (taken.has(candidate)) {
+      idx += 1;
+      candidate = `${role}${String(idx).padStart(2, "0")}`;
+    }
+    cleanUsername = candidate;
+  } else {
+    const existing = await sql`select id from accounts where username = ${cleanUsername}`;
+    if (existing[0]) {
+      res.status(409).json({ error: `Username ${cleanUsername} already exists` });
+      return;
+    }
+  }
+
+  const roleLabels = {
+    admin: "Admin",
+    core: "Core Judge",
+    meal: "Meal Counter",
+    regidesk: "Registration Desk",
+  };
+  const cleanName = displayName?.trim() || `${roleLabels[role] || role} ${cleanUsername}`;
+  const password = randomPassword();
+  const hash = await bcrypt.hash(password, 10);
+
+  const rows = await sql`
+    insert into accounts (username, password_hash, role, display_name)
+    values (${cleanUsername}, ${hash}, ${role}, ${cleanName})
+    returning id, username, role, display_name, created_at
+  `;
+
+  await logAction(req.session.accountId, "account.create_staff", {
+    accountId: rows[0].id,
+    username: cleanUsername,
+    role,
+  });
+
+  res.status(200).json({
+    ok: true,
+    account: {
+      id: rows[0].id,
+      username: rows[0].username,
+      role: rows[0].role,
+      displayName: rows[0].display_name,
+      password,
+      createdAt: rows[0].created_at,
+    },
+  });
+}
+
+/* approve or withhold mentor feedback from being shown to teams.
+   Supports releasing all results at once with { all: true, approved: true/false },
+   or targeting a single team with { teamId, approved }. */
+async function approveFeedback(req, res) {
+  const { teamId, approved, all } = req.body || {};
+  const isApproved = approved === undefined ? true : Boolean(approved);
+
+  if (all) {
+    const rows = await sql`
+      update marks
+      set feedback_approved = ${isApproved}
+      where round_id = (select id from mentoring_rounds where round_no = 2)
+      returning id
+    `;
+    await logAction(req.session.accountId, "feedback.approve_all", { count: rows.length, approved: isApproved });
+    res.status(200).json({ ok: true, count: rows.length, approved: isApproved });
+    return;
+  }
+
+  if (!teamId) {
+    res.status(400).json({ error: "teamId or all: true is required" });
+    return;
+  }
+
+  const rows = await sql`
+    update marks
+    set feedback_approved = ${isApproved}
+    where team_id = ${teamId}
+      and round_id = (select id from mentoring_rounds where round_no = 2)
+    returning score, feedback_approved
+  `;
+  if (!rows[0]) {
+    res.status(404).json({ error: "No Round 2 marks found for this team yet" });
+    return;
+  }
+  await logAction(req.session.accountId, "feedback.approve", { teamId, approved: isApproved });
+  res.status(200).json({ ok: true, approved: isApproved });
+}
+
 export default requireRole(handler, ["admin", "superadmin"]);
+

@@ -79,6 +79,9 @@ export const mealLookupByCode = (teamCode, mealSlotCode) =>
 export const mealLog = (teamId, mealSlotCode, memberIds) =>
   request("/meal", { method: "POST", body: JSON.stringify({ action: "log", teamId, mealSlotCode, memberIds }) });
 
+export const mealUndo = (teamId, mealSlotCode, memberId) =>
+  request("/meal", { method: "POST", body: JSON.stringify({ action: "undo", teamId, mealSlotCode, memberId }) });
+
 export const mealTally = () => request("/meal");
 
 export const coreTeams = () => request("/core");
@@ -112,6 +115,9 @@ export const adminSaveTeamName = (accountId, displayName) =>
 
 export const adminSetShortlist = (teamId, shortlisted) =>
   request("/admin", { method: "POST", body: JSON.stringify({ action: "set-shortlist", teamId, shortlisted }) });
+
+export const adminCreateTeam = (payload) =>
+  request("/admin", { method: "POST", body: JSON.stringify({ action: "create-team", ...payload }) });
 
 export const adminSaveTeamNotes = (teamId, dietary) =>
   request("/admin", { method: "POST", body: JSON.stringify({ action: "save-team-notes", teamId, dietary }) });
@@ -181,3 +187,17 @@ export const regideskLookupByCode = (teamCode) =>
 
 export const regideskSave = (memberId, teamId, details) =>
   request("/regidesk", { method: "POST", body: JSON.stringify({ action: "save", memberId, teamId, ...details }) });
+
+export const adminApproveFeedback = (teamId, approved) =>
+  request("/admin", { method: "POST", body: JSON.stringify({ action: "approve-feedback", teamId, approved }) });
+
+export const adminApproveAllFeedback = (approved = true) =>
+  request("/admin", { method: "POST", body: JSON.stringify({ action: "approve-feedback", all: true, approved }) });
+
+export const adminCreateStaff = (payload) =>
+  request("/admin", { method: "POST", body: JSON.stringify({ action: "create-staff", ...payload }) });
+
+
+export const submissionFiles = (teamId) => request(`/auth?resource=submission-files${teamId ? `&teamId=${teamId}` : ""}`);
+export const submissionFile = (id, teamId) => request(`/auth?resource=submission-files&fileId=${id}${teamId ? `&teamId=${teamId}` : ""}`);
+export const uploadSubmission = (name, base64) => request("/auth", { method: "POST", body: JSON.stringify({ action: "upload", name, base64 }) });

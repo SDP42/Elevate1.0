@@ -324,6 +324,30 @@
   text-align: center;
 }
 
+.ticket__qrStandby {
+  width: 100%;
+  max-width: 150px;
+  aspect-ratio: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px dashed rgba(255, 255, 255, 0.2);
+  gap: 0.4rem;
+}
+
+.ticket__standbyBadge {
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  color: #f0b35c;
+  padding: 0.2rem 0.5rem;
+  border-radius: 4px;
+  background: rgba(240, 179, 92, 0.15);
+}
+
 .ticket__perf {
   flex: none;
   width: 0;
@@ -332,6 +356,7 @@
 }
 
 .ticket__main {
+  container: participant-ticket / inline-size;
   flex: 1;
   min-width: 0;
   padding: 1.3rem 1.5rem;
@@ -415,25 +440,46 @@
   white-space: nowrap;
 }
 
-.ticket__ps {
+/* A labelled logo panel: each sponsor gets a real, readable cell. */
+.ticket__sponsors {
   display: flex;
-  align-items: baseline;
-  gap: 0.5rem;
-  padding: 0.6rem 0.8rem;
-  border-radius: 8px;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 10px;
+  flex: none;
+  padding: 12px 16px;
+  border-radius: 10px;
   background: rgba(201, 168, 106, 0.1);
-  font-size: 0.85rem;
 }
-
-.ticket__ps span {
-  color: #8a92a6;
-  font-size: 0.7rem;
+.ticket__sponsorsLabel {
+  color: #69758c;
+  font-size: 11px;
+  font-weight: 600;
   text-transform: uppercase;
-  letter-spacing: 0.04em;
+  letter-spacing: .1em;
 }
-
-.ticket__ps strong {
-  color: var(--ink);
+.ticket__sponsorLogos {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 12px 16px;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.ticket__sponsorLogos li {
+  min-width: 0;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.ticket__sponsorLogos img {
+  display: block;
+  max-width: 100%;
+  width: auto;
+  height: auto;
+  max-height: 30px;
+  object-fit: contain;
 }
 
 .ticket__passengers {
@@ -519,28 +565,46 @@
     flex-direction: column;
   }
   .ticket__body {
-    flex-direction: column;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 20px;
+    padding: 24px 20px;
     border-radius: 18px 18px 0 0;
     -webkit-mask: none;
   }
+  .ticket__main { display: contents; }
+  .ticket__route { grid-row: 1; gap: 10px; }
+  .ticket__city { font-size: 12px; }
+  .ticket__when { font-size: 11px; }
+  .ticket__code { font-size: 28px; }
   .ticket__qr {
+    grid-row: 2;
     width: 100%;
-    flex-direction: row;
-    justify-content: center;
-    padding: 1.1rem 1.1rem 0.6rem;
-  }
-  .ticket__qr img {
-    width: 110px;
-  }
-  .ticket__perf {
-    width: auto;
-    margin: 0.7rem 1.1rem 0;
-    border-left: 0;
+    flex-direction: column;
+    gap: 10px;
+    padding: 20px 0;
     border-top: 2px dashed #f0b35c;
+    border-bottom: 1px solid #e3e7ee;
   }
+  .ticket__qr img { width: 160px; height: 160px; max-width: 160px; }
+  .ticket__qrLabel { font-size: 12px; }
+  .ticket__perf { display: none; }
   .ticket__rows {
+    grid-row: 3;
     grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 14px;
   }
+  .ticket__rows > div:nth-child(2) { text-align: right; }
+  .ticket__rows > div:last-child { grid-column: 1 / -1; }
+  .ticket__rows > div:nth-child(4) { text-align: right; }
+  .ticket__rows dt { font-size: 12px; }
+  .ticket__rows dd { font-size: 18px; }
+  .ticket__sponsors { grid-row: 4; padding: 14px; }
+  .ticket__sponsorLogos { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px 12px; }
+  .ticket__passengers { grid-row: 5; padding-top: 16px; }
+  .ticket__passengersLabel { font-size: 11px; }
+  .ticket__passengers ul { gap: 10px 16px; }
+  .ticket__passengers li { font-size: 14px; }
   .ticket__stub {
     width: 100%;
     flex-direction: row;
@@ -1542,6 +1606,484 @@ tr.is-alert-row td {
   }
 }
 
+/* ---------- modal dialogs (View QR & Add Team) ---------- */
+.portal-modalBackdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(10, 14, 26, 0.75);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 1.5rem;
+}
+
+.portal-modalCard {
+  background: #121829;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 16px;
+  width: 100%;
+  max-width: 520px;
+  max-height: 90vh;
+  overflow-y: auto;
+  padding: 1.8rem;
+  box-shadow: 0 24px 48px rgba(0, 0, 0, 0.7);
+  display: flex;
+  flex-direction: column;
+  gap: 1.2rem;
+  box-sizing: border-box;
+}
+
+.portal-modalHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  padding-bottom: 0.8rem;
+}
+
+.portal-modalHead h4 {
+  margin: 0;
+  font-family: var(--font-display, inherit);
+  font-size: 1.15rem;
+  letter-spacing: 0.04em;
+  color: #fff;
+}
+
+.portal-modalClose {
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: #aaa;
+  border-radius: 50%;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.portal-modalClose:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: #fff;
+  border-color: rgba(255, 255, 255, 0.3);
+}
+
+.portal-modalCard .portal-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.portal-modalCard .portal-field span {
+  font-size: 0.82rem;
+  font-weight: 500;
+  color: var(--cream-dim, #b8b3a8);
+}
+
+.portal-modalCard .portal-field input,
+.portal-modalCard .portal-field textarea {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 0.75rem 0.9rem;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(8, 11, 20, 0.85);
+  color: var(--cream, #fff);
+  font-size: 0.95rem;
+  font-family: inherit;
+  transition: border-color 0.15s ease;
+}
+
+.portal-modalCard .portal-field input:focus,
+.portal-modalCard .portal-field textarea:focus {
+  outline: none;
+  border-color: var(--gold, #f0b35c);
+  box-shadow: 0 0 0 2px rgba(240, 179, 92, 0.2);
+}
+
+.portal-modalCard .portal-field textarea {
+  resize: vertical;
+  min-height: 80px;
+}
+
+.portal-qrPreview {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 1rem;
+  background: #fff;
+  border-radius: 8px;
+  width: fit-content;
+  margin: 0 auto;
+}
+
+.portal-qrPreview img {
+  width: 220px;
+  height: 220px;
+  display: block;
+}
+
+.portal-formRow {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.portal-checkboxLabel {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.65rem;
+  font-size: 0.84rem;
+  color: var(--cream-dim, #bbb);
+  cursor: pointer;
+  line-height: 1.4;
+  margin-top: 0.4rem;
+}
+
+.portal-checkboxLabel input[type="checkbox"] {
+  margin-top: 0.15rem;
+  accent-color: var(--gold, #f0b35c);
+  cursor: pointer;
+}
+
+.portal-modalCard--wide {
+  max-width: 960px;
+  max-height: 85vh;
+  overflow-y: auto;
+}
+
+.portal-allQrGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 1rem;
+}
+
+.portal-allQrCard {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+  padding: 0.8rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 0.4rem;
+}
+
+.portal-allQrCard__head {
+  display: flex;
+  justify-content: space-between;
+  width: 100%;
+  font-size: 0.85rem;
+}
+
+.portal-allQrCard__head strong {
+  color: var(--gold, #f0b35c);
+}
+
+.portal-allQrCard__name {
+  font-size: 0.8rem;
+  color: var(--cream-dim, #ccc);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  width: 100%;
+}
+
+.portal-allQrCard__qr {
+  background: #fff;
+  padding: 0.4rem;
+  border-radius: 6px;
+  display: grid;
+  place-items: center;
+}
+
+.portal-allQrCard__qr img {
+  width: 130px;
+  height: 130px;
+  display: block;
+}
+
+.portal-allQrCard__footer .portal-link-btn {
+  font-size: 0.75rem;
+  color: #f0b35c;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+@media print {
+  .portal-no-print {
+    display: none !important;
+  }
+}
+
+/* ==========================================================================
+   MOBILE & TABLET RESPONSIVE ENHANCEMENTS (max-width: 768px & 480px)
+   ========================================================================== */
+
+@media (max-width: 768px) {
+  /* Layout & Page Container */
+  .portal-page {
+    padding: 1.2rem 1rem 3rem;
+  }
+
+  .portal-page__head {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.8rem;
+    margin-bottom: 1.5rem;
+    padding-bottom: 1rem;
+  }
+
+  .portal-page__head h1 {
+    font-size: 1.6rem;
+  }
+
+  .portal-logout {
+    align-self: flex-start;
+  }
+
+  /* Cards & Sections */
+  .portal-card {
+    padding: 1.2rem 1rem;
+    border-radius: 12px;
+    margin-bottom: 1.2rem;
+  }
+
+  .portal-card__headRow {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.8rem;
+  }
+
+  .portal-card__headRow .portal-scanResult__actions,
+  .portal-card__headRow > div {
+    width: 100%;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+
+  /* Button bar wrapping */
+  .portal-scanResult__actions {
+    flex-wrap: wrap;
+  }
+
+  /* Modals */
+  .portal-modalBackdrop {
+    padding: 0.75rem;
+    align-items: flex-end;
+  }
+
+  .portal-modalCard {
+    max-height: 85vh;
+    padding: 1.2rem 1rem;
+    border-radius: 16px 16px 12px 12px;
+    width: 100%;
+  }
+
+  .portal-formRow {
+    grid-template-columns: 1fr;
+    gap: 0.8rem;
+  }
+
+  /* Tables & Touch Scrolling */
+  .portal-tableWrap {
+    -webkit-overflow-scrolling: touch;
+    margin: 0 -0.5rem;
+    padding: 0 0.5rem;
+    border-radius: 8px;
+  }
+
+  .portal-table th,
+  .portal-table td {
+    padding: 0.6rem 0.6rem;
+    font-size: 0.88rem;
+  }
+
+  /* Food / Regi Scanner */
+  .portal-scanner {
+    width: 100%;
+    max-width: 100%;
+    aspect-ratio: 1;
+    border-radius: 12px;
+  }
+
+  /* Manual Lookup Rows */
+  .portal-manualLookup__row {
+    flex-wrap: wrap;
+  }
+
+  .portal-manualLookup__row input {
+    width: 100%;
+    flex: 1 1 100%;
+  }
+
+  .portal-manualLookup__row button {
+    flex: 1 1 auto;
+  }
+
+  /* Assign list & Problem statement items */
+  .portal-assignList__head {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.4rem;
+  }
+
+  .portal-psList__head {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.4rem;
+  }
+}
+
+@media (max-width: 480px) {
+  /* Auth / Login Page */
+  .portal-auth {
+    padding: 1rem 0.75rem;
+  }
+
+  .portal-auth__card {
+    padding: 1.5rem 1.1rem;
+    border-radius: 14px;
+    width: 100%;
+  }
+
+  .portal-auth__title {
+    font-size: 1.65rem;
+    margin-bottom: 1.2rem;
+  }
+
+  .portal-tabs {
+    gap: 0.4rem;
+  }
+
+  .portal-tabs__btn {
+    min-width: 0;
+    flex: 1 1 calc(50% - 0.2rem);
+    padding: 0.6rem 0.5rem;
+    font-size: 0.78rem;
+  }
+
+  /* Boarding Pass / Ticket */
+  .ticket__main {
+    padding: 1rem 0.9rem;
+    gap: 0.9rem;
+  }
+
+  .ticket__code {
+    font-size: 1.5rem;
+  }
+
+  .ticket__rows {
+    grid-template-columns: 1fr 1fr;
+    gap: 0.6rem;
+  }
+
+  .ticket__rows dd {
+    font-size: 0.8rem;
+    white-space: normal;
+    word-break: break-word;
+  }
+
+  .ticket__qr img {
+    width: 160px;
+    height: 160px;
+  }
+
+  /* Countdown banner */
+  .portal-countdown {
+    flex-direction: column;
+    align-items: flex-start;
+    padding: 0.8rem 1rem;
+    gap: 0.6rem;
+  }
+
+  .portal-countdown__parts {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .portal-countdown__parts div {
+    min-width: 2.2rem;
+    flex: 1;
+  }
+
+  /* Full-width action buttons on tiny screens */
+  .portal-scanResult__actions button,
+  .portal-helpButton,
+  .portal-u-inline {
+    width: 100%;
+    text-align: center;
+    justify-content: center;
+  }
+
+  /* Leaderboard item */
+  .portal-leaderboard li {
+    padding: 0.75rem 0.85rem;
+    gap: 0.75rem;
+  }
+
+  .portal-leaderboard__rank {
+    width: 2.2rem;
+    height: 2.2rem;
+    font-size: 0.92rem;
+  }
+
+  .portal-leaderboard__code {
+    font-size: 0.95rem;
+  }
+
+  .portal-leaderboard__score {
+    font-size: 1.1rem;
+  }
+
+  /* Overview 2 columns */
+  .portal-overview__grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.5rem;
+  }
+
+  .portal-overview__grid strong {
+    font-size: 1.35rem;
+  }
+
+  /* Roster / Registration Row */
+  .portal-regiRow {
+    padding: 0.75rem 0.75rem;
+  }
+
+  .portal-regiRow__checks {
+    gap: 0.4rem 0.8rem;
+  }
+
+  .portal-regiRow__check {
+    font-size: 0.74rem;
+  }
+
+  .portal-qrPreview img {
+    width: 170px;
+    height: 170px;
+  }
+
+  .portal-allQrGrid {
+    grid-template-columns: 1fr 1fr;
+    gap: 0.6rem;
+  }
+
+  .portal-allQrCard__qr img {
+    width: 95px;
+    height: 95px;
+  }
+}
+
 /* ---------- super admin oversight ---------- */
 .portal-subhead {
   margin: 1.4rem 0 0.6rem;
@@ -1585,3 +2127,38 @@ tr.is-alert-row td {
     grid-template-columns: 1fr;
   }
 }
+
+/* Document uploads and previews stay inside the submission card. */
+.submission-files { min-width: 0; margin: 20px 0; }
+.submission-upload { padding: 18px 0; border-top: 1px solid rgba(201,168,106,.18); }
+.submission-upload input[type="file"] { width: 100%; min-width: 0; font-size: 13px; }
+.submission-upload input::file-selector-button { color: #17120a; background: linear-gradient(135deg, #dbc18b, #b6975c); border: 1px solid #d9bf87; border-radius: 8px; padding: 10px; margin-right: 10px; cursor: pointer; }
+.submission-upload__saved { font-size: 12px; color: var(--cream-dim); overflow-wrap: anywhere; }
+.submission-viewer { min-width: 0; margin-top: 16px; }
+.submission-viewer > a { display: inline-block; margin-bottom: 12px; overflow-wrap: anywhere; color: var(--gold); }
+.submission-viewer__nav { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; margin: 12px 0; font-size: 12px; }
+.submission-viewer__nav button { padding: 8px 12px; border: 1px solid #67758a; border-radius: 8px; background: #172333; color: #fff; cursor: pointer; }
+.submission-viewer__nav button:disabled { opacity: .45; cursor: default; }
+.submission-viewer__document { max-height: 550px; overflow: auto; overflow-wrap: anywhere; padding: 24px; border-radius: 12px; background: #fbfcfd; color: #0b1b3a; font: 14px/1.7 var(--font-body); }
+pre.submission-viewer__document { white-space: pre-wrap; }
+.submission-viewer__document h1, .submission-viewer__document h2, .submission-viewer__document h3, .submission-viewer__document h4 { color: #0b1b3a; font-family: var(--font-body); letter-spacing: normal; text-transform: none; margin: 16px 0; }
+.submission-viewer__document a { color: #215cb3; }
+.submission-viewer__document pre { overflow: auto; background: #eef1f6; padding: 12px; }
+.submission-viewer__document table { border-collapse: collapse; }
+.submission-viewer__document th, .submission-viewer__document td { padding: 8px; border: 1px solid #d5dce6; }
+.submission-viewer__slide img { display: block; max-width: 100%; max-height: 260px; object-fit: contain; margin: 16px auto; }
+.submission-viewer__pdf { display: block; width: 100%; height: auto; background: white; border-radius: 10px; }
+.submission-files summary { cursor: pointer; overflow-wrap: anywhere; padding: 8px 0; }
+.portal-helpGlass { background: rgba(5,12,22,.86); border: 1px solid rgba(196,211,236,.2); box-shadow: inset 0 1px 0 rgba(255,255,255,.08), 0 16px 40px rgba(0,0,0,.3); border-radius: 22px; }
+.portal-helpGlass .portal-card__hint { color: #b4bfce; }
+.portal-helpGlass textarea, .portal-helpGlass select { width: 100%; padding: 12px; border-radius: 10px; background: rgba(2,7,14,.8); color: #f3ede2; border: 1px solid #566174; font: inherit; }
+
+.portal-helpGlass textarea:focus, .portal-helpGlass textarea:focus-visible {
+  outline: none;
+  border-color: #d6b675;
+  box-shadow: 0 0 0 3px rgba(201,168,106,.22), inset 0 0 0 1px rgba(214,182,117,.12);
+}
+.submission-upload input[type="file"]:focus-visible { outline: 2px solid var(--gold); outline-offset: 3px; }
+
+.portal-submission__comments { width: 100%; padding: .85rem 1rem; resize: vertical; border-radius: 10px; border: 1px solid rgba(201,168,106,.3); background: rgba(0,0,0,.35); color: var(--cream); font: inherit; }
+.portal-submission__comments:focus-visible { outline: none; border-color: var(--gold); box-shadow: 0 0 0 3px rgba(201,168,106,.18); }

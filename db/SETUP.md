@@ -1,103 +1,59 @@
-# Portal setup — Phase 1 (login, team accounts, QR boarding pass)
+# Portal database and login setup
 
-This gets you: 35 team accounts, 5 core accounts, 2 admin accounts, 3 meal
-accounts, each team's boarding pass with a QR code and their member names,
-and an admin page that lists every team and account straight from the
-database — so you don't need a separate database tool to see what's in it.
+The API uses `@neondatabase/serverless` over Neon's HTTP transport. A normal
+local PostgreSQL server requires a separate transport adapter; it is not
+supported by the current connection module.
 
-Not in this phase yet (next phases, once this is working): PS selection,
-QR scanning at meals, marks entry, the leaderboard.
-
-## 1. Create the database
-
-Vercel's own Postgres is now a Neon-backed integration:
-
-1. Open your project on [vercel.com](https://vercel.com) → **Storage** tab.
-2. **Create Database** → **Postgres** (via Neon) → pick a region close to
-   Mumbai → create.
-3. Vercel will offer to connect it to this project. Say yes — this
-   automatically adds a `DATABASE_URL` environment variable to your Vercel
-   project for you.
-
-## 2. Get the connection string locally
-
-1. In the same Storage tab, open your new database → **.env.local** tab →
-   copy the `DATABASE_URL` value.
-2. In this repo, copy `.env.example` to `.env` and paste it in:
-   ```bash
-   cp .env.example .env
+1. Create a dedicated Neon development database or use an existing configured
+   database. Put its connection string in an ignored `.env` as `DATABASE_URL`.
+2. Set `SESSION_SECRET` to a long random value in the same file. Use
+   `openssl rand -base64 48` for a new local environment. Set file permissions
+   with `chmod 600 .env`. Keep credentials out of browser code and Git.
+3. For a fresh database, run `npm run db:migrate` to create tables. For an
+   existing database, review `schema.sql` before applying schema changes.
+   The feedback approval feature needs:
+   ```sql
+   alter table marks add column if not exists feedback_approved boolean not null default false;
    ```
-3. Generate a session secret and put it in `.env` too:
-   ```bash
-   openssl rand -base64 48
-   ```
-   (Any long random string works if you don't have `openssl` — a password
-   manager's "generate password" at max length is fine too.)
+4. Fresh development accounts can be added with `npm run db:seed`. It creates
+   only missing usernames and preserves existing accounts, passwords, rosters
+   and event history. A private JSON archive can be supplied with
+   `npm run db:seed -- --credentials-file /absolute/private/accounts.json`.
+   Newly generated credentials are written privately to
+   `db/credentials.generated.json`. Accounts present in the database are not
+   reset to the passwords in the supplied file.
+5. Run `npm run dev -- --host 127.0.0.1 --port 5173 --strictPort` and visit
+   http://127.0.0.1:5173/portal/login. Vite serves both the frontend and API.
 
-## 3. Create the tables
+Default demo usernames are `team01`–`team35`, `core01`–`core05`,
+`admin01`–`admin02`, `meal01`–`meal03`, and `regidesk01`–`regidesk03`.
+Passwords are individually assigned; the API stores only bcrypt hashes.
+Super-admin uses the separate `superadmin` identity. Its creation/reset script
+requires `SUPERADMIN_PASSWORD` and must only run when that reset is intended.
 
-```bash
-npm run db:migrate
-```
+The role buttons on the login form are guidance. The server determines the
+role from the matching account, then returns its dashboard. Team renaming
+preserves issued usernames so distributed credentials continue to work.
 
-Safe to run more than once — every statement is written so re-running it
-doesn't duplicate or wipe anything.
+### Participant document submissions
 
-## 4. Seed the accounts
+`db/submission-files.sql` is an additive migration (also included in `schema.sql`).
+It creates `submission_files` with the original bytes in Postgres `bytea` and
+filename, format, size, team ID, and upload time. There is one slot per team per
+format: PDF, PPTX, MD, TXT. A replacement changes only that slot; existing links,
+notes, rosters, and ticket details are preserved. Each file is limited to 3 MiB
+so its JSON upload stays within the serverless request limit. File access requires
+the owning team session or an admin/superadmin session. Payloads are not returned
+by the team list and are fetched only when opening a preview.
 
-```bash
-npm run db:seed
-```
+Markdown is rendered as formatted content with raw HTML disabled; text is shown
+as plain text; PDFs use PDF.js page navigation. PPTX previews show slide text and
+embedded raster images; download the original for complete PowerPoint layout,
+charts, and animation fidelity. Previewing a document never uploads it to an
+external conversion service.
 
-This prints every username/password once in your terminal, and also saves
-them to `db/credentials.generated.json` (already in `.gitignore` — it never
-gets committed, so keep that file somewhere safe, like a password manager
-or a private sheet you control). The database itself only ever stores a
-bcrypt hash — there's no way to read a password back out of it later, so if
-you lose that file, the only fix is re-running the seed for that one
-account (it's safe to re-run for everyone; existing passwords just get
-replaced for whoever you re-seed).
-
-Usernames follow a fixed pattern:
-- Teams: `team01` … `team35`
-- Core: `core01` … `core05`
-- Admin: `admin01`, `admin02`
-- Meal: `meal01` … `meal03`
-
-Each team's placeholder roster is named `T<n>M1` … `T<n>M4` for now — swap
-in real names (from your Unstop export) straight in the database once
-you have them; there's no reseed needed for that, just an update to each
-`team_members` row. I can wire up a small admin "edit roster" page for that
-in the next phase if you'd rather not touch the database directly.
-
-## 5. Run it locally
-
-The portal's `/api/*` functions are Vercel serverless functions — `vite
-dev` alone won't run them. Use the Vercel CLI instead, which runs both the
-frontend and the API functions together:
-
-```bash
-npx vercel dev
-```
-
-First run will ask you to link the project to your Vercel account/project
-— say yes, pick the existing project. It reads `.env` automatically. Then
-visit `http://localhost:3000/portal/login`.
-
-## 6. Deploy
-
-Push to your connected Git branch as usual, or `npx vercel --prod`. Vercel
-already has `DATABASE_URL` from step 1 — just add `SESSION_SECRET` under
-**Settings → Environment Variables** on vercel.com (the same value you put
-in `.env`, or a fresh one — either way, pick one value and use it
-everywhere this app runs).
-
-## Seeing the data
-
-Two ways, both already set up:
-
-- **In the app**: log in as `admin01`, and the admin dashboard lists every
-  team (with its roster) and every staff account, read straight from the
-  database.
-- **Raw SQL, if you ever need it**: Storage tab → your database → **Query**
-  — Neon's own console, for anything the admin page doesn't show yet.
+`HELP_CONTACTS` in `src/config.js` configures public organiser WhatsApp recipients
+with `{ name, phone }` entries. Use country code plus digits. The Help card opens
+`wa.me` with team, seat, and message prefilled; the participant must tap Send in
+WhatsApp. No WhatsApp Business API keys are needed. The button stays disabled
+until a recipient is configured.

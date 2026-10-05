@@ -1,11 +1,14 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import QRCode from "qrcode";
+import { Glass, GlassSystemProvider } from "open-glass-ui";
+import "open-glass-ui/styles.css";
+import SubmissionFiles from "./SubmissionFiles";
 import RequireRole from "./RequireRole";
-import { EVENT, EVENT_START, SUBMISSION_DEADLINE, VENUE_INFO } from "../config";
+import { EVENT, EVENT_START, SUBMISSION_DEADLINE, SPONSORS, HELP_CONTACTS } from "../config";
 import { CRITERIA } from "../../shared/criteria.js";
 import useHeroCloud from "./useHeroCloud";
-import { leaderboard, logout, psList, requestHelp, selectPs, submitProject } from "./api";
+import { leaderboard, logout, psList, selectPs, submitProject } from "./api";
 
 /* Days/hours/minutes/seconds to a target — the same mechanic as the
    marketing site's own "Gates open in" timer (src/components/BoardingPass),
@@ -96,123 +99,39 @@ const HelpIcon = () => (
   </svg>
 );
 
-/* 3am, something's broken — a laptop, the WiFi, a person. Hunting down
-   core/admin/regidesk physically across the venue is slower than this
-   reaching them directly as an incident they're already watching for. */
-function HelpRequest() {
+/* Participant initiated WhatsApp chat: the organiser gets team/seat context
+   in a prefilled message, which the participant sends inside WhatsApp. */
+function HelpRequest({ team }) {
   const [open, setOpen] = useState(false);
   const [message, setMessage] = useState("");
-  const [busy, setBusy] = useState(false);
-  const [sent, setSent] = useState(false);
-  const [error, setError] = useState("");
+  const [recipient, setRecipient] = useState(HELP_CONTACTS[0]?.phone || "");
+  const [opened, setOpened] = useState(false);
+  const contact = HELP_CONTACTS.find(c => c.phone === recipient);
 
-  async function send(e) {
+  function send(e) {
     e.preventDefault();
-    if (!message.trim()) return;
-    setBusy(true);
-    setError("");
-    try {
-      await requestHelp(message.trim());
-      setSent(true);
-      setMessage("");
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      setBusy(false);
-    }
+    if (!message.trim() || !contact) return;
+    const text = `Elevate 1.0 · ${team?.team_code || "Team"} · Seat ${team?.seat_no ?? "unassigned"}\n${message.trim()}`;
+    window.open(`https://wa.me/${contact.phone.replace(/\D/g, "")}?text=${encodeURIComponent(text)}`, "_blank", "noopener,noreferrer");
+    setOpened(true);
   }
 
   return (
-    <section className="portal-card portal-card--help">
-      <h3>
-        <HelpIcon />
-        Need help?
-      </h3>
-      <p className="portal-card__hint">
-        WiFi down, a laptop broke, someone's not feeling well — send a request and core/admin/registration
-        desk see it immediately, no need to go find someone.
-      </p>
-      {!open ? (
-        <button
-          type="button"
-          className="portal-auth__submit portal-helpButton"
-          onClick={() => {
-            setOpen(true);
-            setSent(false);
-          }}
-        >
-          Request help
-        </button>
-      ) : (
-        <form className="portal-auth__form" onSubmit={send}>
-          <label className="portal-field">
-            <span>What's going on?</span>
-            <input
-              value={message}
-              onChange={(e) => setMessage(e.target.value)}
-              placeholder="e.g. WiFi is down at our table"
-              required
-            />
-          </label>
-          {error && <p className="portal-auth__error">{error}</p>}
-          {sent && <p className="portal-status">Sent — someone will come find you.</p>}
-          <div className="portal-scanResult__actions">
-            <button className="portal-auth__submit" type="submit" disabled={busy || !message.trim()}>
-              {busy ? "Sending…" : "Send"}
-            </button>
-            <button type="button" className="portal-logout" onClick={() => setOpen(false)}>
-              Cancel
-            </button>
-          </div>
-        </form>
-      )}
-    </section>
-  );
-}
-
-const MapPinIcon = () => (
-  <svg className="portal-card__icon" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-    <path
-      d="M12 21s7-6.5 7-11.5A7 7 0 0 0 5 9.5C5 14.5 12 21 12 21ZM12 12a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5Z"
-      stroke="currentColor"
-      strokeWidth="1.6"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    />
-  </svg>
-);
-
-/* Venue essentials at a glance — WiFi, washrooms, charging, a rest corner
-   if one's offered. Doesn't need to be fancy, just somewhere to look
-   instead of asking a volunteer the same four questions all night. */
-function VenueInfo() {
-  return (
-    <section className="portal-card">
-      <h3>
-        <MapPinIcon />
-        Venue essentials
-      </h3>
-      <ul className="portal-venueInfo">
-        <li>
-          <span>WiFi</span>
-          <strong>
-            {VENUE_INFO.wifiSsid} · {VENUE_INFO.wifiPassword}
-          </strong>
-        </li>
-        <li>
-          <span>Washrooms</span>
-          <strong>{VENUE_INFO.washrooms}</strong>
-        </li>
-        <li>
-          <span>Charging</span>
-          <strong>{VENUE_INFO.charging}</strong>
-        </li>
-        <li>
-          <span>Need rest?</span>
-          <strong>{VENUE_INFO.quietZone}</strong>
-        </li>
-      </ul>
-    </section>
+    <GlassSystemProvider renderer="auto" theme={{ appearance: "dark" }} toasts={false}>
+      <Glass material="frosted" className="portal-card portal-card--help portal-helpGlass" look={{ rim: 1.2, blur: .85 }}>
+        <h3><HelpIcon />Need help?</h3>
+        <p className="portal-card__hint">Write your message and open a WhatsApp chat with an organiser.</p>
+        {!open ? <button type="button" className="portal-auth__submit portal-helpButton" onClick={() => setOpen(true)}>Request help</button> : (
+          <form className="portal-auth__form" onSubmit={send}>
+            <label className="portal-field"><span>What's going on?</span><textarea value={message} maxLength={2000} onChange={e => { setMessage(e.target.value); setOpened(false); }} placeholder="e.g. WiFi is down at our table" required rows={3} /></label>
+            {HELP_CONTACTS.length > 1 && <label className="portal-field"><span>Send to</span><select value={recipient} onChange={e => setRecipient(e.target.value)}>{HELP_CONTACTS.map(c => <option key={c.phone} value={c.phone}>{c.name}</option>)}</select></label>}
+            {!contact && <p className="portal-card__hint">WhatsApp contact will be available once the organiser adds their number.</p>}
+            {opened && <p className="portal-status">Chat opened. Tap Send in WhatsApp to deliver your message.</p>}
+            <div className="portal-scanResult__actions"><button className="portal-auth__submit" type="submit" disabled={!message.trim() || !contact}>Open WhatsApp chat</button><button type="button" className="portal-logout" onClick={() => setOpen(false)}>Cancel</button></div>
+          </form>
+        )}
+      </Glass>
+    </GlassSystemProvider>
   );
 }
 
@@ -244,14 +163,17 @@ const TrophyIcon = () => (
    site's own ticket (src/components/BoardingPass.jsx): QR on the left
    behind a perforated notch, a route down the middle, a dark stub on the
    right — now floating over the same painted cloud sea as that section,
-   not just a flat dark page, and carrying the team's chosen problem
-   statement once they have one. */
-function Ticket({ team, psTitle, rosterLocked }) {
+   not just a flat dark page, with the same sponsor strip for every team. */
+function Ticket({ team, rosterLocked }) {
   const [qrUrl, setQrUrl] = useState("");
   const cloudUrl = useHeroCloud();
 
   useEffect(() => {
     let cancelled = false;
+    if (!team.qr_token) {
+      setQrUrl("");
+      return;
+    }
     QRCode.toDataURL(`ELEVATE1:${team.qr_token}`, { margin: 1, width: 320 }).then((url) => {
       if (!cancelled) setQrUrl(url);
     });
@@ -266,8 +188,17 @@ function Ticket({ team, psTitle, rosterLocked }) {
       <div className="ticket">
         <div className="ticket__body">
           <div className="ticket__qr">
-            {qrUrl && <img src={qrUrl} alt={`QR code for ${team.team_code}`} />}
-            <span className="ticket__qrLabel">Scan at meals &amp; check-in</span>
+            {team.qr_token && qrUrl ? (
+              <>
+                <img src={qrUrl} alt={`QR code for ${team.team_code}`} />
+                <span className="ticket__qrLabel">Scan at meals &amp; check-in</span>
+              </>
+            ) : (
+              <div className="ticket__qrStandby">
+                <span className="ticket__standbyBadge">STANDBY</span>
+                <span className="ticket__qrLabel">Awaiting Shortlist</span>
+              </div>
+            )}
           </div>
 
           <div className="ticket__perf" aria-hidden="true" />
@@ -326,12 +257,16 @@ function Ticket({ team, psTitle, rosterLocked }) {
               </div>
             </dl>
 
-            {psTitle && (
-              <div className="ticket__ps">
-                <span>Flying with</span>
-                <strong>{psTitle}</strong>
-              </div>
-            )}
+            <div className="ticket__sponsors">
+              <span className="ticket__sponsorsLabel">Flying with</span>
+              <ul className="ticket__sponsorLogos" aria-label="Event sponsors">
+                {SPONSORS.map((sponsor) => (
+                  <li key={sponsor.name}>
+                    <img src={sponsor.logo} alt={sponsor.name} />
+                  </li>
+                ))}
+              </ul>
+            </div>
 
             <div className="ticket__passengers">
               <span className="ticket__passengersLabel">
@@ -506,69 +441,31 @@ const FeedbackIcon = () => (
 
 function ProjectSubmission({ team }) {
   const [url, setUrl] = useState(team?.submission_url || "");
-  const [note, setNote] = useState(team?.submission_note || "");
+  const [comments, setComments] = useState(team?.submission_note || "");
   const [busy, setBusy] = useState(false);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState("");
 
   async function save(e) {
     e.preventDefault();
-    if (!url.trim()) return;
-    setBusy(true);
-    setError("");
+    setBusy(true); setError(""); setSaved(false);
     try {
-      await submitProject(url.trim(), note.trim());
+      await submitProject(url.trim(), comments.trim());
       setSaved(true);
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      setBusy(false);
-    }
+    } catch (err) { setError(err.message); }
+    finally { setBusy(false); }
   }
 
   return (
     <section className="portal-card">
-      <h3>
-        <SubmitIcon />
-        Submission
-      </h3>
-      <p className="portal-card__hint">
-        A repo link, deployed URL, or deck — whatever best shows your work. You can update this any
-        time before the deadline; saving again just replaces the last one.
-      </p>
-
+      <h3><SubmitIcon />Submission</h3>
+      <SubmissionFiles editable />
       <form className="portal-auth__form" onSubmit={save}>
-        <label className="portal-field">
-          <span>Link</span>
-          <input
-            value={url}
-            onChange={(e) => {
-              setUrl(e.target.value);
-              setSaved(false);
-            }}
-            placeholder="https://github.com/your-team/project"
-            type="url"
-            required
-          />
-        </label>
-        <label className="portal-field">
-          <span>Note (optional)</span>
-          <input
-            value={note}
-            onChange={(e) => {
-              setNote(e.target.value);
-              setSaved(false);
-            }}
-            placeholder="Anything the judges should know"
-          />
-        </label>
-        {error && <p className="portal-auth__error">{error}</p>}
-        <button className="portal-auth__submit" type="submit" disabled={busy}>
-          {busy ? "Saving…" : saved ? "Saved ✓" : team?.submission_url ? "Update submission" : "Submit"}
-        </button>
-        {team?.submitted_at && (
-          <p className="portal-submission__saved">Last saved {new Date(team.submitted_at).toLocaleString()}</p>
-        )}
+        <label className="portal-field"><span>Project link</span><input type="url" value={url} placeholder="https://github.com/your-team/project" onChange={e => { setUrl(e.target.value); setSaved(false); }} /></label>
+        <label className="portal-field"><span>Comments</span><textarea className="portal-submission__comments" value={comments} rows={4} maxLength={10000} placeholder="Anything the judges should know" onChange={e => { setComments(e.target.value); setSaved(false); }} /></label>
+        {error && <p role="alert" className="portal-auth__error">{error}</p>}
+        {saved && <p role="status" className="portal-submission__saved">Link and comments saved.</p>}
+        <button type="submit" className="portal-auth__submit" disabled={busy}>{busy ? "Saving…" : "Save submission"}</button>
       </form>
     </section>
   );
@@ -641,7 +538,7 @@ function Leaderboard({ ownTeamCode }) {
                 <span className="portal-leaderboard__rank">{r.rank ?? "—"}</span>
                 <span className="portal-leaderboard__team">
                   <span className="portal-leaderboard__code">
-                    {r.teamCode}
+                    {r.teamName ? `${r.teamName} (${r.teamCode})` : r.teamCode}
                     {isOwn && <span className="portal-leaderboard__you">You</span>}
                   </span>
                 </span>
@@ -689,8 +586,6 @@ function TeamHome({ session }) {
     navigate("/portal/login", { replace: true });
   }
 
-  const selectedPsTitle = psData?.problemStatements.find((p) => p.id === psData.selectedPsId)?.title;
-
   return (
     <div className="portal-page">
       <div className="portal-page__head">
@@ -712,7 +607,6 @@ function TeamHome({ session }) {
       {session.team && (
         <Ticket
           team={session.team}
-          psTitle={selectedPsTitle}
           rosterLocked={psData?.selectionStatus === "approved"}
         />
       )}
@@ -725,9 +619,7 @@ function TeamHome({ session }) {
 
       <Leaderboard ownTeamCode={session.team?.team_code} />
 
-      <VenueInfo />
-
-      <HelpRequest />
+      <HelpRequest team={session.team} />
     </div>
   );
 }

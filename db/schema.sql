@@ -23,15 +23,20 @@ alter table accounts drop constraint if exists accounts_role_check;
 alter table accounts add constraint accounts_role_check
   check (role in ('admin', 'core', 'meal', 'team', 'regidesk', 'superadmin'));
 
+-- Passwords are stored only as bcrypt hashes. Historical plaintext columns
+-- can be removed explicitly using db/remove-plaintext-passwords.mjs.
+
 -- a team's own profile, one-to-one with its 'team' account.
 create table if not exists teams (
   id serial primary key,
   account_id integer not null unique references accounts(id) on delete cascade,
   team_code text unique not null,          -- e.g. "T1"
   seat_no integer,
-  qr_token text unique not null,           -- opaque random string encoded in the QR
+  qr_token text unique,                    -- opaque random string encoded in the QR (null until shortlisted)
   created_at timestamptz not null default now()
 );
+
+alter table teams alter column qr_token drop not null;
 
 alter table teams add column if not exists dietary text;
 alter table teams add column if not exists shortlisted boolean not null default false;
@@ -80,6 +85,9 @@ alter table team_ps_selection add constraint team_ps_selection_status_check
   check (status in ('pending', 'approved'));
 alter table team_ps_selection add column if not exists approved_at timestamptz;
 alter table team_ps_selection add column if not exists approved_by integer references accounts(id);
+alter table team_ps_selection drop constraint if exists team_ps_selection_ps_id_fkey;
+alter table team_ps_selection add constraint team_ps_selection_ps_id_fkey
+  foreign key (ps_id) references ps_list(id) on delete cascade;
 
 -- the table used to be keyed just by team_id with a "selected_at" column;
 -- rename it to requested_at to match the request/approve model, if it's
@@ -119,6 +127,7 @@ create table if not exists marks (
 
 alter table marks add column if not exists criteria jsonb;
 alter table marks add column if not exists feedback text;
+alter table marks add column if not exists feedback_approved boolean not null default false;
 
 -- the 7 meal slots across the two event days.
 create table if not exists meal_slots (
@@ -230,9 +239,9 @@ create table if not exists incidents (
   team_id integer references teams(id) on delete cascade,
   message text not null,
   status text not null default 'open' check (status in ('open', 'resolved')),
-  created_by integer references accounts(id),
+  created_by integer references accounts(id) on delete set null,
   created_role text,
-  resolved_by integer references accounts(id),
+  resolved_by integer references accounts(id) on delete set null,
   resolved_at timestamptz,
   created_at timestamptz not null default now()
 );
@@ -261,7 +270,7 @@ create index if not exists login_attempts_username_idx on login_attempts (userna
 -- logic itself.
 create table if not exists audit_log (
   id serial primary key,
-  actor_account_id integer references accounts(id),
+  actor_account_id integer references accounts(id) on delete set null,
   action text not null,
   detail jsonb,
   created_at timestamptz not null default now()
@@ -281,3 +290,16 @@ insert into meal_slots (code, label, day_no, sort_order) values
   ('d2_breakfast', 'Breakfast', 2, 6),
   ('d2_lunch', 'Lunch', 2, 7)
 on conflict (code) do nothing;
+
+-- Additive migration: files stay separate from existing team submissions.
+create table if not exists submission_files (
+  id serial primary key,
+  team_id integer not null references teams(id) on delete cascade,
+  kind text not null check (kind in ('pdf', 'pptx', 'md', 'txt')),
+  name text not null,
+  mime_type text not null,
+  size integer not null check (size > 0 and size <= 3145728),
+  content bytea not null,
+  uploaded_at timestamptz not null default now(),
+  unique (team_id, kind)
+);

@@ -16,6 +16,7 @@ async function handler(req, res) {
   if (req.method === "POST") {
     const { action } = req.body || {};
     if (action === "log") return logMeal(req, res);
+    if (action === "undo") return undoMeal(req, res);
     if (action === "lookup-by-code") return lookupByCode(req, res);
     if (action === "flag-low-stock") return flagLowStock(req, res);
     if (action === "log-guest") return logGuest(req, res);
@@ -54,7 +55,15 @@ function teamAndSlotToMembers(team, slot) {
 
 function respondWithLookup(res, team, slot, mealSlotCode, members, dietary) {
   res.status(200).json({
-    team: { id: team.id, teamCode: team.team_code, seatNo: team.seat_no, dietary: dietary || null },
+    team: {
+      id: team.id,
+      teamCode: team.team_code,
+      teamName: team.display_name,
+      displayName: team.display_name,
+      username: team.username,
+      seatNo: team.seat_no,
+      dietary: dietary || null,
+    },
     slot: { code: mealSlotCode, label: slot.label },
     members: members.map((m) => ({
       id: m.id,
@@ -76,10 +85,27 @@ async function lookup(req, res) {
 
   const trimmed = qrPayload.trim();
   const qrToken = trimmed.startsWith(QR_PREFIX) ? trimmed.slice(QR_PREFIX.length) : trimmed;
-  const teamRows = await sql`select id, team_code, seat_no, dietary from teams where qr_token = ${qrToken}`;
+  const teamRows = await sql`
+    select t.id, t.team_code, t.seat_no, t.dietary, t.shortlisted, t.withdrawn, a.display_name, a.username
+    from teams t
+    join accounts a on a.id = t.account_id
+    where t.qr_token = ${qrToken}
+  `;
   const team = teamRows[0];
   if (!team) {
     res.status(404).json({ error: `No team matches this QR code (scanned: "${trimmed.slice(0, 60)}")` });
+    return;
+  }
+  if (team.withdrawn) {
+    res.status(403).json({ error: `Team ${team.team_code} has withdrawn` });
+    return;
+  }
+
+  const checkinRows = await sql`
+    select 1 from registration_checkins where team_id = ${team.id} limit 1
+  `;
+  if (!checkinRows[0]) {
+    res.status(403).json({ error: `Team ${team.team_code} has not checked in at the registration desk yet` });
     return;
   }
 
@@ -104,11 +130,26 @@ async function lookupByCode(req, res) {
   }
 
   const teamRows = await sql`
-    select id, team_code, seat_no, dietary from teams where upper(team_code) = upper(${teamCode.trim()})
+    select t.id, t.team_code, t.seat_no, t.dietary, t.shortlisted, t.withdrawn, a.display_name, a.username
+    from teams t
+    join accounts a on a.id = t.account_id
+    where upper(t.team_code) = upper(${teamCode.trim()})
   `;
   const team = teamRows[0];
   if (!team) {
     res.status(404).json({ error: "No team matches that code" });
+    return;
+  }
+  if (team.withdrawn) {
+    res.status(403).json({ error: `Team ${team.team_code} has withdrawn` });
+    return;
+  }
+
+  const checkinRows = await sql`
+    select 1 from registration_checkins where team_id = ${team.id} limit 1
+  `;
+  if (!checkinRows[0]) {
+    res.status(403).json({ error: `Team ${team.team_code} has not checked in at the registration desk yet` });
     return;
   }
 
@@ -121,6 +162,29 @@ async function lookupByCode(req, res) {
 
   const members = await teamAndSlotToMembers(team, slot);
   respondWithLookup(res, team, slot, mealSlotCode, members, team.dietary);
+}
+
+/* undo an accidentally logged meal for a single member */
+async function undoMeal(req, res) {
+  const { teamId, mealSlotCode, memberId } = req.body || {};
+  if (!teamId || !mealSlotCode || !memberId) {
+    res.status(400).json({ error: "teamId, mealSlotCode, and memberId are required" });
+    return;
+  }
+  const slotRows = await sql`select id from meal_slots where code = ${mealSlotCode}`;
+  const slot = slotRows[0];
+  if (!slot) {
+    res.status(400).json({ error: "Unknown meal slot" });
+    return;
+  }
+  await sql`
+    delete from meal_logs
+    where team_id = ${teamId}
+      and meal_slot_id = ${slot.id}
+      and member_id = ${memberId}
+  `;
+  await logAction(req.session.accountId, "meal.undo", { teamId, memberId, mealSlotCode });
+  res.status(200).json({ ok: true });
 }
 
 /* logs the meal slot as served for each selected member — safe to call

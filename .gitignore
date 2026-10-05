@@ -31,3 +31,11 @@ db/volunteer-credentials.generated.json
 *.sw?
 db/elevate-login-credentials.csv
 db/superadmin-credentials.csv
+
+# Private credential handover files
+db/*credentials*.csv
+db/*credentials*.json
+elevate_credentials.*
+elevate-accounts.csv
+
+.local-release-check/

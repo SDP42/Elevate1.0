@@ -1,14 +1,21 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import QRCode from "qrcode";
+import JSZip from "jszip";
+import SubmissionFiles from "./SubmissionFiles";
 import RequireRole from "./RequireRole";
 import SuperAdminOversight from "./SuperAdminOversight";
 import {
   adminAccounts,
   adminAnnouncements,
+  adminApproveAllFeedback,
+  adminApproveFeedback,
   adminApprovePs,
   adminAssignments,
   adminAudit,
   adminBulkImport,
+  adminCreateStaff,
+  adminCreateTeam,
   adminExport,
   adminFreezeResults,
   adminMeals,
@@ -71,13 +78,13 @@ function Overview() {
   if (!data) return null;
 
   const stats = [
-    ["Teams", data.teamCount],
-    ["Withdrawn", data.withdrawnCount],
-    ["Checked in", data.checkedInCount],
-    ["Submitted", data.submittedCount],
-    ["PS approved", data.psApprovedCount],
-    ["Meals served", data.mealsServedCount],
-    ["Open incidents", data.openIncidentsCount],
+    ["Teams", data.teamCount ?? 0],
+    ["Withdrawn", data.withdrawnCount ?? 0],
+    ["Checked in", data.checkedInCount ?? 0],
+    ["Submitted", data.submittedCount ?? 0],
+    ["PS approved", data.psApprovedCount ?? 0],
+    ["Meals served", data.mealsServedCount ?? 0],
+    ["Open incidents", data.openIncidentsCount ?? 0],
   ];
 
   return (
@@ -295,7 +302,7 @@ function ShortlistToggle({ team, onChanged }) {
   }
   return (
     <button type="button" className="portal-logout" onClick={toggle} disabled={busy}>
-      {team.shortlisted ? "Shortlisted ✓" : "Shortlist"}
+      {team.shortlisted ? "Round 2 ✓" : "Shortlist for R2"}
     </button>
   );
 }
@@ -357,8 +364,8 @@ function TeamNameEditor({ team, onSaved }) {
     if (!value.trim()) return;
     setBusy(true);
     try {
-      await adminSaveTeamName(team.accountId, value.trim());
-      onSaved(team.id, value.trim());
+      const res = await adminSaveTeamName(team.accountId, value.trim());
+      onSaved(team.id, value.trim(), res?.username);
       setOpen(false);
     } finally {
       setBusy(false);
@@ -388,7 +395,7 @@ function TeamNameEditor({ team, onSaved }) {
   );
 }
 
-function ResetPasswordButton({ account }) {
+function ResetPasswordButton({ account, onReset }) {
   const [busy, setBusy] = useState(false);
   const [result, setResult] = useState(null);
 
@@ -398,6 +405,7 @@ function ResetPasswordButton({ account }) {
     try {
       const data = await adminResetPassword(account.id);
       setResult(data.password);
+      if (onReset) onReset(data.password);
     } finally {
       setBusy(false);
     }
@@ -406,12 +414,366 @@ function ResetPasswordButton({ account }) {
   return (
     <div>
       <button type="button" className="portal-logout" onClick={reset} disabled={busy}>
-        {busy ? "Resetting…" : "Reset password"}
+        {busy ? "…" : "Reset"}
       </button>
-      {result && <div className="portal-newPassword">New password: {result}</div>}
+      {result && <div className="portal-newPassword">New: <code>{result}</code> — save now. <button type="button" className="portal-link-btn" onClick={() => setResult(null)}>Dismiss</button></div>}
     </div>
   );
 }
+
+function QrModal({ team, onClose }) {
+  const [qrUrl, setQrUrl] = useState("");
+
+  useEffect(() => {
+    if (!team?.qrToken) return;
+    QRCode.toDataURL(`ELEVATE1:${team.qrToken}`, { margin: 1, width: 360 }).then(setQrUrl);
+  }, [team]);
+
+  function download() {
+    if (!qrUrl) return;
+    const a = document.createElement("a");
+    a.href = qrUrl;
+    a.download = `${team.username || team.teamCode}.png`;
+    a.click();
+  }
+
+  return (
+    <div className="portal-modalBackdrop" onClick={onClose}>
+      <div className="portal-modalCard" onClick={(e) => e.stopPropagation()}>
+        <div className="portal-modalHead">
+          <h4>{team.teamCode} — QR Boarding Pass</h4>
+          <button type="button" className="portal-logout" onClick={onClose}>
+            ✕
+          </button>
+        </div>
+        <p className="portal-card__hint">
+          {team.displayName} {team.seatNo ? `· Seat ${team.seatNo}` : ""} · <code>{team.username}.png</code>
+        </p>
+        <div className="portal-qrPreview">
+          {qrUrl ? <img src={qrUrl} alt={`QR for ${team.teamCode}`} /> : <p>Generating QR…</p>}
+        </div>
+        <div className="portal-scanResult__actions portal-u-mt">
+          <button type="button" className="portal-auth__submit" onClick={download} disabled={!qrUrl}>
+            Download PNG
+          </button>
+          <button type="button" className="portal-logout" onClick={onClose}>
+            Close
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function AllQrsModal({ teams, onClose }) {
+  const [qrMap, setQrMap] = useState({});
+  const [zipBusy, setZipBusy] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    async function gen() {
+      const map = {};
+      for (const t of teams) {
+        if (t.qrToken) {
+          try {
+            map[t.id] = await QRCode.toDataURL(`ELEVATE1:${t.qrToken}`, { margin: 1, width: 280 });
+          } catch {
+            // ignore
+          }
+        }
+      }
+      if (!cancelled) setQrMap(map);
+    }
+    gen();
+    return () => {
+      cancelled = true;
+    };
+  }, [teams]);
+
+  async function downloadZip() {
+    setZipBusy(true);
+    try {
+      const zip = new JSZip();
+      for (const t of teams) {
+        if (t.qrToken) {
+          const dataUrl = qrMap[t.id] || (await QRCode.toDataURL(`ELEVATE1:${t.qrToken}`, { margin: 1, width: 400 }));
+          const base64 = dataUrl.replace(/^data:image\/png;base64,/, "");
+          zip.file(`${t.username || t.teamCode}.png`, base64, { base64: true });
+        }
+      }
+      const content = await zip.generateAsync({ type: "blob" });
+      const url = URL.createObjectURL(content);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `elevate-all-teams-qrs.zip`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } finally {
+      setZipBusy(false);
+    }
+  }
+
+  return (
+    <div className="portal-modalBackdrop" onClick={onClose}>
+      <div className="portal-modalCard portal-modalCard--wide" onClick={(e) => e.stopPropagation()}>
+        <div className="portal-modalHead">
+          <h4>All Team QR Passes ({teams.length})</h4>
+          <button type="button" className="portal-logout" onClick={onClose}>
+            ✕
+          </button>
+        </div>
+        <div className="portal-scanResult__actions portal-u-mt portal-no-print">
+          <button type="button" className="portal-auth__submit" onClick={downloadZip} disabled={zipBusy}>
+            {zipBusy ? "Generating ZIP…" : "Download All (ZIP)"}
+          </button>
+          <button type="button" className="portal-logout" onClick={() => window.print()}>
+            Print Passes / Save PDF
+          </button>
+          <button type="button" className="portal-logout" onClick={onClose}>
+            Close
+          </button>
+        </div>
+        <div className="portal-allQrGrid portal-u-mt">
+          {teams.map((t) => (
+            <div key={t.id} className="portal-allQrCard">
+              <div className="portal-allQrCard__head">
+                <strong>{t.teamCode}</strong>
+                {t.seatNo ? <span>Seat {t.seatNo}</span> : null}
+              </div>
+              <div className="portal-allQrCard__name">{t.displayName}</div>
+              <div className="portal-table__sub"><code>{t.username}</code></div>
+              <div className="portal-allQrCard__qr">
+                {qrMap[t.id] ? (
+                  <img src={qrMap[t.id]} alt={`QR for ${t.teamCode}`} />
+                ) : (
+                  <span>Generating…</span>
+                )}
+              </div>
+              <div className="portal-allQrCard__footer portal-no-print">
+                {qrMap[t.id] && (
+                  <a href={qrMap[t.id]} download={`${t.username || t.teamCode}.png`} className="portal-link-btn">
+                    Download PNG
+                  </a>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function CreateTeamModal({ onCreated, onClose }) {
+  const [teamCode, setTeamCode] = useState("");
+  const [displayName, setDisplayName] = useState("");
+  const [seatNo, setSeatNo] = useState("");
+  const [membersText, setMembersText] = useState("");
+  const [shortlisted, setShortlisted] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  const [createdResult, setCreatedResult] = useState(null);
+
+  async function submit(e) {
+    e.preventDefault();
+    if (!teamCode.trim()) return;
+    setBusy(true);
+    setError("");
+    try {
+      const res = await adminCreateTeam({
+        teamCode: teamCode.trim(),
+        displayName: displayName.trim(),
+        seatNo: seatNo ? Number(seatNo) : null,
+        members: membersText.split("\n").map((s) => s.trim()).filter(Boolean),
+        shortlisted,
+      });
+      setCreatedResult(res);
+      onCreated(res);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div className="portal-modalBackdrop" onClick={onClose}>
+      <div className="portal-modalCard" onClick={(e) => e.stopPropagation()}>
+        <div className="portal-modalHead">
+          <h4>Create New Team</h4>
+          <button type="button" className="portal-modalClose" onClick={onClose} aria-label="Close modal">
+            ✕
+          </button>
+        </div>
+
+        {createdResult ? (
+          <div className="portal-status portal-u-mt">
+            <p><strong>Team {createdResult.teamCode} created successfully!</strong></p>
+            <p>Username: <code>{createdResult.username}</code></p>
+            <p>Password: <code>{createdResult.password}</code> (save this now!)</p>
+            <p>Status: Round 1 team with active QR code{createdResult.shortlisted ? " (Shortlisted for Round 2)" : ""}</p>
+            <div className="portal-scanResult__actions portal-u-mt">
+              <button type="button" className="portal-auth__submit" onClick={onClose}>
+                Done
+              </button>
+            </div>
+          </div>
+        ) : (
+          <form className="portal-auth__form" onSubmit={submit}>
+            {error && <p className="portal-auth__error">{error}</p>}
+            <div className="portal-formRow">
+              <label className="portal-field">
+                <span>Team Code *</span>
+                <input
+                  value={teamCode}
+                  onChange={(e) => setTeamCode(e.target.value)}
+                  placeholder="e.g. T36"
+                  required
+                />
+              </label>
+              <label className="portal-field">
+                <span>Seat No</span>
+                <input
+                  type="number"
+                  value={seatNo}
+                  onChange={(e) => setSeatNo(e.target.value)}
+                  placeholder="e.g. 36"
+                />
+              </label>
+            </div>
+            <label className="portal-field">
+              <span>Display / Team Name</span>
+              <input
+                value={displayName}
+                onChange={(e) => setDisplayName(e.target.value)}
+                placeholder="e.g. CyberKnights"
+              />
+            </label>
+            <label className="portal-field">
+              <span>Roster Members (one per line, up to 4)</span>
+              <textarea
+                rows={3}
+                value={membersText}
+                onChange={(e) => setMembersText(e.target.value)}
+                placeholder={"Alex Smith (Lead)\nJordan Lee"}
+              />
+            </label>
+            <label className="portal-checkboxLabel">
+              <input
+                type="checkbox"
+                checked={shortlisted}
+                onChange={(e) => setShortlisted(e.target.checked)}
+              />
+              <span>Shortlist for Round 2 immediately (default is unchecked — all teams start in Round 1)</span>
+            </label>
+            <div className="portal-scanResult__actions portal-u-mt">
+              <button type="submit" className="portal-auth__submit" disabled={busy}>
+                {busy ? "Creating…" : "Create team"}
+              </button>
+              <button type="button" className="portal-logout" onClick={onClose}>
+                Cancel
+              </button>
+            </div>
+          </form>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function CreateStaffModal({ onCreated, onClose }) {
+  const [role, setRole] = useState("core");
+  const [username, setUsername] = useState("");
+  const [displayName, setDisplayName] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  const [createdResult, setCreatedResult] = useState(null);
+
+  async function submit(e) {
+    e.preventDefault();
+    setBusy(true);
+    setError("");
+    try {
+      const res = await adminCreateStaff({
+        role,
+        username: username.trim() || undefined,
+        displayName: displayName.trim() || undefined,
+      });
+      setCreatedResult(res.account);
+      onCreated(res.account);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div className="portal-modalBackdrop" onClick={onClose}>
+      <div className="portal-modalCard" onClick={(e) => e.stopPropagation()}>
+        <div className="portal-modalHead">
+          <h4>Generate Staff Login</h4>
+          <button type="button" className="portal-modalClose" onClick={onClose} aria-label="Close modal">
+            ✕
+          </button>
+        </div>
+
+        {createdResult ? (
+          <div className="portal-status portal-u-mt">
+            <p><strong>Staff account created successfully!</strong></p>
+            <p>Role: <code>{createdResult.role}</code></p>
+            <p>Name: <strong>{createdResult.displayName}</strong></p>
+            <p>Username: <code>{createdResult.username}</code></p>
+            <p>Password: <code>{createdResult.password}</code> (save this now!)</p>
+            <div className="portal-scanResult__actions portal-u-mt">
+              <button type="button" className="portal-auth__submit" onClick={onClose}>
+                Done
+              </button>
+            </div>
+          </div>
+        ) : (
+          <form className="portal-auth__form" onSubmit={submit}>
+            {error && <p className="portal-auth__error">{error}</p>}
+            <label className="portal-field">
+              <span>Account Role *</span>
+              <select value={role} onChange={(e) => setRole(e.target.value)} required>
+                <option value="core">Core Judge (Mentoring &amp; Scoring)</option>
+                <option value="regidesk">Registration Desk (Check-in &amp; Verification)</option>
+                <option value="meal">Meal Counter (Food QR Scanner)</option>
+                <option value="admin">Administrator (Full Access)</option>
+              </select>
+            </label>
+            <label className="portal-field">
+              <span>Username (optional — blank to auto-generate)</span>
+              <input
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+                placeholder={`e.g. ${role}06`}
+              />
+            </label>
+            <label className="portal-field">
+              <span>Display / Staff Name (optional)</span>
+              <input
+                value={displayName}
+                onChange={(e) => setDisplayName(e.target.value)}
+                placeholder="e.g. Judge John Doe"
+              />
+            </label>
+            <div className="portal-scanResult__actions portal-u-mt">
+              <button type="submit" className="portal-auth__submit" disabled={busy}>
+                {busy ? "Generating…" : "Generate Account"}
+              </button>
+              <button type="button" className="portal-logout" onClick={onClose}>
+                Cancel
+              </button>
+            </div>
+          </form>
+        )}
+      </div>
+    </div>
+  );
+}
+
 
 function PsManager({ problemStatements, onSaved }) {
   const [form, setForm] = useState({ code: "", title: "", description: "", capacity: "" });
@@ -530,7 +892,10 @@ function PsRequestsManager() {
 
   function load() {
     adminPsRequests()
-      .then((d) => setRequests(d.requests))
+      .then((d) => {
+        setRequests(d.requests);
+        setError("");
+      })
       .catch((err) => setError(err.message));
   }
 
@@ -624,7 +989,10 @@ function AnnouncementsManager() {
 
   function load() {
     adminAnnouncements()
-      .then((d) => setItems(d.announcements))
+      .then((d) => {
+        setItems(d.announcements);
+        setError("");
+      })
       .catch((err) => setError(err.message));
   }
 
@@ -866,16 +1234,17 @@ function BulkImport({ onDone }) {
     <section className="portal-card">
       <h3>Bulk roster import</h3>
       <p className="portal-card__hint">
-        One team per line: <code>team_code,name1,name2,name3,name4</code> (2 to 4 names). Replaces
-        each team's roster wholesale — same as editing them one by one, just all at once.
+        One team per line: <code>team_code,team_name,name1,name2,name3,name4</code>.
+        Providing <code>team_name</code> updates the display name while preserving existing logins.
+        New accounts receive credentials shown once below. Save these before leaving this page.
       </p>
       {error && <p className="portal-auth__error">{error}</p>}
       <form className="portal-auth__form" onSubmit={run}>
         <textarea
-          rows={5}
+          rows={6}
           value={csvText}
           onChange={(e) => setCsvText(e.target.value)}
-          placeholder={"T1,Asha Rao,Vikram Shah,Dev Patel\nT2,..."}
+          placeholder={"T1,CyberKnights,Asha Rao,Vikram Shah,Dev Patel\nT2,AlphaCoders,John Doe,Jane Doe\n..."}
           className="portal-bulkTextarea"
         />
         <button className="portal-auth__submit" type="submit" disabled={busy || !csvText.trim()}>
@@ -887,6 +1256,7 @@ function BulkImport({ onDone }) {
           {results.map((r, i) => (
             <li key={i} className={r.ok ? "is-ok" : "is-error"}>
               {r.teamCode}: {r.ok ? "updated" : r.error}
+              {r.password && <div className="portal-newPassword">New login: <code>{r.username}</code> · Password: <code>{r.password}</code> — save now.</div>}
             </li>
           ))}
         </ul>
@@ -902,6 +1272,12 @@ export function AdminHome({ session, superAdmin = false }) {
   const [marksTeams, setMarksTeams] = useState(null);
   const [meals, setMeals] = useState(null);
   const [problemStatements, setProblemStatements] = useState(null);
+  const [viewQrTeam, setViewQrTeam] = useState(null);
+  const [showAddTeam, setShowAddTeam] = useState(false);
+  const [showAddStaff, setShowAddStaff] = useState(false);
+  const [showAllQrs, setShowAllQrs] = useState(false);
+  const [zipBusy, setZipBusy] = useState(false);
+  const [feedbackBusy, setFeedbackBusy] = useState(null);
   const [error, setError] = useState("");
 
   function loadPs() {
@@ -926,6 +1302,60 @@ export function AdminHome({ session, superAdmin = false }) {
     loadPs();
   }, []);
 
+  async function downloadAllZip() {
+    if (!teams) return;
+    setZipBusy(true);
+    try {
+      const zip = new JSZip();
+      for (const t of teams) {
+        if (t.qrToken) {
+          const dataUrl = await QRCode.toDataURL(`ELEVATE1:${t.qrToken}`, { margin: 1, width: 400 });
+          const base64 = dataUrl.replace(/^data:image\/png;base64,/, "");
+          zip.file(`${t.username || t.teamCode}.png`, base64, { base64: true });
+        }
+      }
+      const content = await zip.generateAsync({ type: "blob" });
+      const url = URL.createObjectURL(content);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "elevate-all-teams-qrs.zip";
+      a.click();
+      URL.revokeObjectURL(url);
+    } finally {
+      setZipBusy(false);
+    }
+  }
+
+  async function toggleFeedbackApproval(teamId, currentStatus) {
+    setFeedbackBusy(teamId);
+    try {
+      await adminApproveFeedback(teamId, !currentStatus);
+      setMarksTeams((prev) =>
+        prev.map((t) => (t.id === teamId ? { ...t, feedbackApproved: !currentStatus } : t))
+      );
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setFeedbackBusy(null);
+    }
+  }
+
+  async function setAllResultsVisibility(approved) {
+    const actionName = approved ? "release all results to participants" : "hide all results from participants";
+    if (!window.confirm(`Are you sure you want to ${actionName}?`)) return;
+    setFeedbackBusy("all");
+    try {
+      await adminApproveAllFeedback(approved);
+      setMarksTeams((prev) =>
+        prev.map((t) => (t.score !== null ? { ...t, feedbackApproved: approved } : t))
+      );
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setFeedbackBusy(null);
+    }
+  }
+
   function onRosterSaved(teamId, names) {
     setTeams((prev) =>
       prev.map((t) =>
@@ -948,8 +1378,14 @@ export function AdminHome({ session, superAdmin = false }) {
     setTeams((prev) => prev.map((t) => (t.id === teamId ? { ...t, withdrawn } : t)));
   }
 
-  function onTeamNameSaved(teamId, displayName) {
-    setTeams((prev) => prev.map((t) => (t.id === teamId ? { ...t, displayName } : t)));
+  function onTeamNameSaved(teamId, displayName, username) {
+    setTeams((prev) =>
+      prev.map((t) =>
+        t.id === teamId
+          ? { ...t, displayName, ...(username ? { username } : {}) }
+          : t
+      )
+    );
   }
 
   async function onLogout() {
@@ -980,7 +1416,35 @@ export function AdminHome({ session, superAdmin = false }) {
       <section className="portal-card">
         <div className="portal-card__headRow">
           <h3>Teams ({teams?.length ?? "…"})</h3>
-          <ExportButton type="teams" />
+          <div className="portal-scanResult__actions" style={{ margin: 0, gap: "0.5rem" }}>
+            <button
+              type="button"
+              className="portal-auth__submit"
+              style={{ padding: "0.35rem 0.8rem", fontSize: "0.85rem" }}
+              onClick={() => setShowAddTeam(true)}
+            >
+              + Add Team
+            </button>
+            <button
+              type="button"
+              className="portal-logout"
+              style={{ padding: "0.35rem 0.8rem", fontSize: "0.85rem" }}
+              onClick={() => setShowAllQrs(true)}
+              disabled={!teams || teams.length === 0}
+            >
+              View All QRs
+            </button>
+            <button
+              type="button"
+              className="portal-logout"
+              style={{ padding: "0.35rem 0.8rem", fontSize: "0.85rem" }}
+              onClick={downloadAllZip}
+              disabled={zipBusy || !teams || teams.length === 0}
+            >
+              {zipBusy ? "Generating ZIP…" : "Download All QRs (ZIP)"}
+            </button>
+            <ExportButton type="teams" />
+          </div>
         </div>
         <p className="portal-card__hint">
           This is the whole teams table, straight from the database — the login a team was given,
@@ -997,11 +1461,12 @@ export function AdminHome({ session, superAdmin = false }) {
                   <th>Username</th>
                   <th>Members</th>
                   <th>Submission</th>
-                  <th></th>
-                  <th></th>
-                  <th></th>
-                  <th></th>
-                  <th></th>
+                  <th>QR Pass</th>
+                  <th>Round 2 Shortlist</th>
+                  <th>Dietary</th>
+                  <th>Roster</th>
+                  <th>Withdraw</th>
+                  <th>Password</th>
                 </tr>
               </thead>
               <tbody>
@@ -1026,7 +1491,22 @@ export function AdminHome({ session, superAdmin = false }) {
                           link
                         </a>
                       ) : (
-                        "—"
+                        null
+                      )}
+                      <details><summary>Uploaded documents</summary><SubmissionFiles teamId={t.id} /></details>
+                    </td>
+                    <td>
+                      {t.qrToken ? (
+                        <button
+                          type="button"
+                          className="portal-logout"
+                          style={{ borderColor: "#f0b35c", color: "#f0b35c", padding: "0.25rem 0.6rem" }}
+                          onClick={() => setViewQrTeam(t)}
+                        >
+                          View QR
+                        </button>
+                      ) : (
+                        <span className="portal-table__sub">Standby</span>
                       )}
                     </td>
                     <td>
@@ -1043,7 +1523,11 @@ export function AdminHome({ session, superAdmin = false }) {
                       <WithdrawToggle team={t} onChanged={onWithdrawnChanged} />
                     </td>
                     <td>
-                      <ResetPasswordButton account={{ id: t.accountId, username: t.username }} />
+                      <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                        <ResetPasswordButton
+                          account={{ id: t.accountId, username: t.username }}
+                        />
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -1064,8 +1548,18 @@ export function AdminHome({ session, superAdmin = false }) {
       <AssignmentsManager teams={teams} />
 
       <section className="portal-card">
-        <h3>Staff accounts ({accounts?.length ?? "…"})</h3>
-        <p className="portal-card__hint">Core, meal and admin logins. Passwords aren't stored anywhere retrievable — reset generates a fresh one.</p>
+        <div className="portal-card__headRow">
+          <h3>Staff accounts ({accounts?.length ?? "…"})</h3>
+          <button
+            type="button"
+            className="portal-auth__submit"
+            style={{ width: "auto", padding: "0.45rem 1rem", fontSize: "0.85rem" }}
+            onClick={() => setShowAddStaff(true)}
+          >
+            + Generate Staff Login
+          </button>
+        </div>
+        <p className="portal-card__hint">Staff account details. Passwords are shown once when created or reset; save them securely.</p>
         {accounts && (
           <div className="portal-tableWrap">
             <table className="portal-table">
@@ -1074,7 +1568,7 @@ export function AdminHome({ session, superAdmin = false }) {
                   <th>Role</th>
                   <th>Username</th>
                   <th>Name</th>
-                  <th></th>
+                  <th>Password</th>
                 </tr>
               </thead>
               <tbody>
@@ -1084,7 +1578,11 @@ export function AdminHome({ session, superAdmin = false }) {
                     <td>{a.username}</td>
                     <td>{a.display_name}</td>
                     <td>
-                      <ResetPasswordButton account={a} />
+                      <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                        <ResetPasswordButton
+                          account={a}
+                        />
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -1096,10 +1594,41 @@ export function AdminHome({ session, superAdmin = false }) {
 
       <section className="portal-card">
         <div className="portal-card__headRow">
-          <h3>Round 2 marks</h3>
-          <ExportButton type="marks" />
+          <h3>Round 2 marks &amp; feedback</h3>
+          <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", flexWrap: "wrap" }}>
+            <button
+              type="button"
+              className="portal-auth__submit"
+              style={{
+                width: "auto",
+                padding: "0.45rem 1.1rem",
+                fontSize: "0.85rem",
+                background: "#27c93f",
+                borderColor: "#27c93f",
+                color: "#000",
+                fontWeight: 600,
+              }}
+              disabled={feedbackBusy === "all"}
+              onClick={() => setAllResultsVisibility(true)}
+            >
+              {feedbackBusy === "all" ? "Releasing…" : "📢 Release All Results to Participants"}
+            </button>
+            <button
+              type="button"
+              className="portal-logout"
+              style={{ width: "auto", padding: "0.45rem 0.9rem", fontSize: "0.85rem" }}
+              disabled={feedbackBusy === "all"}
+              onClick={() => setAllResultsVisibility(false)}
+            >
+              Hide All Results
+            </button>
+            <ExportButton type="marks" />
+          </div>
         </div>
-        <p className="portal-card__hint">Same data core enters — mirrored here so admin never needs a separate report.</p>
+        <p className="portal-card__hint">
+          Scores and mentor feedback entered by Core. Mentoring feedback stays hidden from participants
+          until you hit &ldquo;Release All Results to Participants&rdquo; (or approve them individually).
+        </p>
         {marksTeams && (
           <div className="portal-tableWrap">
             <table className="portal-table">
@@ -1107,13 +1636,46 @@ export function AdminHome({ session, superAdmin = false }) {
                 <tr>
                   <th>Team</th>
                   <th>Score</th>
+                  <th>Mentor feedback</th>
+                  <th>Participant visibility</th>
                 </tr>
               </thead>
               <tbody>
                 {marksTeams.map((t) => (
                   <tr key={t.id}>
-                    <td>{t.teamCode}</td>
+                    <td>
+                      <strong>{t.teamCode}</strong>
+                      {t.teamName && <div className="portal-table__sub">{t.teamName}</div>}
+                    </td>
                     <td>{t.score ?? "—"}</td>
+                    <td className="portal-table__note" style={{ maxWidth: "320px" }}>
+                      {t.feedback ? `“${t.feedback}”` : "—"}
+                    </td>
+                    <td>
+                      {t.score !== null ? (
+                        <button
+                          type="button"
+                          className={t.feedbackApproved ? "portal-logout" : "portal-auth__submit"}
+                          style={{
+                            padding: "0.3rem 0.75rem",
+                            fontSize: "0.8rem",
+                            width: "auto",
+                            borderColor: t.feedbackApproved ? "#27c93f" : undefined,
+                            color: t.feedbackApproved ? "#27c93f" : undefined,
+                          }}
+                          disabled={feedbackBusy === t.id}
+                          onClick={() => toggleFeedbackApproval(t.id, t.feedbackApproved)}
+                        >
+                          {feedbackBusy === t.id
+                            ? "…"
+                            : t.feedbackApproved
+                            ? "Approved (Visible to Team) ✓"
+                            : "Approve for Team"}
+                        </button>
+                      ) : (
+                        <span className="portal-table__sub">Unscored</span>
+                      )}
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -1157,6 +1719,21 @@ export function AdminHome({ session, superAdmin = false }) {
       <FreezeResultsToggle />
 
       <AuditLog />
+
+      {viewQrTeam && <QrModal team={viewQrTeam} onClose={() => setViewQrTeam(null)} />}
+      {showAllQrs && <AllQrsModal teams={teams || []} onClose={() => setShowAllQrs(false)} />}
+      {showAddTeam && (
+        <CreateTeamModal
+          onCreated={() => loadAll()}
+          onClose={() => setShowAddTeam(false)}
+        />
+      )}
+      {showAddStaff && (
+        <CreateStaffModal
+          onCreated={() => loadAll()}
+          onClose={() => setShowAddStaff(false)}
+        />
+      )}
     </div>
   );
 }

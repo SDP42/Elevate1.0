@@ -39,6 +39,8 @@ await sql`delete from login_attempts where username = ${USERNAME}`;
 
 fs.writeFileSync(
   path.join(__dirname, "superadmin-credentials.csv"),
-  `role,username,password,label\nsuperadmin,${USERNAME},${password},Super Admin\n`
+  `role,username,password,label\nsuperadmin,${USERNAME},${password},Super Admin\n`,
+  { mode: 0o600 }
 );
+fs.chmodSync(path.join(__dirname, "superadmin-credentials.csv"), 0o600);
 console.log(`Super admin ready: username "${USERNAME}". Credentials written to db/superadmin-credentials.csv (gitignored).`);
