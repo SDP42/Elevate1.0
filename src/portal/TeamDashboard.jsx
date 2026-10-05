@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import QRCode from "qrcode";
 import RequireRole from "./RequireRole";
-import { EVENT, EVENT_START, SUBMISSION_DEADLINE, VENUE_INFO } from "../config";
+import { EVENT, EVENT_START, SUBMISSION_DEADLINE, VENUE_INFO, SPONSORS } from "../config";
 import { CRITERIA } from "../../shared/criteria.js";
 import useHeroCloud from "./useHeroCloud";
 import { leaderboard, logout, psList, requestHelp, selectPs, submitProject } from "./api";
@@ -244,9 +244,8 @@ const TrophyIcon = () => (
    site's own ticket (src/components/BoardingPass.jsx): QR on the left
    behind a perforated notch, a route down the middle, a dark stub on the
    right — now floating over the same painted cloud sea as that section,
-   not just a flat dark page, and carrying the team's chosen problem
-   statement once they have one. */
-function Ticket({ team, psTitle, rosterLocked }) {
+   not just a flat dark page, with the same sponsor strip for every team. */
+function Ticket({ team, rosterLocked }) {
   const [qrUrl, setQrUrl] = useState("");
   const cloudUrl = useHeroCloud();
 
@@ -339,12 +338,16 @@ function Ticket({ team, psTitle, rosterLocked }) {
               </div>
             </dl>
 
-            {psTitle && (
-              <div className="ticket__ps">
-                <span>Flying with</span>
-                <strong>{psTitle}</strong>
-              </div>
-            )}
+            <div className="ticket__sponsors">
+              <span className="ticket__sponsorsLabel">Flying with</span>
+              <ul className="ticket__sponsorLogos" aria-label="Event sponsors">
+                {SPONSORS.map((sponsor) => (
+                  <li key={sponsor.name}>
+                    <img src={sponsor.logo} alt={sponsor.name} />
+                  </li>
+                ))}
+              </ul>
+            </div>
 
             <div className="ticket__passengers">
               <span className="ticket__passengersLabel">
@@ -702,8 +705,6 @@ function TeamHome({ session }) {
     navigate("/portal/login", { replace: true });
   }
 
-  const selectedPsTitle = psData?.problemStatements.find((p) => p.id === psData.selectedPsId)?.title;
-
   return (
     <div className="portal-page">
       <div className="portal-page__head">
@@ -725,7 +726,6 @@ function TeamHome({ session }) {
       {session.team && (
         <Ticket
           team={session.team}
-          psTitle={selectedPsTitle}
           rosterLocked={psData?.selectionStatus === "approved"}
         />
       )}

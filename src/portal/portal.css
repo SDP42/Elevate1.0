@@ -356,6 +356,7 @@
 }
 
 .ticket__main {
+  container: participant-ticket / inline-size;
   flex: 1;
   min-width: 0;
   padding: 1.3rem 1.5rem;
@@ -439,25 +440,54 @@
   white-space: nowrap;
 }
 
-.ticket__ps {
+.ticket__sponsors {
   display: flex;
-  align-items: baseline;
-  gap: 0.5rem;
-  padding: 0.6rem 0.8rem;
+  align-items: center;
+  gap: 0.6rem;
+  height: 2.2rem;
+  flex: none;
+  padding: 0.4rem 0.8rem;
   border-radius: 8px;
   background: rgba(201, 168, 106, 0.1);
-  font-size: 0.85rem;
 }
 
-.ticket__ps span {
+.ticket__sponsorsLabel {
+  flex: none;
   color: #8a92a6;
   font-size: 0.7rem;
   text-transform: uppercase;
   letter-spacing: 0.04em;
 }
 
-.ticket__ps strong {
-  color: var(--ink);
+.ticket__sponsorLogos {
+  display: grid;
+  grid-template-columns: repeat(9, minmax(0, 1fr));
+  align-items: stretch;
+  gap: 0.35rem;
+  flex: 1;
+  min-width: 0;
+  height: 100%;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.ticket__sponsorLogos li { min-width: 0; min-height: 0; }
+.ticket__sponsorLogos img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+/* Keep all nine logos inside the original strip, including narrow tickets. */
+@container participant-ticket (max-width: 650px) {
+  .ticket__sponsorLogos {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-rows: repeat(3, minmax(0, 1fr));
+    gap: 0.12rem 0.5rem;
+  }
+  .ticket__sponsorsLabel { font-size: 0.6rem; }
 }
 
 .ticket__passengers {
