@@ -1,3 +1,4 @@
+import { submissionFiles } from "./_lib/submission-files.js";
 import bcrypt from "bcryptjs";
 import { sql } from "./_lib/db.js";
 import { signSession, sessionCookie, clearSessionCookie, readSession } from "./_lib/auth.js";
@@ -10,10 +11,14 @@ import { createIncident } from "./_lib/incidents.js";
    `action` field rather than each getting its own route. GET = who am I;
    POST = login, or logout/submit/help if the body says so. */
 export default async function handler(req, res) {
-  if (req.method === "GET") return me(req, res);
+  if (req.method === "GET") {
+    if (new URL(req.url, "http://localhost").searchParams.get("resource") === "submission-files") return submissionFiles(req, res);
+    return me(req, res);
+  }
   if (req.method === "POST") {
     const { action } = req.body || {};
     if (action === "logout") return logout(req, res);
+    if (action === "upload") return submissionFiles(req, res);
     if (action === "submit") return submitProject(req, res);
     if (action === "help") return requestHelp(req, res);
     return login(req, res);
@@ -54,15 +59,19 @@ async function submitProject(req, res) {
     return;
   }
 
-  const { submissionUrl, submissionNote } = req.body || {};
-  if (!submissionUrl || !submissionUrl.trim()) {
-    res.status(400).json({ error: "A submission link is required" });
-    return;
+  const { submissionUrl = "", submissionNote = "" } = req.body || {};
+  if (typeof submissionUrl !== "string" || typeof submissionNote !== "string" || submissionNote.length > 10000) return res.status(400).json({ error: "Invalid submission" });
+  if (submissionUrl.trim()) {
+    try { if (!["https:", "http:"].includes(new URL(submissionUrl.trim()).protocol)) throw new Error(); }
+    catch { return res.status(400).json({ error: "Use a valid https:// or http:// link" }); }
+  } else {
+    const files = await sql`select id from submission_files where team_id = ${session.teamId} limit 1`;
+    if (!files.length) return res.status(400).json({ error: "Add a link or upload a file first" });
   }
 
   await sql`
     update teams set
-      submission_url = ${submissionUrl.trim()},
+      submission_url = ${submissionUrl.trim() || null},
       submission_note = ${submissionNote || null},
       submitted_at = now()
     where id = ${session.teamId}

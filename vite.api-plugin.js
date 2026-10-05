@@ -26,9 +26,9 @@ export default function apiPlugin() {
           let bytes = 0;
           for await (const chunk of req) {
             bytes += chunk.length;
-            if (bytes <= 1024 * 1024) chunks.push(chunk);
+            if (bytes <= 4.4 * 1024 * 1024) chunks.push(chunk);
           }
-          if (bytes > 1024 * 1024) return json(413, { error: "Request is too large" });
+          if (bytes > 4.4 * 1024 * 1024) return json(413, { error: "Request is too large" });
           const raw = Buffer.concat(chunks).toString("utf8");
           try {
             req.body = raw ? JSON.parse(raw) : undefined;

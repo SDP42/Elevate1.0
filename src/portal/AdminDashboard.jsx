@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import QRCode from "qrcode";
 import JSZip from "jszip";
+import SubmissionFiles from "./SubmissionFiles";
 import RequireRole from "./RequireRole";
 import SuperAdminOversight from "./SuperAdminOversight";
 import {
@@ -1490,8 +1491,9 @@ export function AdminHome({ session, superAdmin = false }) {
                           link
                         </a>
                       ) : (
-                        "—"
+                        null
                       )}
+                      <details><summary>Uploaded documents</summary><SubmissionFiles teamId={t.id} /></details>
                     </td>
                     <td>
                       {t.qrToken ? (

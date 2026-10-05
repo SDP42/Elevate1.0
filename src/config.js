@@ -119,3 +119,6 @@ export const SPONSORS = [
     logo: "/redbull-logo.svg",
   },
 ];
+
+// WhatsApp recipients: country code and digits only. Populated by the organiser.
+export const HELP_CONTACTS = [];

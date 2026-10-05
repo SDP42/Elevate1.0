@@ -34,3 +34,26 @@ requires `SUPERADMIN_PASSWORD` and must only run when that reset is intended.
 The role buttons on the login form are guidance. The server determines the
 role from the matching account, then returns its dashboard. Team renaming
 preserves issued usernames so distributed credentials continue to work.
+
+### Participant document submissions
+
+`db/submission-files.sql` is an additive migration (also included in `schema.sql`).
+It creates `submission_files` with the original bytes in Postgres `bytea` and
+filename, format, size, team ID, and upload time. There is one slot per team per
+format: PDF, PPTX, MD, TXT. A replacement changes only that slot; existing links,
+notes, rosters, and ticket details are preserved. Each file is limited to 3 MiB
+so its JSON upload stays within the serverless request limit. File access requires
+the owning team session or an admin/superadmin session. Payloads are not returned
+by the team list and are fetched only when opening a preview.
+
+Markdown is rendered as formatted content with raw HTML disabled; text is shown
+as plain text; PDFs use PDF.js page navigation. PPTX previews show slide text and
+embedded raster images; download the original for complete PowerPoint layout,
+charts, and animation fidelity. Previewing a document never uploads it to an
+external conversion service.
+
+`HELP_CONTACTS` in `src/config.js` configures public organiser WhatsApp recipients
+with `{ name, phone }` entries. Use country code plus digits. The Help card opens
+`wa.me` with team, seat, and message prefilled; the participant must tap Send in
+WhatsApp. No WhatsApp Business API keys are needed. The button stays disabled
+until a recipient is configured.
