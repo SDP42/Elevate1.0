@@ -87,6 +87,14 @@ export const SPONSORS = [
     logo: "/voroa-logo.svg",
   },
   {
+    role: "Security & Monitoring Partner",
+    name: "ShipReady",
+    url: "https://useshipready.dev",
+    logo: "/shipready-logo.png",
+    // the logo is a mark with no wordmark, so show the name beneath it
+    showName: true,
+  },
+  {
     role: "AI & Automation Partner",
     name: "n8n",
     url: "https://n8n.io/",

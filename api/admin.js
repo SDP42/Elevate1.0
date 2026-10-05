@@ -9,8 +9,22 @@ import { logAction } from "./_lib/audit.js";
    — the Hobby plan's 12-function cap). GET ?resource=... picks the read;
    POST {action: ...} picks the write. */
 async function handler(req, res) {
+  res.setHeader("Cache-Control", "no-store");
+  const isSuper = req.session.role === "superadmin";
+
   if (req.method === "GET") {
     const resource = searchParams(req).get("resource") || "teams";
+    // oversight views are superadmin-only — plain admin never sees who
+    // logged in when, or how other staff (including admins) are behaving
+    if (resource === "login-activity" || resource === "persona-activity" || resource === "audit-full") {
+      if (!isSuper) {
+        res.status(403).json({ error: "Super admin only" });
+        return;
+      }
+      if (resource === "login-activity") return getLoginActivity(req, res);
+      if (resource === "persona-activity") return getPersonaActivity(req, res);
+      return getAuditFull(req, res);
+    }
     if (resource === "accounts") return getAccounts(req, res);
     if (resource === "meals") return getMeals(req, res);
     if (resource === "audit") return getAudit(req, res);
@@ -113,7 +127,7 @@ async function getTeams(req, res) {
   const teams = await sql`
     select t.id, t.team_code, t.seat_no, t.dietary, t.shortlisted, t.withdrawn,
       t.submission_url, t.submission_note, t.submitted_at, t.qr_token,
-      a.id as account_id, a.display_name, a.username, a.initial_password
+      a.id as account_id, a.display_name, a.username
     from teams t
     join accounts a on a.id = t.account_id
     order by t.id asc
@@ -146,7 +160,6 @@ async function getTeams(req, res) {
       accountId: t.account_id,
       displayName: t.display_name,
       username: t.username,
-      initialPassword: t.initial_password || "",
       members: byTeam.get(t.id) || [],
     })),
   });
@@ -154,10 +167,11 @@ async function getTeams(req, res) {
 
 /* the staff roster (core, meal, admin) */
 async function getAccounts(req, res) {
+  const isSuper = req.session.role === "superadmin";
   const accounts = await sql`
-    select id, username, role, display_name, initial_password, created_at
+    select id, username, role, display_name, created_at
     from accounts
-    where role != 'team'
+    where role != 'team' and (${isSuper} or role != 'superadmin')
     order by role asc, username asc
   `;
   res.status(200).json({
@@ -166,7 +180,6 @@ async function getAccounts(req, res) {
       username: a.username,
       role: a.role,
       display_name: a.display_name,
-      initialPassword: a.initial_password || "",
       created_at: a.created_at,
     })),
   });
@@ -194,6 +207,123 @@ async function getAudit(req, res) {
     left join accounts a on a.id = l.actor_account_id
     order by l.created_at desc
     limit 200
+  `;
+  res.status(200).json({
+    entries: rows.map((r) => ({
+      id: r.id,
+      action: r.action,
+      detail: r.detail,
+      createdAt: r.created_at,
+      username: r.username,
+      role: r.role,
+    })),
+  });
+}
+
+/* Every login, logout and failed attempt, newest first, plus a per-account
+   summary (last login, how many times, failures) — the "who got in, and
+   when" view. Failed attempts carry no account id (the username may not
+   even exist), so they're keyed by the username in their detail. */
+async function getLoginActivity(req, res) {
+  const events = await sql`
+    select l.id, l.action, l.created_at,
+      coalesce(a.username, l.detail->>'username') as username,
+      coalesce(a.role, l.detail->>'role') as role
+    from audit_log l
+    left join accounts a on a.id = l.actor_account_id
+    where l.action in ('auth.login', 'auth.logout', 'auth.login_failed')
+    order by l.created_at desc
+    limit 400
+  `;
+  const summary = await sql`
+    select a.username, a.role, a.display_name,
+      max(l.created_at) filter (where l.action = 'auth.login') as last_login,
+      count(*) filter (where l.action = 'auth.login') as logins
+    from accounts a
+    left join audit_log l on l.actor_account_id = a.id
+    group by a.id
+    order by max(l.created_at) filter (where l.action = 'auth.login') desc nulls last, a.username asc
+  `;
+  const failed = await sql`
+    select detail->>'username' as username, count(*) as n
+    from audit_log where action = 'auth.login_failed' group by 1
+  `;
+  const failedBy = new Map(failed.map((f) => [f.username, Number(f.n)]));
+  res.status(200).json({
+    events: events.map((e) => ({
+      id: e.id,
+      action: e.action,
+      at: e.created_at,
+      username: e.username,
+      role: e.role,
+    })),
+    accounts: summary.map((s) => ({
+      username: s.username,
+      role: s.role,
+      displayName: s.display_name,
+      lastLogin: s.last_login,
+      logins: Number(s.logins),
+      failedAttempts: failedBy.get(s.username) || 0,
+    })),
+  });
+}
+
+/* What each persona has actually been doing: per staff account action
+   counts, plus the records they created (marks entered by each core
+   account, meals served per counter, members checked in per desk). */
+async function getPersonaActivity(req, res) {
+  const actions = await sql`
+    select a.username, a.role, count(l.id) as actions, max(l.created_at) as last_action
+    from accounts a
+    left join audit_log l on l.actor_account_id = a.id and l.action not like 'auth.%'
+    where a.role != 'team'
+    group by a.id
+    order by a.role asc, a.username asc
+  `;
+  const marks = await sql`
+    select a.username, count(m.id) as n from accounts a
+    left join marks m on m.entered_by = a.id where a.role = 'core' group by a.id order by a.username
+  `;
+  const notes = await sql`
+    select a.username, count(n.id) as n from accounts a
+    left join round1_notes n on n.entered_by = a.id where a.role = 'core' group by a.id
+  `;
+  const meals = await sql`
+    select a.username, count(ml.id) as n from accounts a
+    left join meal_logs ml on ml.given_by = a.id where a.role = 'meal' group by a.id order by a.username
+  `;
+  const regi = await sql`
+    select a.username, count(rc.member_id) as n from accounts a
+    left join registration_checkins rc on rc.checked_in_by = a.id where a.role = 'regidesk' group by a.id order by a.username
+  `;
+  const noteBy = new Map(notes.map((n) => [n.username, Number(n.n)]));
+  res.status(200).json({
+    accounts: actions.map((a) => ({
+      username: a.username,
+      role: a.role,
+      actions: Number(a.actions),
+      lastAction: a.last_action,
+    })),
+    core: marks.map((m) => ({ username: m.username, marksEntered: Number(m.n), round1Notes: noteBy.get(m.username) || 0 })),
+    meal: meals.map((m) => ({ username: m.username, served: Number(m.n) })),
+    regidesk: regi.map((r) => ({ username: r.username, membersChecked: Number(r.n) })),
+  });
+}
+
+/* the whole audit trail, filterable by actor role and action prefix */
+async function getAuditFull(req, res) {
+  const params = searchParams(req);
+  const role = params.get("role") || "";
+  const prefix = params.get("action") || "";
+  const limit = Math.min(Number(params.get("limit")) || 300, 1000);
+  const rows = await sql`
+    select l.id, l.action, l.detail, l.created_at, a.username, a.role
+    from audit_log l
+    left join accounts a on a.id = l.actor_account_id
+    where (${role} = '' or a.role = ${role})
+      and (${prefix} = '' or l.action like ${prefix + "%"})
+    order by l.created_at desc
+    limit ${limit}
   `;
   res.status(200).json({
     entries: rows.map((r) => ({
@@ -457,13 +587,11 @@ function generateTeamUsername(displayName, teamCode) {
     .toLowerCase()
     .replace(/\s+/g, "")
     .replace(/[^a-z0-9]/g, "");
-  const randDigits = Math.floor(10 + Math.random() * 90);
-  return `${base || "team"}_${randDigits}`;
+  return `${base || "team"}_${crypto.randomBytes(3).toString("hex")}`;
 }
 
 /* rename a team's display name (e.g. "Team 1" → their real chosen
-   name once finalised) — also updates the team's username to match
-   <display_name>_<2_digits> so that logins and QR PNG names stay synced */
+   name once finalised), preserving the issued username and QR token */
 async function saveTeamName(req, res) {
   let { accountId, teamId, displayName } = req.body || {};
   if (!displayName || !displayName.trim()) {
@@ -482,17 +610,9 @@ async function saveTeamName(req, res) {
   }
 
   const cleanDisplayName = displayName.trim();
-  let username = generateTeamUsername(cleanDisplayName, "");
-  let existingAccount = await sql`select id from accounts where username = ${username} and id != ${accountId}`;
-  while (existingAccount[0]) {
-    username = generateTeamUsername(cleanDisplayName, "");
-    existingAccount = await sql`select id from accounts where username = ${username} and id != ${accountId}`;
-  }
-
   const rows = await sql`
     update accounts
-    set display_name = ${cleanDisplayName},
-        username = ${username}
+    set display_name = ${cleanDisplayName}
     where id = ${accountId} and role = 'team'
     returning id, username, display_name
   `;
@@ -500,8 +620,8 @@ async function saveTeamName(req, res) {
     res.status(404).json({ error: "No team account with that id" });
     return;
   }
-  await logAction(req.session.accountId, "team.rename", { accountId, displayName: cleanDisplayName, username });
-  res.status(200).json({ ok: true, username, displayName: cleanDisplayName });
+  await logAction(req.session.accountId, "team.rename", { accountId, displayName: cleanDisplayName });
+  res.status(200).json({ ok: true, username: rows[0].username, displayName: cleanDisplayName });
 }
 
 /* mark which teams are the official Round 2 shortlist — auto-generates a QR token
@@ -539,16 +659,10 @@ async function createTeam(req, res) {
   }
 
   const cleanName = displayName?.trim() || `Team ${cleanCode}`;
-  const baseName = (displayName || cleanCode || "team")
-    .toLowerCase()
-    .replace(/\s+/g, "")
-    .replace(/[^a-z0-9]/g, "");
-  let randDigits = Math.floor(10 + Math.random() * 90);
-  let username = `${baseName || "team"}_${randDigits}`;
+  let username = generateTeamUsername(cleanName, cleanCode);
   let existingAccount = await sql`select id from accounts where username = ${username}`;
   while (existingAccount[0]) {
-    randDigits = Math.floor(10 + Math.random() * 90);
-    username = `${baseName || "team"}_${randDigits}`;
+    username = generateTeamUsername(cleanName, cleanCode);
     existingAccount = await sql`select id from accounts where username = ${username}`;
   }
 
@@ -559,8 +673,8 @@ async function createTeam(req, res) {
   const qrToken = crypto.randomBytes(16).toString("hex");
 
   const accountRows = await sql`
-    insert into accounts (username, password_hash, role, display_name, initial_password)
-    values (${username}, ${passwordHash}, 'team', ${cleanName}, ${password})
+    insert into accounts (username, password_hash, role, display_name)
+    values (${username}, ${passwordHash}, 'team', ${cleanName})
     returning id
   `;
   const accountId = accountRows[0].id;
@@ -664,6 +778,7 @@ async function bulkImport(req, res) {
       where upper(t.team_code) = upper(${teamCode})
     `;
     let team = teamRows[0];
+    let createdCredentials = null;
 
     if (!team) {
       // Create team on the fly if it doesn't exist
@@ -681,8 +796,8 @@ async function bulkImport(req, res) {
       const qrToken = crypto.randomBytes(16).toString("hex");
 
       const accountRows = await sql`
-        insert into accounts (username, password_hash, role, display_name, initial_password)
-        values (${username}, ${passwordHash}, 'team', ${displayName}, ${password})
+        insert into accounts (username, password_hash, role, display_name)
+        values (${username}, ${passwordHash}, 'team', ${displayName})
         returning id
       `;
       const accountId = accountRows[0].id;
@@ -693,22 +808,10 @@ async function bulkImport(req, res) {
         returning id
       `;
       team = { id: newTeamRows[0].id, account_id: accountId, username, display_name: displayName };
+      createdCredentials = { username, password };
     } else if (teamName && teamName.trim()) {
-      // Update display name and regenerate username based on team name
       const cleanDisplayName = teamName.trim();
-      let username = generateTeamUsername(cleanDisplayName, teamCode);
-      let existingAccount = await sql`select id from accounts where username = ${username} and id != ${team.account_id}`;
-      while (existingAccount[0]) {
-        username = generateTeamUsername(cleanDisplayName, teamCode);
-        existingAccount = await sql`select id from accounts where username = ${username} and id != ${team.account_id}`;
-      }
-
-      await sql`
-        update accounts
-        set display_name = ${cleanDisplayName},
-            username = ${username}
-        where id = ${team.account_id}
-      `;
+      await sql`update accounts set display_name = ${cleanDisplayName} where id = ${team.account_id}`;
     }
 
     await sql`delete from team_members where team_id = ${team.id}`;
@@ -718,7 +821,7 @@ async function bulkImport(req, res) {
         values (${team.id}, ${cleanNames[i]}, ${i === 0}, ${i + 1})
       `;
     }
-    results.push({ teamCode, ok: true });
+    results.push({ teamCode, ok: true, ...(createdCredentials || {}) });
   }
 
   await logAction(req.session.accountId, "roster.bulk_import", { rows: results.length });
@@ -741,12 +844,18 @@ async function resetPassword(req, res) {
     res.status(400).json({ error: "accountId is required" });
     return;
   }
+  // only a superadmin may reset a superadmin — otherwise any admin could
+  // take over the oversight account
+  const targetRows = await sql`select role from accounts where id = ${accountId}`;
+  if (targetRows[0]?.role === "superadmin" && req.session.role !== "superadmin") {
+    res.status(403).json({ error: "Only a super admin can reset this account" });
+    return;
+  }
   const password = randomPassword();
   const hash = await bcrypt.hash(password, 10);
   const rows = await sql`
     update accounts
-    set password_hash = ${hash},
-        initial_password = ${password}
+    set password_hash = ${hash}
     where id = ${accountId}
     returning username
   `;
@@ -843,9 +952,9 @@ async function createStaff(req, res) {
   const hash = await bcrypt.hash(password, 10);
 
   const rows = await sql`
-    insert into accounts (username, password_hash, role, display_name, initial_password)
-    values (${cleanUsername}, ${hash}, ${role}, ${cleanName}, ${password})
-    returning id, username, role, display_name, initial_password, created_at
+    insert into accounts (username, password_hash, role, display_name)
+    values (${cleanUsername}, ${hash}, ${role}, ${cleanName})
+    returning id, username, role, display_name, created_at
   `;
 
   await logAction(req.session.accountId, "account.create_staff", {
@@ -861,7 +970,7 @@ async function createStaff(req, res) {
       username: rows[0].username,
       role: rows[0].role,
       displayName: rows[0].display_name,
-      initialPassword: rows[0].initial_password,
+      password,
       createdAt: rows[0].created_at,
     },
   });
@@ -906,5 +1015,5 @@ async function approveFeedback(req, res) {
   res.status(200).json({ ok: true, approved: isApproved });
 }
 
-export default requireRole(handler, ["admin"]);
+export default requireRole(handler, ["admin", "superadmin"]);
 

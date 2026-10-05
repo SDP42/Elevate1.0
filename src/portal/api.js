@@ -137,6 +137,13 @@ export const adminSaveAssignment = (coreAccountId, teamIds, slotTimes) =>
     body: JSON.stringify({ action: "save-assignment", coreAccountId, teamIds, slotTimes }),
   });
 
+export const superLoginActivity = () => request("/admin?resource=login-activity");
+
+export const superPersonaActivity = () => request("/admin?resource=persona-activity");
+
+export const superAuditFull = (role = "", action = "") =>
+  request(`/admin?resource=audit-full&role=${encodeURIComponent(role)}&action=${encodeURIComponent(action)}`);
+
 export const adminOverview = () => request("/admin?resource=overview");
 
 export const adminSettings = () => request("/admin?resource=settings");

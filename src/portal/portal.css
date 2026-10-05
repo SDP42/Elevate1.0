@@ -2043,3 +2043,47 @@ tr.is-alert-row td {
     height: 95px;
   }
 }
+
+/* ---------- super admin oversight ---------- */
+.portal-subhead {
+  margin: 1.4rem 0 0.6rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--gold-dim);
+}
+
+.portal-personaGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1.2rem;
+  margin-top: 0.4rem;
+}
+
+.portal-filterRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.portal-filterRow .portal-field {
+  flex: 1 1 12rem;
+}
+
+.portal-filterRow select {
+  padding: 0.8rem 1rem;
+  border-radius: 10px;
+  border: 1px solid var(--line);
+  background: var(--bg);
+  color: var(--cream);
+  font-family: inherit;
+  font-size: 0.95rem;
+}
+
+@media (max-width: 760px) {
+  .portal-personaGrid {
+    grid-template-columns: 1fr;
+  }
+}

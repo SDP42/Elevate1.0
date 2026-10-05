@@ -6,23 +6,25 @@
 
 create extension if not exists pgcrypto;
 
--- one row per login: every team, every core/admin/meal/regidesk staff member.
+-- one row per login: every team, every core/admin/meal/regidesk/superadmin staff member.
 create table if not exists accounts (
   id serial primary key,
   username text unique not null,
   password_hash text not null,
-  role text not null check (role in ('admin', 'core', 'meal', 'team', 'regidesk')),
+  role text not null check (role in ('admin', 'core', 'meal', 'team', 'regidesk', 'superadmin')),
   display_name text not null,
   created_at timestamptz not null default now()
 );
 
--- widen the role check to include regidesk, added after the original launch
+-- widen the role check to include regidesk, then superadmin (read-everything
+-- oversight login for the organisers), added after the original launch
 -- (a 'volunteer' role briefly existed here too, then was removed as unneeded)
 alter table accounts drop constraint if exists accounts_role_check;
 alter table accounts add constraint accounts_role_check
-  check (role in ('admin', 'core', 'meal', 'team', 'regidesk'));
+  check (role in ('admin', 'core', 'meal', 'team', 'regidesk', 'superadmin'));
 
-alter table accounts add column if not exists initial_password text;
+-- Passwords are stored only as bcrypt hashes. Historical plaintext columns
+-- can be removed explicitly using db/remove-plaintext-passwords.mjs.
 
 -- a team's own profile, one-to-one with its 'team' account.
 create table if not exists teams (

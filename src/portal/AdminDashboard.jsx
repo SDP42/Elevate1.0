@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import QRCode from "qrcode";
 import JSZip from "jszip";
 import RequireRole from "./RequireRole";
+import SuperAdminOversight from "./SuperAdminOversight";
 import {
   adminAccounts,
   adminAnnouncements,
@@ -414,7 +415,7 @@ function ResetPasswordButton({ account, onReset }) {
       <button type="button" className="portal-logout" onClick={reset} disabled={busy}>
         {busy ? "…" : "Reset"}
       </button>
-      {result && <div className="portal-newPassword">New: {result}</div>}
+      {result && <div className="portal-newPassword">New: <code>{result}</code> — save now. <button type="button" className="portal-link-btn" onClick={() => setResult(null)}>Dismiss</button></div>}
     </div>
   );
 }
@@ -722,7 +723,7 @@ function CreateStaffModal({ onCreated, onClose }) {
             <p>Role: <code>{createdResult.role}</code></p>
             <p>Name: <strong>{createdResult.displayName}</strong></p>
             <p>Username: <code>{createdResult.username}</code></p>
-            <p>Password: <code>{createdResult.initialPassword}</code> (save this now!)</p>
+            <p>Password: <code>{createdResult.password}</code> (save this now!)</p>
             <div className="portal-scanResult__actions portal-u-mt">
               <button type="button" className="portal-auth__submit" onClick={onClose}>
                 Done
@@ -1233,8 +1234,8 @@ function BulkImport({ onDone }) {
       <h3>Bulk roster import</h3>
       <p className="portal-card__hint">
         One team per line: <code>team_code,team_name,name1,name2,name3,name4</code>.
-        Providing <code>team_name</code> automatically sets their team name, regenerates their username to <code>&lt;team_name&gt;_&lt;digits&gt;</code>,
-        and names their QR code PNG accordingly. You can also paste directly from Excel / Google Sheets.
+        Providing <code>team_name</code> updates the display name while preserving existing logins.
+        New accounts receive credentials shown once below. Save these before leaving this page.
       </p>
       {error && <p className="portal-auth__error">{error}</p>}
       <form className="portal-auth__form" onSubmit={run}>
@@ -1254,6 +1255,7 @@ function BulkImport({ onDone }) {
           {results.map((r, i) => (
             <li key={i} className={r.ok ? "is-ok" : "is-error"}>
               {r.teamCode}: {r.ok ? "updated" : r.error}
+              {r.password && <div className="portal-newPassword">New login: <code>{r.username}</code> · Password: <code>{r.password}</code> — save now.</div>}
             </li>
           ))}
         </ul>
@@ -1262,7 +1264,7 @@ function BulkImport({ onDone }) {
   );
 }
 
-function AdminHome({ session }) {
+export function AdminHome({ session, superAdmin = false }) {
   const navigate = useNavigate();
   const [teams, setTeams] = useState(null);
   const [accounts, setAccounts] = useState(null);
@@ -1321,18 +1323,6 @@ function AdminHome({ session }) {
     } finally {
       setZipBusy(false);
     }
-  }
-
-  function onPasswordReset(teamId, newPassword) {
-    setTeams((prev) =>
-      prev.map((t) => (t.id === teamId ? { ...t, initialPassword: newPassword } : t))
-    );
-  }
-
-  function onStaffPasswordReset(accountId, newPassword) {
-    setAccounts((prev) =>
-      prev.map((a) => (a.id === accountId ? { ...a, initialPassword: newPassword } : a))
-    );
   }
 
   async function toggleFeedbackApproval(teamId, currentStatus) {
@@ -1406,7 +1396,9 @@ function AdminHome({ session }) {
     <div className="portal-page">
       <div className="portal-page__head">
         <div>
-          <span className="portal-page__eyebrow">Elevate 1.0 · Admin · Full Access</span>
+          <span className="portal-page__eyebrow">
+            Elevate 1.0 · {superAdmin ? "Super Admin · Oversight + Full Access" : "Admin · Full Access"}
+          </span>
           <h1>{session.displayName}</h1>
         </div>
         <button type="button" className="portal-logout" onClick={onLogout}>
@@ -1415,6 +1407,8 @@ function AdminHome({ session }) {
       </div>
 
       {error && <p className="portal-auth__error">{error}</p>}
+
+      {superAdmin && <SuperAdminOversight />}
 
       <Overview />
 
@@ -1528,10 +1522,8 @@ function AdminHome({ session }) {
                     </td>
                     <td>
                       <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-                        <code style={{ fontSize: "0.85rem", color: "#f0b35c" }}>{t.initialPassword || "—"}</code>
                         <ResetPasswordButton
                           account={{ id: t.accountId, username: t.username }}
-                          onReset={(newPass) => onPasswordReset(t.id, newPass)}
                         />
                       </div>
                     </td>
@@ -1565,7 +1557,7 @@ function AdminHome({ session }) {
             + Generate Staff Login
           </button>
         </div>
-        <p className="portal-card__hint">Core, meal, regidesk and admin logins with current credentials.</p>
+        <p className="portal-card__hint">Staff account details. Passwords are shown once when created or reset; save them securely.</p>
         {accounts && (
           <div className="portal-tableWrap">
             <table className="portal-table">
@@ -1585,10 +1577,8 @@ function AdminHome({ session }) {
                     <td>{a.display_name}</td>
                     <td>
                       <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-                        <code style={{ fontSize: "0.85rem", color: "#f0b35c" }}>{a.initialPassword || "—"}</code>
                         <ResetPasswordButton
                           account={a}
-                          onReset={(newPass) => onStaffPasswordReset(a.id, newPass)}
                         />
                       </div>
                     </td>

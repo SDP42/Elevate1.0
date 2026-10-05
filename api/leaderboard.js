@@ -9,6 +9,7 @@ import { requireRole } from "./_lib/auth.js";
    frontend to show this as the final result rather than a live one —
    admin flips it once, from the settings table, at the end of the event. */
 async function handler(req, res) {
+  const canSeeUnreleased = ["admin", "superadmin", "core"].includes(req.session.role);
   const rows = await sql`
     select t.team_code, t.seat_no, a.display_name, m.score
     from teams t
@@ -16,6 +17,7 @@ async function handler(req, res) {
     left join marks m
       on m.team_id = t.id
       and m.round_id = (select id from mentoring_rounds where round_no = 2)
+      and (${canSeeUnreleased} or m.feedback_approved = true)
     where t.withdrawn = false and t.shortlisted = true
     order by m.score desc nulls last, t.team_code asc
   `;

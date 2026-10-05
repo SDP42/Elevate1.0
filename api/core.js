@@ -28,7 +28,7 @@ async function handler(req, res) {
 
 async function listTeams(req, res) {
   const accountId = req.session.accountId;
-  const isAdmin = req.session.role === "admin";
+  const isAdmin = req.session.role === "admin" || req.session.role === "superadmin";
 
   // an admin, or a core account nobody has narrowed down, sees everyone
   let assignedIds = null;
@@ -149,6 +149,7 @@ async function submitMark(req, res) {
       score = excluded.score,
       criteria = excluded.criteria,
       feedback = excluded.feedback,
+      feedback_approved = false,
       entered_by = excluded.entered_by,
       entered_at = now()
   `;
@@ -228,4 +229,4 @@ async function checkinLog(req, res) {
   res.status(200).json({ ok: true, checkedIn: validIds.size });
 }
 
-export default requireRole(handler, ["core", "admin"]);
+export default requireRole(handler, ["core", "admin", "superadmin"]);

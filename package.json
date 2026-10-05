@@ -9,7 +9,8 @@
     "lint": "oxlint",
     "preview": "vite preview",
     "db:migrate": "node --env-file=.env db/migrate.mjs",
-    "db:seed": "node --env-file=.env db/seed.mjs"
+    "db:seed": "node --env-file=.env db/seed.mjs",
+    "test": "node --test tests/*.test.mjs"
   },
   "dependencies": {
     "@neondatabase/serverless": "^1.1.0",
@@ -20,12 +21,12 @@
     "jsqr": "^1.4.0",
     "jszip": "^3.10.2",
     "lenis": "^1.2.3",
+    "open-glass-ui": "^0.4.0",
     "qrcode": "^1.5.4",
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
     "react-router-dom": "^7.18.4",
-    "three": "^0.186.0",
-    "xlsx": "^0.18.5"
+    "three": "^0.186.0"
   },
   "devDependencies": {
     "@types/react": "^19.2.18",

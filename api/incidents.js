@@ -11,7 +11,7 @@ import { logAction } from "./_lib/audit.js";
    floor and able to act on it. */
 async function handler(req, res) {
   if (req.method === "GET") {
-    if (!["admin", "core", "regidesk"].includes(req.session.role)) {
+    if (!["admin", "core", "regidesk", "superadmin"].includes(req.session.role)) {
       res.status(403).json({ error: "Not allowed to view incidents" });
       return;
     }
@@ -21,7 +21,7 @@ async function handler(req, res) {
   if (req.method === "POST") {
     const { action } = req.body || {};
     if (action === "resolve") {
-      if (!["admin", "core"].includes(req.session.role)) {
+      if (!["admin", "core", "superadmin"].includes(req.session.role)) {
         res.status(403).json({ error: "Not allowed to resolve incidents" });
         return;
       }

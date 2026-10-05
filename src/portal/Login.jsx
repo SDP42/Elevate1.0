@@ -1,39 +1,36 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import "open-glass-ui/styles.css";
+import { Button, Glass, GlassSystemProvider } from "open-glass-ui";
 import { login } from "./api";
 import useHeroCloud from "./useHeroCloud";
+import BrandWordmark from "../components/BrandWordmark";
+import "./login.css";
 
-const TABS = [
-  { key: "team", label: "Team login" },
-  { key: "core", label: "Core login" },
-  { key: "meal", label: "Meal login" },
-  { key: "regidesk", label: "Regi desk login" },
-  { key: "admin", label: "Admin login" },
+const ROLES = [
+  { key: "team", label: "Team" },
+  { key: "core", label: "Core" },
+  { key: "meal", label: "Meal" },
+  { key: "regidesk", label: "Regi desk" },
+  { key: "admin", label: "Admin" },
+  { key: "superadmin", label: "Super admin" },
 ];
+const DASHBOARD_PATH = Object.fromEntries(ROLES.map(({ key }) => [key, `/portal/${key}`]));
 
-const DASHBOARD_PATH = {
-  admin: "/portal/admin",
-  core: "/portal/core",
-  meal: "/portal/meal",
-  team: "/portal/team",
-  regidesk: "/portal/regidesk",
-};
-
-/* One login form behind four tabs. The tab only changes the placeholder
-   copy — it's there so a team doesn't have to guess what to type into a
-   generic box, not a separate auth path. Whoever actually owns the
-   account that signs in lands on their own dashboard, tab or no tab. */
+// Role buttons guide the form; the authenticated account determines access.
 export default function Login() {
-  const [tab, setTab] = useState("team");
+  const [role, setRole] = useState("team");
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   const navigate = useNavigate();
   const cloudUrl = useHeroCloud();
 
-  async function onSubmit(e) {
-    e.preventDefault();
+  async function onSubmit(event) {
+    event.preventDefault();
+    if (busy) return;
     setError("");
     setBusy(true);
     try {
@@ -47,59 +44,85 @@ export default function Login() {
   }
 
   return (
-    <div className="portal-auth">
-      {cloudUrl && <img className="portal-auth__cloud" src={cloudUrl} alt="" aria-hidden="true" />}
-      <div className="portal-auth__card">
-        <a className="portal-auth__back" href="/">
-          ← Elevate 1.0
-        </a>
-        <span className="portal-auth__eyebrow">24-Hour Hackathon Portal</span>
-        <h1 className="portal-auth__title">Sign in</h1>
+    <GlassSystemProvider
+      renderer="auto"
+      theme={{ appearance: "dark", theme: { accent: "#c9a86a" }, className: "portal-login-system" }}
+      toasts={false}
+    >
+      <main className="portal-auth portal-liquid-login">
+        {cloudUrl && <img className="portal-auth__cloud" src={cloudUrl} alt="" aria-hidden="true" />}
+        <div className="portal-login__halo" aria-hidden="true" />
+        <Glass material="frosted" className="portal-login__card" look={{ rim: 1.2, blur: 0.85 }}>
+          <a className="portal-login__logoLink" href="/" aria-label="Elevate 1.0 home">
+            <BrandWordmark uppercase />
+          </a>
+          <span className="portal-login__eyebrow">24-hour hackathon portal</span>
+          <h1 className="portal-login__title">Sign in</h1>
 
-        <div className="portal-tabs" role="tablist">
-          {TABS.map((t) => (
-            <button
-              key={t.key}
-              type="button"
-              role="tab"
-              aria-selected={tab === t.key}
-              className={`portal-tabs__btn${tab === t.key ? " is-active" : ""}`}
-              onClick={() => setTab(t.key)}
-            >
-              {t.label}
-            </button>
-          ))}
-        </div>
+          <div className="portal-login__roles" role="group" aria-label="Account type">
+            {ROLES.map((item) => (
+              <Button
+                key={item.key}
+                type="button"
+                variant={role === item.key ? "primary" : "quiet"}
+                className="portal-login__role"
+                aria-pressed={role === item.key}
+                onClick={() => setRole(item.key)}
+              >{item.label}</Button>
+            ))}
+          </div>
 
-        <form className="portal-auth__form" onSubmit={onSubmit}>
-          <label className="portal-field">
-            <span>Username</span>
-            <input
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
-              placeholder={tab === "team" ? "e.g. team07" : `e.g. ${tab}01`}
-              autoComplete="username"
-              required
-            />
-          </label>
-          <label className="portal-field">
-            <span>Password</span>
-            <input
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              autoComplete="current-password"
-              required
-            />
-          </label>
-
-          {error && <p className="portal-auth__error">{error}</p>}
-
-          <button className="portal-auth__submit" type="submit" disabled={busy}>
-            {busy ? "Signing in…" : "Sign in"}
-          </button>
-        </form>
-      </div>
-    </div>
+          <form className="portal-login__form" onSubmit={onSubmit} aria-busy={busy}>
+            <label className="portal-login__field" htmlFor="portal-username">
+              <span>Username</span>
+              <input
+                id="portal-username"
+                name="username"
+                value={username}
+                onChange={(event) => setUsername(event.target.value)}
+                placeholder={role === "superadmin" ? "superadmin" : `e.g. ${role}01`}
+                autoComplete="username"
+                autoCapitalize="none"
+                spellCheck={false}
+                required
+              />
+            </label>
+            <div className="portal-login__field">
+              <label htmlFor="portal-password">Password</label>
+              <div className="portal-login__password">
+                <input
+                  id="portal-password"
+                  name="password"
+                  type={showPassword ? "text" : "password"}
+                  value={password}
+                  onChange={(event) => setPassword(event.target.value)}
+                  autoComplete="current-password"
+                  required
+                />
+                <Button
+                  type="button"
+                  variant="quiet"
+                  size="small"
+                  className="portal-login__reveal"
+                  aria-label={showPassword ? "Hide password" : "Show password"}
+                  aria-pressed={showPassword}
+                  onClick={() => setShowPassword((shown) => !shown)}
+                >
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" focusable="false">
+                    <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z" />
+                    <circle cx="12" cy="12" r="3" />
+                    {showPassword && <path d="m3 3 18 18" />}
+                  </svg>
+                </Button>
+              </div>
+            </div>
+            {error && <p className="portal-login__error" role="alert">{error}</p>}
+            <Button type="submit" variant="primary" size="large" className="portal-login__submit" disabled={busy}>
+              {busy ? "Signing in…" : "Sign in"}
+            </Button>
+          </form>
+        </Glass>
+      </main>
+    </GlassSystemProvider>
   );
 }

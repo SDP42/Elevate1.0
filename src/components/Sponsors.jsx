@@ -31,7 +31,14 @@ export default function Sponsors() {
               aria-label={`${s.role}: ${s.name}`}
             >
               <span className="sponsors__role">{s.role}</span>
-              <img className="sponsors__logo" src={s.logo} alt={s.name} />
+              {s.showName ? (
+                <span className="sponsors__lockup">
+                  <img className="sponsors__logo" src={s.logo} alt="" />
+                  <span className="sponsors__name">{s.name}</span>
+                </span>
+              ) : (
+                <img className="sponsors__logo" src={s.logo} alt={s.name} />
+              )}
               {s.perks && (
                 <ul className="sponsors__perks">
                   {s.perks.map(([place, perk]) => (

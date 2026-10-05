@@ -1,3 +1,11 @@
+# Historical branch notes
+
+The table below describes the original branch. It includes superseded behavior
+and historical verification claims. The current local integration removes
+plaintext password storage and export, preserves usernames during renaming,
+makes seeding additive, retains super-admin oversight, and uses OpenGlass UI
+for login. See README.md for the current setup and checks.
+
 # Elevate 1.0 — Hardening Branch Changelog
 
 Summary of all changes, fixes, and modifications implemented in the `workflow-hardening` branch.

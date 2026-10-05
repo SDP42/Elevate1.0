@@ -34,12 +34,18 @@ async function execWithRetry(fn) {
 
 export const sql = new Proxy(rawSql, {
   apply(target, thisArg, args) {
-    return execWithRetry(() => Reflect.apply(target, thisArg, args));
+    const statement = Array.isArray(args[0]) ? args[0].join("?") : String(args[0]);
+    const run = () => Reflect.apply(target, thisArg, args);
+    // A failed write may already have committed. Replaying it can duplicate data.
+    return /^\s*select\b/i.test(statement) ? execWithRetry(run) : run();
   },
   get(target, prop, receiver) {
     const val = Reflect.get(target, prop, receiver);
     if (typeof val === "function") {
-      return (...args) => execWithRetry(() => val.apply(target, args));
+      return (...args) => {
+        const run = () => val.apply(target, args);
+        return prop === "query" && /^\s*select\b/i.test(String(args[0])) ? execWithRetry(run) : run();
+      };
     }
     return val;
   },

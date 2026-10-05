@@ -1,4 +1,11 @@
+import fs from "node:fs";
 import { sql } from "../api/_lib/db.js";
+
+// This suite mutates and deletes event data. Use a disposable development DB.
+if (process.env.WAR_ROOM_ALLOW_MUTATIONS !== "1" || !process.env.CREDENTIALS_FILE) {
+  throw new Error("Requires a disposable database, WAR_ROOM_ALLOW_MUTATIONS=1 and CREDENTIALS_FILE pointing to private JSON credentials.");
+}
+const credentials = JSON.parse(fs.readFileSync(process.env.CREDENTIALS_FILE, "utf8"));
 
 const BASE_URL = "http://localhost:5173";
 
@@ -54,14 +61,17 @@ async function runComprehensiveTest() {
 
   await cleanupTestData();
 
-  // Fetch actual credentials from DB directly so we are 100% current
+  // Match database identities to a private local credential archive.
   const accounts = await sql.query(`
-    select a.id, a.username, a.role, a.initial_password, t.id as team_id, t.team_code, t.qr_token
+    select a.id, a.username, a.role, t.id as team_id, t.team_code, t.qr_token
     from accounts a
     left join teams t on t.account_id = a.id
     order by a.id asc
   `);
 
+  for (const account of accounts) {
+    account.password = credentials.find((c) => c.username === account.username)?.password;
+  }
   const adminAcc = accounts.find((a) => a.role === "admin");
   const coreAcc = accounts.find((a) => a.role === "core");
   const regiAcc = accounts.find((a) => a.role === "regidesk");
@@ -78,19 +88,19 @@ async function runComprehensiveTest() {
 
   // 1. AUTHENTICATION & SESSIONS
   console.log("\n--- 1. Authentication & Role Security ---");
-  const adminLog = await loginAs(adminAcc.username, adminAcc.initial_password);
+  const adminLog = await loginAs(adminAcc.username, adminAcc.password);
   assert(adminLog.res.status === 200 && adminLog.data?.role === "admin", "Admin login succeeds");
 
-  const coreLog = await loginAs(coreAcc.username, coreAcc.initial_password);
+  const coreLog = await loginAs(coreAcc.username, coreAcc.password);
   assert(coreLog.res.status === 200 && coreLog.data?.role === "core", "Core judge login succeeds");
 
-  const regiLog = await loginAs(regiAcc.username, regiAcc.initial_password);
+  const regiLog = await loginAs(regiAcc.username, regiAcc.password);
   assert(regiLog.res.status === 200 && regiLog.data?.role === "regidesk", "RegiDesk login succeeds");
 
-  const mealLog = await loginAs(mealAcc.username, mealAcc.initial_password);
+  const mealLog = await loginAs(mealAcc.username, mealAcc.password);
   assert(mealLog.res.status === 200 && mealLog.data?.role === "meal", "Meal counter login succeeds");
 
-  const teamLog = await loginAs(teamAcc.username, teamAcc.initial_password);
+  const teamLog = await loginAs(teamAcc.username, teamAcc.password);
   assert(teamLog.res.status === 200 && teamLog.data?.role === "team", "Team login succeeds");
 
   // Invalid password
@@ -120,8 +130,8 @@ async function runComprehensiveTest() {
 
   const accountsRes = await api("/admin?resource=accounts", {}, adminLog.cookie);
   assert(
-    accountsRes.status === 200 && accountsRes.data.accounts.every((a) => Boolean(a.initialPassword)),
-    "Admin accounts view exposes cleartext passwords for all accounts"
+    accountsRes.status === 200 && accountsRes.data.accounts.every((a) => !("password" in a) && !("initialPassword" in a) && !("password_hash" in a)),
+    "Admin accounts view does not expose password data"
   );
 
   // Test Admin: Generate Staff Login
@@ -137,7 +147,7 @@ async function runComprehensiveTest() {
     },
     adminLog.cookie
   );
-  assert(createStaffRes.status === 200 && Boolean(createStaffRes.data.account?.initialPassword), "Admin can generate new staff logins");
+  assert(createStaffRes.status === 200 && Boolean(createStaffRes.data.account?.password), "Admin can generate new staff logins");
 
   // Test Admin: Announcements
   const annRes = await api(

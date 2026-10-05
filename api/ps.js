@@ -21,7 +21,7 @@ async function handler(req, res) {
 }
 
 async function list(req, res) {
-  const canSeeAll = req.session.role === "admin" || req.session.role === "core";
+  const canSeeAll = ["admin", "core", "superadmin"].includes(req.session.role);
 
   const rows = canSeeAll
     ? await sql`
