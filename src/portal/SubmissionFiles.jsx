@@ -1,4 +1,6 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useId, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
+import { Glass, GlassSystemProvider } from 'open-glass-ui';
 import Markdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import pdfWorkerUrl from 'pdfjs-dist/build/pdf.worker.min.mjs?url';
@@ -100,7 +102,7 @@ function FilePreview({ file, localFile, teamId }) {
   if (error) return <p role="alert" className="portal-auth__error">{error}</p>;
   if (!data) return <p>Loading preview…</p>;
   return <div className="submission-viewer">
-    <a href={data.url} download={file.name}>Download {file.name}</a>
+    <a href={data.url} download={file.name}>Download original</a>
     {file.kind === 'pdf' && <PdfViewer bytes={data.bytes} />}
     {file.kind === 'md' && <article className="submission-viewer__document"><Markdown remarkPlugins={[remarkGfm]} skipHtml components={{ img: () => <span>[image omitted from preview]</span>, a: ({ children, href }) => <a href={href} target="_blank" rel="noopener noreferrer">{children}</a> }}>{data.text}</Markdown></article>}
     {file.kind === 'txt' && <pre className="submission-viewer__document">{data.text}</pre>}
@@ -159,21 +161,36 @@ export default function SubmissionFiles({ teamId, editable = false, onUploaded }
   if (loading) return <p>Loading uploaded files…</p>;
   return <div className="submission-files">
     {error && <p role="alert" className="portal-auth__error">{error}</p>}
-    {editable && <CommonUpload onSaved={file => { setFiles(fs => [...fs.filter(f => f.kind !== file.kind), file]); setOpenedFile(file.id); onUploaded?.(file); }} />}
-    {files.map(file => <details key={`${file.id}-${file.uploaded_at}`} open={openedFile === file.id || undefined}><summary>{file.name} · {Math.ceil(file.size / 1024)} KB</summary><LazyPreview file={file} teamId={teamId} /></details>)}
+    {editable && <CommonUpload onSaved={file => { setFiles(fs => [...fs.filter(f => f.kind !== file.kind), file]); onUploaded?.(file); }} />}
+    <ul className="submission-fileList">
+      {files.map(file => <li className="submission-fileRow" key={file.id}>
+        <span className="submission-fileRow__type" aria-hidden="true">{file.kind.toUpperCase()}</span>
+        <div className="submission-fileRow__info"><span className="submission-fileRow__name">{file.name}</span><span className="submission-fileRow__size">{Math.ceil(file.size / 1024)} KB</span></div>
+        <button className="submission-fileRow__preview" type="button" onClick={() => setOpenedFile(file)} aria-label={`Preview ${file.name}`}>Preview</button>
+      </li>)}
+    </ul>
+    {openedFile && <PreviewPopup file={openedFile} teamId={teamId} onClose={() => setOpenedFile(null)} />}
     {!editable && !files.length && <p>No uploaded files.</p>}
   </div>;
 }
 
-function LazyPreview({ file, teamId }) {
-  const anchor = useRef(null);
-  const [show, setShow] = useState(false);
+export function PreviewPopup({ file, teamId, localFile, onClose }) {
+  const dialog = useRef(null);
+  const titleId = useId();
   useEffect(() => {
-    const details = anchor.current?.closest('details');
-    const toggle = () => setShow(details.open);
-    if (details) setShow(details.open);
-    details?.addEventListener('toggle', toggle);
-    return () => details?.removeEventListener('toggle', toggle);
+    const opener = document.activeElement;
+    const element = dialog.current;
+    element.showModal();
+    return () => { element.close(); opener?.focus?.(); };
   }, []);
-  return <div ref={anchor}>{show && <FilePreview file={file} teamId={teamId} />}</div>;
+  return createPortal(
+    <dialog ref={dialog} className="submission-previewDialog" aria-labelledby={titleId} onCancel={e => { e.preventDefault(); onClose(); }} onClick={e => { if (e.target === e.currentTarget) onClose(); }}>
+      <GlassSystemProvider renderer="auto" theme={{ appearance: "dark" }} toasts={false}>
+        <Glass material="frosted" className="submission-previewGlass" look={{ blur: .9, rim: 1.2 }}>
+          <header className="submission-previewHeader"><div><span className="submission-previewEyebrow">Document preview · {file.kind.toUpperCase()}</span><h2 id={titleId}>{file.name}</h2></div><button type="button" className="submission-previewClose" onClick={onClose} aria-label="Close preview">Close <span aria-hidden="true">×</span></button></header>
+          <div className="submission-previewBody"><FilePreview file={file} teamId={teamId} localFile={localFile} /></div>
+        </Glass>
+      </GlassSystemProvider>
+    </dialog>, document.body
+  );
 }

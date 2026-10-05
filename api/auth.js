@@ -175,6 +175,11 @@ async function me(req, res) {
     return;
   }
 
+  const [account] = await sql`select id from accounts where id = ${session.accountId} and role = ${session.role}`;
+  if (!account) {
+    res.setHeader("Set-Cookie", clearSessionCookie());
+    return res.status(401).json({ error: "Your session has expired. Please sign in again." });
+  }
   let team = null;
   if (session.role === "team" && session.teamId) {
     const teamRows = await sql`
