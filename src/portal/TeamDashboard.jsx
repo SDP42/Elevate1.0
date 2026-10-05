@@ -5,7 +5,7 @@ import { Glass, GlassSystemProvider } from "open-glass-ui";
 import "open-glass-ui/styles.css";
 import SubmissionFiles from "./SubmissionFiles";
 import RequireRole from "./RequireRole";
-import { EVENT, EVENT_START, SUBMISSION_DEADLINE, SPONSORS, HELP_CONTACTS } from "../config";
+import { EVENT, SUBMISSION_DEADLINE, SPONSORS, HELP_CONTACTS } from "../config";
 import { CRITERIA } from "../../shared/criteria.js";
 import useHeroCloud from "./useHeroCloud";
 import { leaderboard, logout, psList, selectPs, submitProject } from "./api";
@@ -32,43 +32,35 @@ function useCountdown(target) {
   };
 }
 
-function Countdown() {
-  const countdown = useCountdown(EVENT_START);
+function FlipNumber({ value, label }) {
+  const current = String(value).padStart(2, "0");
+  const [previous, setPrevious] = useState(current);
+  useEffect(() => {
+    if (previous === current) return;
+    const timer = setTimeout(() => setPrevious(current), 650);
+    return () => clearTimeout(timer);
+  }, [current, previous]);
+  const flipping = previous !== current;
   return (
-    <section className="portal-countdown">
-      <span className="portal-countdown__label">
-        {countdown.done ? "Gates are open" : "Gates open in"}
-      </span>
-      <div className="portal-countdown__parts">
-        {countdown.parts.map(([label, value]) => (
-          <div key={label}>
-            <strong>{String(value).padStart(2, "0")}</strong>
-            <span>{label}</span>
-          </div>
-        ))}
+    <div className="submission-clock__unit">
+      <div className="submission-clock__tile" aria-label={`${value} ${label}`}>
+        <span className="submission-clock__half submission-clock__half--top" aria-hidden="true"><b>{current}</b></span>
+        <span className="submission-clock__half submission-clock__half--bottom" aria-hidden="true"><b>{previous}</b></span>
+        {flipping && <span key={`${current}-out`} className="submission-clock__half submission-clock__half--top submission-clock__out" aria-hidden="true"><b>{previous}</b></span>}
+        {flipping && <span key={`${current}-in`} className="submission-clock__half submission-clock__half--bottom submission-clock__in" aria-hidden="true"><b>{current}</b></span>}
       </div>
-    </section>
+      <span className="submission-clock__unit-label">{label}</span>
+    </div>
   );
 }
 
-/* A second, sharper countdown to the submission cutoff itself — separate
-   from "gates open" so the last stretch of the 24 hours reads as urgent
-   rather than blending into the same clock teams stopped watching on day
-   one. */
 function SubmissionCountdown() {
   const countdown = useCountdown(SUBMISSION_DEADLINE);
-  if (countdown.done) return null;
-  const isUrgent = SUBMISSION_DEADLINE.getTime() - Date.now() < 3 * 60 * 60 * 1000;
   return (
-    <section className={`portal-countdown portal-countdown--submission${isUrgent ? " is-urgent" : ""}`}>
-      <span className="portal-countdown__label">Submission closes in</span>
-      <div className="portal-countdown__parts">
-        {countdown.parts.map(([label, value]) => (
-          <div key={label}>
-            <strong>{String(value).padStart(2, "0")}</strong>
-            <span>{label}</span>
-          </div>
-        ))}
+    <section className="submission-clock" aria-label="Submission deadline countdown">
+      <span className="submission-clock__heading">{countdown.done ? "Submissions closed" : "Submission closes in"}</span>
+      <div className="submission-clock__parts">
+        {countdown.parts.map(([label, value]) => <FlipNumber key={label} label={label} value={value} />)}
       </div>
     </section>
   );
@@ -601,7 +593,6 @@ function TeamHome({ session }) {
       <Announcements messages={session.announcements} />
       <ShortlistBanner team={session.team} />
       {session.team && <ApprovalBanner data={psData} teamCode={session.team.team_code} />}
-      <Countdown />
       <SubmissionCountdown />
 
       {session.team && (
