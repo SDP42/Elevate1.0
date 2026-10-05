@@ -27,6 +27,17 @@
 }
 .portal-login__logoLink { display: flex; justify-content: center; margin: 0 0 24px; }
 .portal-login__logoLink .brand-wordmark { font-size: 1.6rem; color: var(--cream); }
+.portal-login__logoLink .brand-wordmark__a {
+  transform-origin: 50% 60%;
+  animation: login-aircraft-arrival 2.2s cubic-bezier(.22, 1, .36, 1) .15s both;
+}
+@keyframes login-aircraft-arrival {
+  0% { opacity: 0; transform: translate(-12vw, 110vh) rotate(-24deg) scale(.65); }
+  16% { opacity: 1; }
+  62% { opacity: 1; transform: translate(.08em, -.18em) rotate(5deg) scale(1.03); }
+  82% { transform: translate(-.025em, .06em) rotate(-1.5deg) scale(1); }
+  100% { opacity: 1; transform: translateY(.02em) rotate(0) scale(1); }
+}
 .portal-login__eyebrow { display: block; margin-bottom: .5rem; font-size: .72rem; font-weight: 600; letter-spacing: .18em; text-transform: uppercase; color: var(--gold-dim); line-height: 1.6; text-align: center; }
 .portal-login__title { font-family: var(--font-display); font-size: 2.1rem; font-weight: 600; line-height: 1.2; letter-spacing: .02em; margin: 0 0 1rem; color: var(--cream); text-align: center; }
 .portal-login-system button { font-family: var(--font-body); }
@@ -54,6 +65,7 @@
   .portal-login__roles { grid-template-columns: repeat(2, minmax(0, 1fr)); margin: 22px 0; }
 }
 @media (prefers-reduced-motion: reduce) {
+  .portal-login__logoLink .brand-wordmark__a { animation: none; }
   .portal-login__field input { transition: none; }
 }
 @media (prefers-reduced-transparency: reduce) {
