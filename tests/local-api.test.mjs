@@ -39,7 +39,7 @@ test("local API adapter isolates routes, validates input and hides internal erro
       }
     });
     await t.test("oversized payloads return 413", async () => {
-      const response = await fetch(`${base}/api/auth`, { method: "POST", body: "x".repeat(1024 * 1024 + 1) });
+      const response = await fetch(`${base}/api/auth`, { method: "POST", body: "x".repeat(Math.ceil(4.4 * 1024 * 1024) + 1) });
       assert.equal(response.status, 413);
     });
     await t.test("configuration failure is distinguishable from a missing route", async () => {

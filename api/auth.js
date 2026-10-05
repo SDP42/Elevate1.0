@@ -1,3 +1,4 @@
+import { secureHandler } from "./_lib/http.js";
 import { submissionFiles } from "./_lib/submission-files.js";
 import bcrypt from "bcryptjs";
 import { sql } from "./_lib/db.js";
@@ -10,7 +11,7 @@ import { createIncident } from "./_lib/incidents.js";
    serverless functions, so related endpoints branch on method / an
    `action` field rather than each getting its own route. GET = who am I;
    POST = login, or logout/submit/help if the body says so. */
-export default async function handler(req, res) {
+async function handler(req, res) {
   if (req.method === "GET") {
     if (new URL(req.url, "http://localhost").searchParams.get("resource") === "submission-files") return submissionFiles(req, res);
     return me(req, res);
@@ -98,7 +99,7 @@ async function recentFailedAttempts(username) {
 
 async function login(req, res) {
   const { username, password } = req.body || {};
-  if (!username || !password) {
+  if (typeof username !== "string" || typeof password !== "string" || !username.trim() || !password || username.length > 128 || password.length > 1024) {
     res.status(400).json({ error: "Username and password are required" });
     return;
   }
@@ -221,3 +222,5 @@ async function me(req, res) {
     announcements: announcementRows.map((a) => ({ message: a.message, pinned: a.pinned })),
   });
 }
+
+export default secureHandler(handler);

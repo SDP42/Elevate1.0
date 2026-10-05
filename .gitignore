@@ -37,3 +37,5 @@ db/*credentials*.csv
 db/*credentials*.json
 elevate_credentials.*
 elevate-accounts.csv
+
+.local-release-check/

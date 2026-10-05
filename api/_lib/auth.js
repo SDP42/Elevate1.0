@@ -1,3 +1,4 @@
+import { secureHandler } from "./http.js";
 import jwt from "jsonwebtoken";
 
 const SECRET = process.env.SESSION_SECRET;
@@ -14,7 +15,7 @@ export function signSession(payload) {
 
 export function verifySession(token) {
   try {
-    return jwt.verify(token, SECRET);
+    return jwt.verify(token, SECRET, { algorithms: ["HS256"] });
   } catch {
     return null;
   }
@@ -41,7 +42,7 @@ export function readSession(req) {
    (or any authenticated role, when `roles` is omitted). Attaches the
    decoded session to req.session. */
 export function requireRole(handler, roles) {
-  return async (req, res) => {
+  return secureHandler(async (req, res) => {
     const session = readSession(req);
     if (!session || (roles && !roles.includes(session.role))) {
       res.status(401).json({ error: "Not authenticated" });
@@ -49,5 +50,5 @@ export function requireRole(handler, roles) {
     }
     req.session = session;
     return handler(req, res);
-  };
+  });
 }
