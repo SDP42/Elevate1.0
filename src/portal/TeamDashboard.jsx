@@ -5,10 +5,10 @@ import { Glass, GlassSystemProvider } from "open-glass-ui";
 import "open-glass-ui/styles.css";
 import SubmissionFiles from "./SubmissionFiles";
 import RequireRole from "./RequireRole";
-import { EVENT, EVENT_START, SUBMISSION_DEADLINE, VENUE_INFO, SPONSORS, HELP_CONTACTS } from "../config";
+import { EVENT, EVENT_START, SUBMISSION_DEADLINE, SPONSORS, HELP_CONTACTS } from "../config";
 import { CRITERIA } from "../../shared/criteria.js";
 import useHeroCloud from "./useHeroCloud";
-import { leaderboard, logout, psList, selectPs, submitProject } from "./api";
+import { leaderboard, logout, psList, selectPs } from "./api";
 
 /* Days/hours/minutes/seconds to a target — the same mechanic as the
    marketing site's own "Gates open in" timer (src/components/BoardingPass),
@@ -132,52 +132,6 @@ function HelpRequest({ team }) {
         )}
       </Glass>
     </GlassSystemProvider>
-  );
-}
-
-const MapPinIcon = () => (
-  <svg className="portal-card__icon" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-    <path
-      d="M12 21s7-6.5 7-11.5A7 7 0 0 0 5 9.5C5 14.5 12 21 12 21ZM12 12a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5Z"
-      stroke="currentColor"
-      strokeWidth="1.6"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    />
-  </svg>
-);
-
-/* Venue essentials at a glance — WiFi, washrooms, charging, a rest corner
-   if one's offered. Doesn't need to be fancy, just somewhere to look
-   instead of asking a volunteer the same four questions all night. */
-function VenueInfo() {
-  return (
-    <section className="portal-card">
-      <h3>
-        <MapPinIcon />
-        Venue essentials
-      </h3>
-      <ul className="portal-venueInfo">
-        <li>
-          <span>WiFi</span>
-          <strong>
-            {VENUE_INFO.wifiSsid} · {VENUE_INFO.wifiPassword}
-          </strong>
-        </li>
-        <li>
-          <span>Washrooms</span>
-          <strong>{VENUE_INFO.washrooms}</strong>
-        </li>
-        <li>
-          <span>Charging</span>
-          <strong>{VENUE_INFO.charging}</strong>
-        </li>
-        <li>
-          <span>Need rest?</span>
-          <strong>{VENUE_INFO.quietZone}</strong>
-        </li>
-      </ul>
-    </section>
   );
 }
 
@@ -486,70 +440,11 @@ const FeedbackIcon = () => (
 );
 
 function ProjectSubmission({ team }) {
-  const [url, setUrl] = useState(team?.submission_url || "");
-  const [note, setNote] = useState(team?.submission_note || "");
-  const [hasUpload, setHasUpload] = useState(false);
-  const [busy, setBusy] = useState(false);
-  const [saved, setSaved] = useState(false);
-  const [error, setError] = useState("");
-
-  async function save(e) {
-    e.preventDefault();
-    setBusy(true);
-    setError("");
-    try {
-      await submitProject(url.trim(), note.trim());
-      setSaved(true);
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      setBusy(false);
-    }
-  }
-
   return (
     <section className="portal-card">
-      <h3>
-        <SubmitIcon />
-        Submission
-      </h3>
-      <p className="portal-card__hint">
-        Share a project link, upload your documents, or both. Each uploaded file stays available here for preview.
-      </p>
-
-      <SubmissionFiles editable onUploaded={() => { setHasUpload(true); setSaved(false); }} />
-      <form className="portal-auth__form" onSubmit={save}>
-        <label className="portal-field">
-          <span>Project link (optional if you upload a file)</span>
-          <input
-            value={url}
-            onChange={(e) => {
-              setUrl(e.target.value);
-              setSaved(false);
-            }}
-            placeholder="https://github.com/your-team/project"
-            type="url"
-          />
-        </label>
-        <label className="portal-field">
-          <span>Note (optional)</span>
-          <input
-            value={note}
-            onChange={(e) => {
-              setNote(e.target.value);
-              setSaved(false);
-            }}
-            placeholder="Anything the judges should know"
-          />
-        </label>
-        {error && <p className="portal-auth__error">{error}</p>}
-        <button className="portal-auth__submit" type="submit" disabled={busy}>
-          {busy ? "Saving…" : saved ? "Saved ✓" : team?.submission_url || hasUpload ? "Save link / note" : "Submit"}
-        </button>
-        {team?.submitted_at && (
-          <p className="portal-submission__saved">Last saved {new Date(team.submitted_at).toLocaleString()}</p>
-        )}
-      </form>
+      <h3><SubmitIcon />Submission</h3>
+      <SubmissionFiles editable />
+      {team?.submission_url && <a href={team.submission_url} target="_blank" rel="noopener noreferrer">Previously saved project link</a>}
     </section>
   );
 }
@@ -701,8 +596,6 @@ function TeamHome({ session }) {
       <MentorFeedback team={session.team} />
 
       <Leaderboard ownTeamCode={session.team?.team_code} />
-
-      <VenueInfo />
 
       <HelpRequest team={session.team} />
     </div>

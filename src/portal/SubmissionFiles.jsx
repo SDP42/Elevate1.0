@@ -116,41 +116,39 @@ function FilePreview({ file, localFile, teamId }) {
   </div>;
 }
 
-function UploadSlot({ kind, file, onSaved }) {
-  const [pending, setPending] = useState(null);
+function CommonUpload({ onSaved }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
-  const [show, setShow] = useState(false);
   const input = useRef(null);
-  async function upload() {
-    setBusy(true); setError('');
+  async function choose(e) {
+    const selected = e.target.files[0];
+    setError('');
+    if (!selected) return;
+    const kind = selected.name.split('.').pop().toLowerCase();
+    if (!['pdf', 'pptx', 'md', 'txt'].includes(kind) || !selected.size || selected.size > LIMIT) {
+      setError('Choose a PDF, PPTX, MD, or TXT file up to 3 MB.'); e.target.value = ''; return;
+    }
+    setBusy(true);
     try {
       const base64 = await new Promise((resolve, reject) => {
-        const reader = new FileReader(); reader.onload = () => resolve(reader.result.split(',')[1]); reader.onerror = reject; reader.readAsDataURL(pending);
+        const reader = new FileReader(); reader.onload = () => resolve(reader.result.split(',')[1]); reader.onerror = reject; reader.readAsDataURL(selected);
       });
-      const result = await uploadSubmission(pending.name, base64);
-      onSaved(result.file); setPending(null); input.current.value = ''; setShow(true);
-    } catch (e) { setError(e.message || 'Upload failed. Please retry.'); }
+      const result = await uploadSubmission(selected.name, base64);
+      onSaved(result.file);
+      input.current.value = '';
+    } catch (e) { setError(e.message || 'Upload failed. Choose the file again to retry.'); }
     finally { setBusy(false); }
   }
-  const preview = pending ? { name: pending.name, kind } : file;
   return <div className="submission-upload">
-    <label className="portal-field"><span>{kind.toUpperCase()} file</span><input ref={input} type="file" accept={`.${kind}`} disabled={busy} onChange={e => {
-      const selected = e.target.files[0]; setError('');
-      if (!selected) { setPending(null); return; }
-      if (!selected.name.toLowerCase().endsWith(`.${kind}`) || !selected.size || selected.size > LIMIT) { setError(`Choose a non-empty .${kind} file up to 3 MB.`); e.target.value = ''; setPending(null); return; }
-      setPending(selected); setShow(true);
-    }} /></label>
-    {file && <p className="submission-upload__saved">Uploaded: {file.name} · {Math.ceil(file.size / 1024)} KB · {new Date(file.uploaded_at).toLocaleString()}</p>}
-    {pending && <div className="submission-viewer__nav"><button type="button" disabled={busy} onClick={upload}>{busy ? 'Uploading…' : file ? 'Replace uploaded file' : 'Upload file'}</button><span>Selected: {pending.name} · not saved yet</span></div>}
+    <label className="portal-field"><span>Upload document · PDF, PPTX, MD, TXT · max 3 MB</span><input ref={input} type="file" accept=".pdf,.pptx,.md,.txt" disabled={busy} onChange={choose} /></label>
+    {busy && <p role="status">Uploading document…</p>}
     {error && <p role="alert" className="portal-auth__error">{error}</p>}
-    {preview && <button className="portal-logout" type="button" onClick={() => setShow(s => !s)} aria-expanded={show}>{show ? 'Hide preview' : 'Preview'}</button>}
-    {show && preview && <FilePreview file={preview} localFile={pending} />}
   </div>;
 }
 
 export default function SubmissionFiles({ teamId, editable = false, onUploaded }) {
   const [files, setFiles] = useState([]);
+  const [openedFile, setOpenedFile] = useState(null);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
   useEffect(() => {
@@ -161,10 +159,9 @@ export default function SubmissionFiles({ teamId, editable = false, onUploaded }
   if (loading) return <p>Loading uploaded files…</p>;
   return <div className="submission-files">
     {error && <p role="alert" className="portal-auth__error">{error}</p>}
-    {editable ? <>
-      <p className="portal-card__hint">PDF, PPTX, Markdown, or text · up to 3 MB each. One file per format. Uploading another replaces that format only.</p>
-      {['pdf', 'pptx', 'md', 'txt'].map(kind => <UploadSlot key={kind} kind={kind} file={files.find(f => f.kind === kind)} onSaved={file => { setFiles(fs => [...fs.filter(f => f.kind !== kind), file]); onUploaded?.(file); }} />)}
-    </> : files.length ? files.map(file => <details key={file.id}><summary>{file.name} · {Math.ceil(file.size / 1024)} KB</summary><LazyPreview file={file} teamId={teamId} /></details>) : <p>No uploaded files.</p>}
+    {editable && <CommonUpload onSaved={file => { setFiles(fs => [...fs.filter(f => f.kind !== file.kind), file]); setOpenedFile(file.id); onUploaded?.(file); }} />}
+    {files.map(file => <details key={`${file.id}-${file.uploaded_at}`} open={openedFile === file.id || undefined}><summary>{file.name} · {Math.ceil(file.size / 1024)} KB</summary><LazyPreview file={file} teamId={teamId} /></details>)}
+    {!editable && !files.length && <p>No uploaded files.</p>}
   </div>;
 }
 
@@ -174,6 +171,7 @@ function LazyPreview({ file, teamId }) {
   useEffect(() => {
     const details = anchor.current?.closest('details');
     const toggle = () => setShow(details.open);
+    if (details) setShow(details.open);
     details?.addEventListener('toggle', toggle);
     return () => details?.removeEventListener('toggle', toggle);
   }, []);

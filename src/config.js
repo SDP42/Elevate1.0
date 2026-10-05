@@ -121,4 +121,4 @@ export const SPONSORS = [
 ];
 
 // WhatsApp recipients: country code and digits only. Populated by the organiser.
-export const HELP_CONTACTS = [];
+export const HELP_CONTACTS = [{ name: "Organiser", phone: "919833507492" }];
