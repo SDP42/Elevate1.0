@@ -254,7 +254,9 @@ function Ticket({ team, rosterLocked }) {
               <ul className="ticket__sponsorLogos" aria-label="Event sponsors">
                 {SPONSORS.map((sponsor) => (
                   <li key={sponsor.name}>
-                    <img src={sponsor.logo} alt={sponsor.name} />
+                    <a href={sponsor.url} target="_blank" rel="noopener noreferrer" aria-label={`${sponsor.role}: ${sponsor.name}`}>
+                      <img src={sponsor.logo} alt={sponsor.name} />
+                    </a>
                   </li>
                 ))}
               </ul>
