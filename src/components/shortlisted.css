@@ -1,0 +1,405 @@
+/* Shortlisted teams: frosted-glass cards that stack as you scroll over the
+   site's sky, each one a departures board (after the Canva shortlist
+   design). No section background of its own: the sky and clouds behind
+   the rest of the page carry straight through. */
+
+.sl {
+  /* the site's own palette: deep sky navy for ink, gold for accents */
+  --sl-navy: #0b1b3a;
+  --sl-sky: #0f3f63;
+  --sl-soft: #3f6b86;
+  position: relative;
+  color: var(--sl-navy);
+}
+
+/* Blend into the sections either side. Above is the jet tail, which ends
+   in solid #579bd8; below is the boarding pass, whose cloud sea opens on
+   #5899db. Fading from/to exactly those colours means there is no edge for
+   the eye to find where the sky changes. */
+.sl::before,
+.sl::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: min(70vh, 640px);
+  pointer-events: none;
+  z-index: 0;
+}
+
+.sl::before {
+  top: -1px;
+  background: linear-gradient(180deg, #579bd8 0%, rgba(87, 155, 216, 0.78) 28%, rgba(87, 155, 216, 0.32) 65%, rgba(87, 155, 216, 0) 100%);
+}
+
+.sl::after {
+  bottom: -1px;
+  background: linear-gradient(0deg, #5899db 0%, rgba(88, 153, 219, 0.82) 30%, rgba(88, 153, 219, 0.36) 66%, rgba(88, 153, 219, 0) 100%);
+}
+
+/* the boarding pass shows a 1px sliver of its darker base colour along its
+   top edge; this strip, in the colour its cloud sea opens on, sits over the
+   join to hide it */
+.sl__seam {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -3px;
+  height: 4px;
+  background: #5899db;
+  pointer-events: none;
+  z-index: 3;
+}
+
+/* everything real sits above the blends */
+.sl__hero,
+.sl__stack {
+  position: relative;
+  z-index: 1;
+}
+
+/* ---------- heading ---------- */
+.sl__hero {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+  padding: clamp(6rem, 14vh, 9rem) 1.5rem clamp(2rem, 6vh, 4rem);
+  text-align: center;
+}
+
+.sl__eyebrow {
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--sl-navy);
+}
+
+.sl__heading {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: clamp(2rem, 5.4vw, 3.6rem);
+  font-weight: 600;
+  line-height: 1.1;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: var(--sl-navy);
+}
+
+.sl__lead {
+  margin: 0;
+  max-width: 34rem;
+  font-size: clamp(0.85rem, 1.4vw, 1rem);
+  line-height: 1.6;
+  color: rgba(11, 27, 58, 0.78);
+}
+
+.sl__chips {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.6rem;
+}
+
+.sl__chips span {
+  padding: 0.4rem 0.9rem;
+  border: 1px solid rgba(255, 255, 255, 0.75);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.45);
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--sl-navy);
+}
+
+.sl__link {
+  margin-top: 0.4rem;
+  padding: 0.75rem 1.4rem;
+  border-radius: 999px;
+  background: var(--sl-navy);
+  color: #fff;
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-decoration: none;
+  box-shadow: 0 6px 18px rgba(11, 27, 58, 0.28);
+  transition: background 0.2s ease, transform 0.2s ease;
+}
+
+.sl__link:hover,
+.sl__link:focus-visible {
+  background: var(--sl-sky);
+  transform: translateY(-1px);
+}
+
+/* ---------- stacking ---------- */
+.sl__stack {
+  position: relative;
+}
+
+.sl-item {
+  position: sticky;
+  top: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100vh;
+  height: 100svh;
+}
+
+/* short windows (landscape phones): cards are taller than the screen, so
+   skip the sticky stacking and let them scroll normally */
+@media (max-height: 700px) {
+  .sl-item {
+    position: relative;
+    height: auto;
+    padding: 1.2rem 0;
+  }
+}
+
+.sl-card {
+  position: relative;
+  width: min(92%, 820px);
+  border-radius: 24px;
+  isolation: isolate;
+  top: calc(-5vh + var(--offset, 0px));
+  transform-origin: top;
+}
+
+@media (max-height: 700px) {
+  .sl-card {
+    top: 0;
+  }
+}
+
+/* a clean white rim around the card */
+.sl-card__edge {
+  position: absolute;
+  inset: -3px;
+  border-radius: 27px;
+  z-index: -1;
+  background: rgba(255, 255, 255, 0.85);
+}
+
+/* plain white card, like the boarding pass and sponsor card */
+.sl-card__glass {
+  position: relative;
+  overflow: hidden;
+  border-radius: 24px;
+  background: #ffffff;
+  border: 1px solid #ffffff;
+  box-shadow:
+    0 18px 48px rgba(15, 63, 99, 0.32),
+    0 4px 12px rgba(15, 63, 99, 0.18),
+    inset 0 1px 0 rgba(255, 255, 255, 0.95),
+    inset 0 -1px 0 rgba(255, 255, 255, 0.4);
+}
+
+.sl-card__sheen,
+.sl-card__shine,
+.sl-card__side,
+.sl-card__frost {
+  display: none;
+}
+
+.sl-card__sheen {
+  inset: 0 0 auto 0;
+  height: 40%;
+  border-radius: 24px 24px 0 0;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.5) 0%, rgba(255, 255, 255, 0.15) 50%, transparent 100%);
+}
+
+.sl-card__shine {
+  top: 10px;
+  left: 10px;
+  right: 10px;
+  height: 2px;
+  border-radius: 1px;
+  background: linear-gradient(90deg, transparent 0%, rgba(255, 255, 255, 0.95) 50%, transparent 100%);
+}
+
+.sl-card__side {
+  top: 0;
+  left: 0;
+  width: 2px;
+  height: 100%;
+  border-radius: 24px 0 0 24px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.8) 0%, transparent 50%);
+}
+
+.sl-card__frost {
+  inset: 0;
+  border-radius: 24px;
+  opacity: 0.6;
+  background-image:
+    radial-gradient(circle at 20% 30%, rgba(255, 255, 255, 0.5) 1px, transparent 2px),
+    radial-gradient(circle at 80% 70%, rgba(255, 255, 255, 0.4) 1px, transparent 2px),
+    radial-gradient(circle at 40% 80%, rgba(255, 255, 255, 0.3) 1px, transparent 2px);
+  background-size: 30px 30px, 25px 25px, 35px 35px;
+}
+
+/* ---------- the board ---------- */
+.sl-board {
+  position: relative;
+  padding: min(clamp(0.9rem, 2.4vw, 1.6rem), 2.6vh);
+  perspective: 900px;
+}
+
+/* the departures-board header: deep sky navy, like the boarding pass stub */
+.sl-board__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.8rem;
+  padding: min(0.7rem, 1.4vh) clamp(0.8rem, 2vw, 1.4rem);
+  border-radius: 14px;
+  background: linear-gradient(180deg, #123a5c 0%, var(--sl-navy) 100%);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.12), 0 4px 12px rgba(11, 27, 58, 0.25);
+  text-align: center;
+  color: #fff;
+}
+
+.sl-board__title {
+  margin: 0;
+  font-family: "Archivo", var(--font-body);
+  font-stretch: 75%;
+  font-size: min(clamp(1.5rem, 5vw, 2.6rem), 5.6vh);
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.sl-board__sub {
+  margin: 0.3rem 0 0;
+  font-size: clamp(0.62rem, 1.6vw, 0.74rem);
+  font-weight: 600;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.sl-plane {
+  flex: none;
+  width: min(clamp(1.6rem, 4.6vw, 2.6rem), 5.2vh);
+  height: auto;
+  color: #fff;
+  transform: rotate(45deg);
+}
+
+.sl-plane.is-flipped {
+  transform: rotate(45deg) scaleX(-1);
+}
+
+.sl-cols {
+  display: grid;
+  grid-template-columns: clamp(3.4rem, 11vw, 5.5rem) 1fr;
+  gap: 0.5rem;
+  margin: min(0.9rem, 1.6vh) 0 0.35rem;
+  padding: 0 0.2rem;
+  font-size: 0.66rem;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--sl-soft);
+}
+
+.sl-cols span:first-child {
+  text-align: center;
+}
+
+.sl-rows {
+  display: grid;
+  gap: min(clamp(0.25rem, 0.7vw, 0.4rem), 0.6vh);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.sl-row {
+  display: grid;
+  grid-template-columns: clamp(3.4rem, 11vw, 5.5rem) 1fr;
+  gap: 0.5rem;
+  transform-style: preserve-3d;
+}
+
+/* a flap: navy tile, soft top-to-bottom shading, and the hairline across
+   the middle where the two halves meet */
+.sl-tile {
+  --pad: clamp(0.5rem, 1.6vw, 0.9rem);
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  min-height: min(clamp(2.1rem, 5.4vw, 2.7rem), 5.4vh);
+  padding: 0.25rem var(--pad);
+  overflow: hidden;
+  border-radius: 6px;
+  background: linear-gradient(180deg, #1d4668 0%, #153653 50%, #0f2a43 50%, #14324d 100%);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.14), 0 1px 3px rgba(11, 27, 58, 0.35);
+  font-family: "Archivo", var(--font-body);
+  font-stretch: 75%;
+  font-weight: 500;
+  text-transform: uppercase;
+  color: #f4f8fb;
+}
+
+.sl-tile::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 50%;
+  height: 1px;
+  background: rgba(5, 14, 28, 0.6);
+  pointer-events: none;
+}
+
+.sl-tile--no {
+  align-items: center;
+  font-size: min(clamp(1rem, 3.6vw, 1.5rem), 2.7vh);
+  letter-spacing: 0.14em;
+}
+
+/* vertical seams so the name reads as a run of separate letter flaps */
+.sl-tile--name {
+  background-image:
+    repeating-linear-gradient(90deg, transparent 0, transparent calc(1ch + 0.16em - 1px), rgba(5, 14, 28, 0.32) calc(1ch + 0.16em - 1px), rgba(5, 14, 28, 0.32) calc(1ch + 0.16em)),
+    linear-gradient(180deg, #1d4668 0%, #153653 50%, #0f2a43 50%, #14324d 100%);
+  background-position: var(--pad) 0, 0 0;
+  font-size: min(clamp(0.95rem, 3.4vw, 1.4rem), 2.6vh);
+}
+
+.sl-name {
+  display: block;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  letter-spacing: 0.16em;
+  line-height: 1.15;
+}
+
+.sl-note {
+  display: block;
+  margin-top: 0.1rem;
+  font-size: 0.62em;
+  letter-spacing: 0.14em;
+  color: rgba(244, 248, 251, 0.68);
+}
+
+@media (max-width: 420px) {
+  .sl-name {
+    letter-spacing: 0.1em;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sl__link {
+    transition: none;
+  }
+}

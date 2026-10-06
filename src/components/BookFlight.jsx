@@ -1,7 +1,3 @@
-import { useState } from "react";
-import RegisterButton from "./RegisterButton";
-import { EVENT } from "../config";
-
 /* Paper-plane glyph for the round half of the CTA. */
 const PlaneIcon = () => (
   <svg viewBox="0 0 20 20" fill="none" aria-hidden="true">
@@ -15,70 +11,29 @@ const PlaneIcon = () => (
   </svg>
 );
 
+/* The floating bottom CTA. Registration has closed, so it now points at
+   the shortlisted teams instead — a plain anchor, which Lenis smooth-scrolls. */
 export default function BookFlight() {
-  const [open, setOpen] = useState(false);
-
   return (
-    <>
-      <div className="jx-cta" data-jx-cta>
-        <button className="jx-cta__btn" onClick={() => setOpen(true)}>
-          <span className="jx-cta__label">
-            <span className="jx-cta__pill">
-              <span className="jx-cta__roll">
-                <span className="jx-t7">Register your team</span>
-                <span className="jx-t7 jx-is-2" aria-hidden="true">
-                  Register your team
-                </span>
-              </span>
-            </span>
-            <span className="jx-cta__icon">
-              <span className="jx-cta__roll jx-cta__roll--icon">
-                <PlaneIcon />
-                <PlaneIcon />
+    <div className="jx-cta" data-jx-cta>
+      <a className="jx-cta__btn" href="#shortlisted">
+        <span className="jx-cta__label">
+          <span className="jx-cta__pill">
+            <span className="jx-cta__roll">
+              <span className="jx-t7">Shortlisted teams</span>
+              <span className="jx-t7 jx-is-2" aria-hidden="true">
+                Shortlisted teams
               </span>
             </span>
           </span>
-        </button>
-      </div>
-
-      {open && (
-        <div className="bookmodal" role="dialog" aria-modal="true">
-          <div className="bookmodal__backdrop" onClick={() => setOpen(false)} />
-          <div className="bookmodal__panel">
-            <button
-              className="bookmodal__close"
-              onClick={() => setOpen(false)}
-              aria-label="Close"
-            >
-              ×
-            </button>
-
-            <span className="eyebrow">{EVENT.name}</span>
-            <h3 className="bookmodal__title">Reserve a team slot</h3>
-
-            <p className="bookmodal__lead">
-              A {EVENT.format} by {EVENT.organiser} — the {EVENT.department}{" "}
-              committee at {EVENT.college}, {EVENT.city}.
-            </p>
-
-            <dl className="bookmodal__facts">
-              <div>
-                <dt>Dates</dt>
-                <dd>{EVENT.dates}</dd>
-              </div>
-              <div>
-                <dt>Team size</dt>
-                <dd>2 – 4</dd>
-              </div>
-            </dl>
-
-            <RegisterButton className="bookmodal__submit" />
-            <p className="bookmodal__note">
-              Registration is handled on Unstop.
-            </p>
-          </div>
-        </div>
-      )}
-    </>
+          <span className="jx-cta__icon">
+            <span className="jx-cta__roll jx-cta__roll--icon">
+              <PlaneIcon />
+              <PlaneIcon />
+            </span>
+          </span>
+        </span>
+      </a>
+    </div>
   );
 }

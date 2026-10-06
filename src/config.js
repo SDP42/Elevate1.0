@@ -122,3 +122,55 @@ export const SPONSORS = [
 
 // WhatsApp recipients: country code and digits only. Populated by the organiser.
 export const HELP_CONTACTS = [{ name: "Organiser", phone: "919833507492" }];
+
+// Shortlist announcement (Canva design) — linked from the shortlisted section
+export const SHORTLIST_URL = "https://canva.link/pt6vl463bxdow9c";
+
+// the 30 teams on the flight to campus, in the order issued. `note`
+// disambiguates a team whose name is shared with another registration.
+export const SHORTLISTED = [
+  { name: "GitGoneWild" },
+  { name: "Visionaries" },
+  { name: "Codessey" },
+  { name: "Gada Electronics" },
+  { name: "Paradigm" },
+  { name: "AsteriX" },
+  { name: "EKLAVYA" },
+  { name: "Byte Me" },
+  { name: "Tensors" },
+  { name: "ChaturVeda" },
+  { name: "Whybekoders" },
+  { name: "False9" },
+  { name: "Big Brain Cells" },
+  { name: "UNBOUND-APEX" },
+  { name: "DevX" },
+  { name: "Vikasitha" },
+  { name: "Slaughter" },
+  { name: "Cortex crew" },
+  { name: "Momex" },
+  { name: "DEVta" },
+  { name: "Paragons" },
+  { name: "CipherX" },
+  { name: "Axiom 3" },
+  { name: "Manjummel Boys" },
+  { name: "Zerobytes" },
+  { name: "SwarmMind" },
+  { name: "MediFlux" },
+  { name: "CodeBlooded", note: "Ananya Patil" },
+  { name: "Coders99" },
+  { name: "Gravity Falls" },
+];
+
+// the waitlist, in the order issued
+export const WAITLISTED = [
+  { name: "No Free Lunch" },
+  { name: "IDK" },
+  { name: "Verified" },
+  { name: "DINOTECH" },
+  { name: "localhost:8000" },
+  { name: "core 4" },
+  { name: "OptiML" },
+  { name: "Code4Cause" },
+  { name: "bugs janta party" },
+  { name: "QuadraX" },
+];
