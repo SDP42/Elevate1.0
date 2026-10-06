@@ -1,6 +1,6 @@
 import { useLayoutEffect, useRef } from "react";
 import { gsap, ScrollTrigger } from "../intro/motion";
-import { SHORTLISTED, SHORTLIST_URL, WAITLISTED } from "../config";
+import { SHORTLISTED, WAITLISTED } from "../config";
 import "./shortlisted.css";
 
 const BOARD_SIZE = 10;
@@ -181,9 +181,6 @@ export default function Shortlisted() {
           <span>{SHORTLISTED.length} shortlisted</span>
           <span>{WAITLISTED.length} waitlisted</span>
         </div>
-        <a className="sl__link" href={SHORTLIST_URL} target="_blank" rel="noopener noreferrer">
-          View the announcement
-        </a>
       </div>
 
       <div className="sl__stack">

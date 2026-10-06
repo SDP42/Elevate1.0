@@ -123,9 +123,6 @@ export const SPONSORS = [
 // WhatsApp recipients: country code and digits only. Populated by the organiser.
 export const HELP_CONTACTS = [{ name: "Organiser", phone: "919833507492" }];
 
-// Shortlist announcement (Canva design) — linked from the shortlisted section
-export const SHORTLIST_URL = "https://canva.link/pt6vl463bxdow9c";
-
 // the 30 teams on the flight to campus, in the order issued. `note`
 // disambiguates a team whose name is shared with another registration.
 export const SHORTLISTED = [
