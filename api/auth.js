@@ -1,10 +1,14 @@
 import { secureHandler } from "./_lib/http.js";
-import { submissionFiles } from "./_lib/submission-files.js";
+import { submissionFiles as defaultSubmissionFiles } from "./_lib/submission-files.js";
 import bcrypt from "bcryptjs";
-import { sql } from "./_lib/db.js";
+import { sql as defaultSql } from "./_lib/db.js";
 import { signSession, sessionCookie, clearSessionCookie, readSession } from "./_lib/auth.js";
-import { logAction } from "./_lib/audit.js";
-import { createIncident } from "./_lib/incidents.js";
+import { logAction as defaultLogAction } from "./_lib/audit.js";
+import { createIncident as defaultCreateIncident } from "./_lib/incidents.js";
+
+// Injected dependencies let security tests exercise real handlers without
+// contacting or changing the event database.
+export function createAuthHandler({sql=defaultSql,logAction=defaultLogAction,createIncident=defaultCreateIncident,submissionFiles=defaultSubmissionFiles}={}) {
 
 /* Login, logout, "who am I", a team's own submission, and a team's SOS
    request share this file — Vercel's Hobby plan caps a deployment at 12
@@ -230,4 +234,6 @@ async function me(req, res) {
   });
 }
 
-export default secureHandler(handler);
+return secureHandler(handler);
+}
+export default createAuthHandler();

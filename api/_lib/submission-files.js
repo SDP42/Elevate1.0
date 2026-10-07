@@ -1,12 +1,13 @@
 import JSZip from 'jszip';
-import { sql } from './db.js';
+import { sql as defaultSql } from './db.js';
 import { readSession } from './auth.js';
-import { logAction } from './audit.js';
+import { logAction as defaultLogAction } from './audit.js';
 
 const LIMIT = 3 * 1024 * 1024;
 const TYPES = { pdf: 'application/pdf', pptx: 'application/vnd.openxmlformats-officedocument.presentationml.presentation', md: 'text/markdown', txt: 'text/plain' };
 
-export async function submissionFiles(req, res) {
+export function createSubmissionFiles({sql=defaultSql,logAction=defaultLogAction}={}) {
+return async function submissionFiles(req, res) {
   const session = readSession(req);
   if (!session) return res.status(401).json({ error: 'Not authenticated' });
   res.setHeader('Cache-Control', 'private, no-store');
@@ -61,3 +62,5 @@ export async function submissionFiles(req, res) {
   await logAction(session.accountId, 'submission.upload', { teamId, kind, size: bytes.length });
   return res.status(200).json({ file });
 }
+}
+export const submissionFiles=createSubmissionFiles();
