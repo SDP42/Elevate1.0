@@ -1470,6 +1470,14 @@
   color: var(--ink);
 }
 
+.sponsors__name--arina {
+  font-family: "Bodoni 72", Didot, "Times New Roman", Georgia, serif;
+  font-size: 1.55rem;
+  font-style: italic;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+}
+
 /* three narrow columns on tablets: a smaller name keeps the lockup inside
    its tile */
 @media (max-width: 960px) {
@@ -1524,4 +1532,3 @@
     border-bottom: none;
   }
 }
-

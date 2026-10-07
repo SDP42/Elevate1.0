@@ -34,7 +34,7 @@ export default function Sponsors() {
               {s.showName ? (
                 <span className="sponsors__lockup">
                   <img className="sponsors__logo" src={s.logo} alt="" />
-                  <span className="sponsors__name">{s.name}</span>
+                  <span className={`sponsors__name${s.name === "ARINA AI" ? " sponsors__name--arina" : ""}`}>{s.name}</span>
                 </span>
               ) : (
                 <img className="sponsors__logo" src={s.logo} alt={s.name} />

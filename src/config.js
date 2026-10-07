@@ -63,10 +63,11 @@ export const CONTACTS = [
 // sponsors — shown on the back of the boarding pass, one row of tiles
 export const SPONSORS = [
   {
-    role: "Official Ticketing Partner",
-    name: "KQEEK",
-    url: "https://www.kqeek.com/web/event-planners",
-    logo: "/kqeek-logo.png",
+    role: "Official AI Technology Partner",
+    name: "ARINA AI",
+    url: "https://arina.ai/",
+    logo: "/arina-ai-logo.png",
+    showName: true,
   },
   {
     role: "Learning Partner",
