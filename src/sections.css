@@ -1532,3 +1532,8 @@
     border-bottom: none;
   }
 }
+
+/* Preserve Obliq's supplied square artwork, framing its central wordmark. */
+.sponsors__logo--obliq { width: min(100%, 136px); height: 2.8rem; object-fit: cover; object-position: 50% 56%; }
+.sponsors__card--featured { padding: 1.8rem 1rem; background: #fffdfa; }
+.sponsors__card--featured .sponsors__logo { height: 4.5rem; max-width: min(100%, 320px); }

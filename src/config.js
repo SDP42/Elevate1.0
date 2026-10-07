@@ -108,6 +108,12 @@ export const SPONSORS = [
     showName: true,
   },
   {
+    role: "Official Hiring Partner",
+    name: "Obliq",
+    url: "https://obliqq.framer.ai/",
+    logo: "/obliq-logo.avif",
+  },
+  {
     role: "Hands Free Coding Partner",
     name: "Infina",
     url: "https://www.infina.so/",
@@ -126,16 +132,17 @@ export const SPONSORS = [
     logo: "/dave-busters-logo.png",
   },
   {
-    role: "Drinks & Energy Partner",
-    name: "Red Bull",
-    url: "https://www.redbull.com/in-en/energydrink",
-    logo: "/redbull-logo.svg",
-  },
-  {
     role: "Community Partner",
     name: "Mumbai Tech Community",
     url: "https://www.mumbaitechcommunity.in/",
     logo: "/mumbai-tech-community-logo.png",
+  },
+  {
+    role: "Drinks & Energy Partner",
+    name: "Red Bull",
+    featured: true,
+    url: "https://www.redbull.com/in-en/energydrink",
+    logo: "/redbull-logo.svg",
   },
 ];
 

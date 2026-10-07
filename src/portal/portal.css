@@ -2274,3 +2274,10 @@ pre.submission-viewer__document { white-space: pre-wrap; }
 .staff-progress progress { accent-color:#c7a764;width:160px;max-width:100%; }
 .staff-progress span { color:#c7a764;font-size:.85rem; }
 @media(max-width:600px) { .team-search__fields { grid-template-columns:1fr; } }
+
+.ticket__sponsorArtwork img.ticket__sponsorLogo--obliq { width: min(100%, 106px); height: 36px; object-fit: cover; object-position: 50% 56%; }
+.ticket__sponsorLogos .ticket__sponsor--featured { grid-column: 1 / -1; }
+.ticket__sponsor--featured .ticket__sponsorTile { padding: 15px; background: #fffdfa; }
+.ticket__sponsor--featured .ticket__sponsorArtwork { height: 54px; }
+.ticket__sponsor--featured .ticket__sponsorArtwork img { max-height: 54px; max-width: min(100%, 240px); }
+.ticket__sponsor--featured .ticket__sponsorRole { font-size: 9px; min-height: 16px; }

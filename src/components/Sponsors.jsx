@@ -16,7 +16,7 @@ function chunk(items, size) {
    tile may carry a perks list (CodeCrafters' VIP membership breakdown);
    tiles without one just stop at the name. */
 export default function Sponsors() {
-  const rows = chunk(SPONSORS, COLUMNS);
+  const rows = [...chunk(SPONSORS.filter(s => !s.featured), COLUMNS), ...SPONSORS.filter(s => s.featured).map(s => [s])];
   return (
     <div className="sponsors__list">
       {rows.map((row, i) => (
@@ -26,7 +26,7 @@ export default function Sponsors() {
             return (
               <Card
                 key={s.name}
-                className="sponsors__card"
+                className={`sponsors__card${s.featured ? " sponsors__card--featured" : ""}`}
                 href={s.url || undefined}
                 target={s.url ? "_blank" : undefined}
                 rel={s.url ? "noopener noreferrer" : undefined}
@@ -41,7 +41,7 @@ export default function Sponsors() {
                     </span>
                   </span>
                 ) : (
-                  <img className="sponsors__logo" src={s.logo} alt={s.name} />
+                  <img className={`sponsors__logo${s.name === "Obliq" ? " sponsors__logo--obliq" : ""}`} src={s.logo} alt={s.name} />
                 )}
                 {s.perks && (
                   <ul className="sponsors__perks">
