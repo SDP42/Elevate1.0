@@ -12,7 +12,7 @@ const directory = path.dirname(fileURLToPath(import.meta.url));
 const connectionString = (process.env.DATABASE_URL || process.env.POSTGRES_URL)?.trim();
 if (!connectionString) throw new Error("Set DATABASE_URL before seeding.");
 const sql = neon(connectionString);
-const counts = { team: 35, core: 5, admin: 2, meal: 3, regidesk: 3 };
+const counts = { team: 32, core: 5, admin: 2, meal: 3, regidesk: 3 };
 const labels = { team: "Team", core: "Core", admin: "Admin", meal: "Meal Counter", regidesk: "Registration Desk" };
 const args = process.argv.slice(2);
 if (args.length && (args.length !== 2 || args[0] !== "--credentials-file")) {

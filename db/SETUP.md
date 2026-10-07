@@ -25,7 +25,7 @@ supported by the current connection module.
 5. Run `npm run dev -- --host 127.0.0.1 --port 5173 --strictPort` and visit
    http://127.0.0.1:5173/portal/login. Vite serves both the frontend and API.
 
-Default demo usernames are `ELEV01`–`ELEV35`, `core01`–`core05`,
+Default demo usernames are `ELEV01`–`ELEV32`, `core01`–`core05`,
 `admin01`–`admin02`, `meal01`–`meal03`, and `regidesk01`–`regidesk03`.
 Passwords are individually assigned; the API stores only bcrypt hashes.
 Super-admin uses the separate `superadmin` identity. Its creation/reset script

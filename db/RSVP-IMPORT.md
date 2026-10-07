@@ -1,5 +1,59 @@
 # Participant RSVP import and team QR scans
 
+## Finalists replacement — 8 October 2026
+
+The organiser's final CSV supersedes the earlier 35-placeholder roster and the
+ambiguous original RSVP member count. CSV order maps to ELEV01–ELEV32 (login
+names are stored lowercase; login accepts either case). There are 119 participants:
+26 four-person teams, three three-person teams and three two-person teams;
+116 Veg and three Jain. Slaughter has three members; `-` is an empty fourth field.
+The first named participant is the team leader. Seats are numbered 1–32.
+
+```sh
+PYTHONPATH=. python3 db/prepare_finalists.py '/private/Finalists.csv' .local-rsvp/normalized.json .local-rsvp/finalists.json
+node --env-file=.env db/replace-finalists.mjs .local-rsvp/finalists.json
+# Explicit destructive replacement, after reviewing the dry-run:
+node --env-file=.env db/replace-finalists.mjs .local-rsvp/finalists.json --apply
+```
+
+Preparation validates unique teams/emails, contiguous rosters, phone numbers,
+leaders and food preferences. College/branch details are carried over only on
+matching participant name and email or phone within the same team. CSV fields
+take precedence. Missing email can be recovered only from matching name+phone;
+Kushagra Saxena's email is missing in both supplied sources and remains NULL.
+All 119 participants have matched college and branch details. No Drive links
+are stored. The CSV itself and all private intermediates remain outside Git.
+
+`--apply` archives every public table privately, locks tables and rejects any
+change since that backup before writing in one transaction. It clears the
+replaced teams' meal/registration/event records, files, PS selections, marks,
+assignments, notes and team incidents; replaces member rows; removes surplus
+team accounts; and preserves retained account passwords, account/team IDs and
+existing QR tokens. Staff accounts and global event configuration remain.
+This command is a roster reset, not a routine update: rerunning `--apply` also
+clears subsequent finalist activity. Use the guarded ordinary importer or admin
+roster editor for later corrections instead.
+
+Applied to the configured database on 8 October. Live read-only checks verified
+all 32 team portal responses, 119 exact profiles, leaders/seats/food preferences,
+both staff directories and zero old scan/submission/PS records. Public finalists
+and the seed defaults now use 32; promoted finalists are removed from the waitlist.
+Existing sessions fetch the current team name from the account row.
+The public aircraft blueprint and finale timeline also show 32 finalist seats.
+
+Verification: 24 Node tests and five Python tests pass; disposable PostgreSQL
+checks cover the replacement itself, password preservation, 35→32 accounts,
+repeated team QR registration and meal completion for 2/3/4-member teams,
+replay protection, concurrent counters and ownership constraints. Production
+build passes; existing bundle-size and lint warnings remain. Synthetic scanner
+writes were confined to the disposable database, not the configured database.
+Real-data browser checks cover the longest participant-name roster and the
+three-person Slaughter roster at 1440, 390 and 320 pixels, with visible QR
+codes and no ticket/page overflow. A wrapping footer fixes the narrowest
+viewport. The public board and blueprint show 32 finalists and 32 seats.
+
+## Original RSVP preparation (historical workflow)
+
 The import stores team and participant names, email/phone, college, year/branch,
 member food preferences, RSVP attendance, response timestamp, payment payer names,
 and the terms/declaration text. It excludes upload/Drive links and never fetches
@@ -147,7 +201,7 @@ phone check over HTTPS; manual team-code fallback uses the same single-scan rule
 - A subsequent identity migration renamed all 35 issued teams to ELEV01–ELEV35
   codes and case-insensitive login names. Hash checks confirmed that passwords,
   QR tokens, seats and account/team IDs were unchanged.
-- RSVP import, production scan, push and deployment remain pending. Slaughter's roster and placeholder-history reconciliation remain open.
+- At this earlier verification stage, RSVP import and Slaughter/history reconciliation were pending. The final CSV replacement above supersedes those data blockers.
 
 - Additional browser checks confirm local name/code filtering makes no requests
   or writes, hidden tabs pause, partial meal teams stay hidden until the final

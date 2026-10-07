@@ -6,6 +6,7 @@ import path from "node:path";
 import crypto from "node:crypto";
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
+import { validateFinalists, resetStatements } from '../db/replace-finalists.mjs';
 const exec = promisify(execFile);
 process.env.DATABASE_URL = "postgresql://fixture:fixture@localhost/elevate_fixture";
 process.env.SESSION_SECRET = crypto.randomBytes(48).toString("hex");
@@ -109,6 +110,45 @@ try {
   assert.equal((await call(meal,{...body,mealSlotCode:'d1_lunch',scanProof:(await lookup()).scanProof})).code,409);
   const withdrawnScan=await lookup(3,'d1_dinner');await sql`update teams set withdrawn=true where id=1`;
   assert.equal((await call(meal,{...body,mealSlotCode:'d1_dinner',scanProof:withdrawnScan.scanProof})).code,409);
+  // Exercise the actual destructive importer only in this disposable cluster.
+  for (let i=1;i<=35;i++) {
+    const code=`ELEV${String(i).padStart(2,'0')}`;
+    await sql`insert into accounts (id,username,password_hash,role,display_name) values (${100+i},${code.toLowerCase()},'preserved-hash','team','Old placeholder')`;
+    await sql`insert into teams (id,account_id,team_code,seat_no,qr_token) values (${100+i},${100+i},${code},${i},${i.toString(16).padStart(32,'0')})`;
+  }
+  // Fixture inserts use explicit IDs, so align sequences before importing.
+  await sql`select setval('team_members_id_seq',(select max(id) from team_members))`;
+  const finalData={version:1,sourceHash:'fixture-only',teams:Array.from({length:32},(_,i)=>({teamName:`Final ${i+1}`,sourceRow:i+2,declaredSize:2+i%3,issues:[],respondedAt:null,respondentEmail:null,paymentPayers:[],termsConfirmation:null,declaration:null,
+    members:Array.from({length:2+i%3},(_,m)=>({position:m+1,name:`Final Person ${i+1}/${m+1}`,isLead:m===0,email:`p${i}-${m}@example.com`,phone:'+919876543210',college:'Fixture College',yearBranch:'CSE',foodPreference:m===1?'Jain':'Veg'}))}))};
+  const issued=await sql`select t.*,a.username from teams t join accounts a on a.id=t.account_id`;
+  const assignments=validateFinalists(finalData,issued);
+  const builder=(strings,...values)=>strings.reduce((text,piece,index)=>text+piece+(index<values.length?literal(values[index]):''),'');
+  builder.query=text=>text;
+  const teamTables=['core_assignments','core_recusals','event_checkins','incidents','marks','meal_logs','registration_checkins','round1_notes','submission_files','team_ps_selection','team_rsvp_details'];
+  const reset=resetStatements(builder,finalData,assignments,teamTables);
+  await exec('psql',[...params,'-c','begin;'+reset.join(';')+';commit;']);
+  assert.equal((await sql`select count(*)::int as n from teams`)[0].n,32);
+  assert.equal((await sql`select count(*)::int as n from accounts where role='team'`)[0].n,32);
+  assert.equal((await sql`select count(*)::int as n from accounts where role='team' and password_hash='preserved-hash'`)[0].n,32);
+  assert.equal((await sql`select count(*)::int as n from meal_logs`)[0].n,0);
+  assert.equal((await sql`select count(*)::int as n from registration_checkins`)[0].n,0);
+  assert.equal((await sql`select count(*)::int as n from team_members where is_lead`)[0].n,32);
+  const finalRegistry=await call(registration,null,{role:'regidesk',accountId:5,method:'GET',url:'/api/regidesk?resource=staff'});
+  assert.equal(finalRegistry.body.directory.length,32);
+  for (const index of [1,2,3]) {
+    const token=index.toString(16).padStart(32,'0'), total=2+(index-1)%3, teamId=100+index;
+    for(let member=0;member<total;member++) {
+      const scan=await call(registration,{qrPayload:`ELEVATE1:${token}`},{role:'regidesk',accountId:5});
+      const person=scan.body.members[member];
+      assert.equal(scan.body.progress.total,total);
+      assert.equal((await call(registration,{action:'save',teamId,memberId:person.id,govtIdChecked:true,scanProof:scan.body.scanProof},{role:'regidesk',accountId:5})).code,200);
+      const redemption=await call(meal,{qrPayload:`ELEVATE1:${token}`,mealSlotCode:'d1_lunch'});
+      assert.equal((await call(meal,{action:'log',teamId,mealSlotCode:'d1_lunch',memberIds:[person.id],scanProof:redemption.body.scanProof})).code,200);
+      const list=await call(meal,null,{method:'GET',url:'/api/meal?resource=staff&slotCode=d1_lunch'});
+      assert.equal(list.body.teams.some(t=>t.id===teamId),member===total-1);
+    }
+  }
+  console.log('PASS: finalist replacement transaction; 35→32 accounts; leader/seat/QR/profile mapping; passwords preserved; old scans cleared; imported 2/3/4-person team QR registration and meal completion lists.');
   console.log('PASS: 2/3/4-person repeated team QR registration; single-use proofs; atomic meal writes; concurrent counters; immediate database reads; food preferences; slot history; private participant receipts; invalid QR/ownership/slot/withdrawal checks.');
 } finally {
   if(started) await exec('pg_ctl',['-D',data,'-m','fast','-w','stop']);

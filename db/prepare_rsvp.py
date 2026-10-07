@@ -46,6 +46,7 @@ def college(value):
 def phone(value):
     text = clean(value)
     digits = re.sub(r"\D", "", text)
+    if len(digits) == 11 and digits.startswith("0"): digits = digits[1:]
     if len(digits) == 10: return "+91" + digits
     if len(digits) == 12 and digits.startswith("91"): return "+" + digits
     return text or None
