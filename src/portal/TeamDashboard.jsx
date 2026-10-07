@@ -252,14 +252,27 @@ function Ticket({ team, rosterLocked }) {
             <div className="ticket__sponsors">
               <span className="ticket__sponsorsLabel">Flying with</span>
               <ul className="ticket__sponsorLogos" aria-label="Event sponsors">
-                {SPONSORS.map((sponsor) => (
-                  <li key={sponsor.name}>
-                    <a className={sponsor.showName ? "ticket__sponsorLockup" : undefined} href={sponsor.url} target="_blank" rel="noopener noreferrer" aria-label={`${sponsor.role}: ${sponsor.name}`}>
-                      <img src={sponsor.logo} alt={sponsor.name} />
-                      {sponsor.showName && <span className="ticket__sponsorName--arina">{sponsor.name}</span>}
-                    </a>
-                  </li>
-                ))}
+                {SPONSORS.map((sponsor) => {
+                  const SponsorLink = sponsor.url ? "a" : "span";
+                  return (
+                    <li key={sponsor.name}>
+                      <SponsorLink
+                        className={sponsor.showName ? "ticket__sponsorLockup" : undefined}
+                        {...(sponsor.url
+                          ? { href: sponsor.url, target: "_blank", rel: "noopener noreferrer" }
+                          : {})}
+                        aria-label={`${sponsor.role}: ${sponsor.name}`}
+                      >
+                        <img src={sponsor.logo} alt={sponsor.name} />
+                        {sponsor.showName && (
+                          <span className={sponsor.name === "ARINA AI" ? "ticket__sponsorName--arina" : undefined}>
+                            {sponsor.name}
+                          </span>
+                        )}
+                      </SponsorLink>
+                    </li>
+                  );
+                })}
               </ul>
             </div>
 

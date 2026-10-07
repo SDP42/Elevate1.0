@@ -70,6 +70,12 @@ export const SPONSORS = [
     showName: true,
   },
   {
+    role: "Education Partner",
+    name: "Fateh",
+    url: null,
+    logo: "/fateh-logo.webp",
+  },
+  {
     role: "Learning Partner",
     name: "CodeCrafters",
     url: "https://codecrafters.io/",
@@ -82,10 +88,10 @@ export const SPONSORS = [
     logo: "/xyz-logo-purple.png",
   },
   {
-    role: "Hands Free Coding Partner",
-    name: "Infina",
-    url: "https://www.infina.so/",
-    logo: "/infina-logo.svg",
+    role: "AI & Automation Partner",
+    name: "n8n",
+    url: "https://n8n.io/",
+    logo: "/n8n-logo.svg",
   },
   {
     role: "Deployment & Cloud Infra Partner",
@@ -102,16 +108,16 @@ export const SPONSORS = [
     showName: true,
   },
   {
-    role: "AI & Automation Partner",
-    name: "n8n",
-    url: "https://n8n.io/",
-    logo: "/n8n-logo.svg",
+    role: "Hands Free Coding Partner",
+    name: "Infina",
+    url: "https://www.infina.so/",
+    logo: "/infina-logo.svg",
   },
   {
-    role: "Community Partner",
-    name: "Mumbai Tech Community",
-    url: "https://www.mumbaitechcommunity.in/",
-    logo: "/mumbai-tech-community-logo.png",
+    role: "Voice AI Partner",
+    name: "Stirae AI",
+    url: null,
+    logo: "/stirae-ai-logo.png",
   },
   {
     role: "Entertainment Partner",
@@ -124,6 +130,12 @@ export const SPONSORS = [
     name: "Red Bull",
     url: "https://www.redbull.com/in-en/energydrink",
     logo: "/redbull-logo.svg",
+  },
+  {
+    role: "Community Partner",
+    name: "Mumbai Tech Community",
+    url: "https://www.mumbaitechcommunity.in/",
+    logo: "/mumbai-tech-community-logo.png",
   },
 ];
 
