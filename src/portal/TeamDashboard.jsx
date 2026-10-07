@@ -4,6 +4,7 @@ import QRCode from "qrcode";
 import { Glass, GlassSystemProvider } from "open-glass-ui";
 import "open-glass-ui/styles.css";
 import SubmissionFiles from "./SubmissionFiles";
+import ParticipantMealNotice from "./MealCelebration";
 import RequireRole from "./RequireRole";
 import { EVENT, SUBMISSION_DEADLINE, SPONSORS, HELP_CONTACTS } from "../config";
 import { CRITERIA } from "../../shared/criteria.js";
@@ -250,25 +251,26 @@ function Ticket({ team, rosterLocked }) {
             </dl>
 
             <div className="ticket__sponsors">
-              <span className="ticket__sponsorsLabel">Flying with</span>
+              <div className="ticket__sponsorsHead"><span className="ticket__sponsorsLabel">Flying with</span><span className="ticket__sponsorsCount">Our event partners</span></div>
               <ul className="ticket__sponsorLogos" aria-label="Event sponsors">
                 {SPONSORS.map((sponsor) => {
                   const SponsorLink = sponsor.url ? "a" : "span";
                   return (
                     <li key={sponsor.name}>
                       <SponsorLink
-                        className={sponsor.showName ? "ticket__sponsorLockup" : undefined}
+                        className={`ticket__sponsorTile${sponsor.showName ? " ticket__sponsorTile--lockup" : ""}${sponsor.name === "ARINA AI" ? " ticket__sponsorTile--arina" : ""}`}
                         {...(sponsor.url
                           ? { href: sponsor.url, target: "_blank", rel: "noopener noreferrer" }
                           : {})}
                         aria-label={`${sponsor.role}: ${sponsor.name}`}
                       >
-                        <img src={sponsor.logo} alt={sponsor.name} />
+                        <span className="ticket__sponsorArtwork"><img src={sponsor.logo} alt={sponsor.showName ? "" : sponsor.name} />
                         {sponsor.showName && (
                           <span className={sponsor.name === "ARINA AI" ? "ticket__sponsorName--arina" : undefined}>
                             {sponsor.name}
                           </span>
                         )}
+                      </span><span className="ticket__sponsorRole">{sponsor.role}</span>
                       </SponsorLink>
                     </li>
                   );
@@ -286,6 +288,7 @@ function Ticket({ team, rosterLocked }) {
                   <li key={m.id}>
                     {m.name}
                     {m.is_lead && <em>Lead</em>}
+                    {m.food_preference && <span className={`ticket__foodBadge${m.food_preference === "Jain" ? " ticket__foodBadge--jain" : ""}`}>{m.food_preference}</span>}
                   </li>
                 ))}
               </ul>
@@ -606,6 +609,7 @@ function TeamHome({ session }) {
         </button>
       </div>
 
+      <ParticipantMealNotice />
       <Announcements messages={session.announcements} />
       <ShortlistBanner team={session.team} />
       {session.team && <ApprovalBanner data={psData} teamCode={session.team.team_code} />}

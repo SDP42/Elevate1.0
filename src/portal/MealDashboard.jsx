@@ -1,9 +1,11 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import RequireRole from "./RequireRole";
 import QrScanner from "./QrScanner";
+import MealHistory from "./MealHistory";
+import { MealCelebration } from "./MealCelebration";
 import { MEAL_SLOTS } from "./mealSlots";
-import { logout, mealFlagLowStock, mealLog, mealLogGuest, mealLookup, mealLookupByCode, mealTally, mealUndo } from "./api";
+import { logout, mealFlagLowStock, mealLog, mealLogGuest, mealLookup, mealLookupByCode, mealUndo } from "./api";
 
 function LowStockFlag({ slotCode }) {
   const [open, setOpen] = useState(false);
@@ -103,35 +105,6 @@ function GuestOverride({ teamId, slotCode }) {
   );
 }
 
-function Tally({ refreshKey }) {
-  const [slots, setSlots] = useState(null);
-
-  useEffect(() => {
-    mealTally()
-      .then((d) => setSlots(d.slots))
-      .catch(() => {});
-  }, [refreshKey]);
-
-  if (!slots) return null;
-
-  return (
-    <section className="portal-card">
-      <h3>Served so far</h3>
-      <p className="portal-card__hint">Across every team, every counter — updates after each confirm.</p>
-      <ul className="portal-tally">
-        {slots.map((s) => (
-          <li key={s.code}>
-            <span>
-              Day {s.dayNo} · {s.label}
-            </span>
-            <strong>{s.served}</strong>
-          </li>
-        ))}
-      </ul>
-    </section>
-  );
-}
-
 function MealHome({ session }) {
   const navigate = useNavigate();
   const [slotCode, setSlotCode] = useState(MEAL_SLOTS[0].code);
@@ -144,6 +117,8 @@ function MealHome({ session }) {
   const [manualBusy, setManualBusy] = useState(false);
   const [tallyKey, setTallyKey] = useState(0);
   const [undoing, setUndoing] = useState(null);
+  const [confirmBusy, setConfirmBusy] = useState(false);
+  const [celebration, setCelebration] = useState(null);
   const busyRef = useRef(false);
 
   const onDecode = useCallback(
@@ -154,7 +129,7 @@ function MealHome({ session }) {
       try {
         const data = await mealLookup(payload, slotCode);
         setResult(data);
-        setSelected(new Set(data.members.filter((m) => !m.alreadyGiven).map((m) => m.id)));
+        setSelected(new Set(data.members.filter((m) => !m.alreadyGiven && m.registered).slice(0, 1).map((m) => m.id)));
         setScanning(false);
       } catch (err) {
         setError(err.message);
@@ -167,42 +142,44 @@ function MealHome({ session }) {
 
   async function lookUpManually(e) {
     e.preventDefault();
-    if (!manualCode.trim()) return;
+    if (!manualCode.trim() || busyRef.current) return;
+    busyRef.current = true;
     setManualBusy(true);
     setError("");
     try {
       const data = await mealLookupByCode(manualCode.trim(), slotCode);
       setResult(data);
-      setSelected(new Set(data.members.filter((m) => !m.alreadyGiven).map((m) => m.id)));
+      setSelected(new Set(data.members.filter((m) => !m.alreadyGiven && m.registered).slice(0, 1).map((m) => m.id)));
       setScanning(false);
       setManualCode("");
     } catch (err) {
       setError(err.message);
     } finally {
+      busyRef.current = false;
       setManualBusy(false);
     }
   }
 
-  function toggleMember(id) {
-    setSelected((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
-  }
+  function toggleMember(id) { setSelected(new Set([id])); }
 
   async function confirm() {
-    if (!result || selected.size === 0) return;
+    if (!result || selected.size === 0 || busyRef.current) return;
+    busyRef.current = true; setConfirmBusy(true); setError("");
     try {
-      await mealLog(result.team.id, slotCode, [...selected]);
-      setStatus(`Logged ${result.slot.label} for ${result.team.teamCode} (${selected.size} member${selected.size === 1 ? "" : "s"}).`);
-      setTallyKey((k) => k + 1);
-    } catch (err) {
-      setError(err.message);
-      return;
-    }
-    reset();
+      const receipt = await mealLog(result.team.id, slotCode, [...selected], result.scanProof);
+      setStatus(receipt.logged > 0
+        ? `Recorded ${result.slot.label} for ${result.team.teamCode} (${receipt.logged} participants).`
+        : "These participants have already been served for this meal.");
+      setTallyKey(k => k + 1);
+      const names = result.members.filter(member => receipt.memberIds.includes(member.id)).map(member => member.name);
+      const slotLabel = result.slot.label;
+      reset();
+      if (receipt.logged > 0) {
+        setScanning(false);
+        setCelebration({ slotLabel, names });
+      }
+    } catch (err) { setError(err.message); }
+    finally { busyRef.current = false; setConfirmBusy(false); }
   }
 
   async function handleUndo(memberId, memberName) {
@@ -251,11 +228,13 @@ function MealHome({ session }) {
 
       <section className="portal-card">
         <h3>Scan for a meal</h3>
+        <p className="portal-card__hint">Use the same team QR once per participant. Each accepted scan records one serving.</p>
 
         <label className="portal-field portal-field--inline">
           <span>Meal slot</span>
           <select
             value={slotCode}
+            disabled={confirmBusy}
             onChange={(e) => {
               setSlotCode(e.target.value);
               reset();
@@ -283,7 +262,7 @@ function MealHome({ session }) {
                 <input
                   value={manualCode}
                   onChange={(e) => setManualCode(e.target.value)}
-                  placeholder="e.g. T07"
+                  placeholder="e.g. ELEV07"
                 />
                 <button type="submit" className="portal-logout" disabled={manualBusy || !manualCode.trim()}>
                   {manualBusy ? "Looking up…" : "Look up"}
@@ -305,18 +284,22 @@ function MealHome({ session }) {
                 </div>
               </div>
               {result.team.dietary && <p className="portal-dietaryFlag portal-u-mt">⚠ Dietary note: {result.team.dietary}</p>}
-              <p className="portal-card__hint portal-u-mt">Tick who's actually here for {result.slot.label}.</p>
+              <p className="portal-status">{result.progress.served} of {result.progress.total} served · {result.slot.label}</p>
+              <p className="portal-card__hint portal-u-mt">Select the participant receiving this serving, then scan the same team QR for the next person.</p>
               <ul className="portal-checklist">
                 {result.members.map((m) => (
                   <li key={m.id} className={m.alreadyGiven ? "is-served" : undefined}>
                     <label>
                       <input
-                        type="checkbox"
+                        type="radio"
+                        name="meal-participant"
                         checked={selected.has(m.id)}
-                        disabled={m.alreadyGiven}
+                        disabled={m.alreadyGiven || !m.registered || confirmBusy}
                         onChange={() => toggleMember(m.id)}
                       />
                       {m.name}
+                      {m.foodPreference && <span className={`meal-diet${m.foodPreference === "Jain" ? " meal-diet--jain" : ""}`}>{m.foodPreference}</span>}
+                      {!m.registered && <em> · Not registered yet</em>}
                       {m.alreadyGiven && <em> · already served</em>}
                     </label>
                     {m.alreadyGiven && (
@@ -333,10 +316,10 @@ function MealHome({ session }) {
                 ))}
               </ul>
               <div className="portal-scanResult__actions">
-                <button type="button" className="portal-auth__submit" onClick={confirm} disabled={selected.size === 0}>
-                  Confirm ({selected.size})
+                <button type="button" className="portal-auth__submit" onClick={confirm} disabled={selected.size === 0 || confirmBusy || undoing !== null}>
+                  {confirmBusy ? "Recording…" : "Confirm this scan"}
                 </button>
-                <button type="button" className="portal-logout" onClick={reset}>
+                <button type="button" className="portal-logout" onClick={reset} disabled={confirmBusy}>
                   Cancel / scan next
                 </button>
               </div>
@@ -346,7 +329,8 @@ function MealHome({ session }) {
         )}
       </section>
 
-      <Tally refreshKey={tallyKey} />
+      <MealHistory refreshKey={tallyKey} />
+      {celebration && <MealCelebration meal={celebration} onDone={() => { setCelebration(null); reset(); }} />}
     </div>
   );
 }

@@ -1,9 +1,11 @@
-import { sql } from "./_lib/db.js";
+import { sql as defaultSql } from "./_lib/db.js";
 import { requireRole } from "./_lib/auth.js";
-import { logAction } from "./_lib/audit.js";
-import { createIncident } from "./_lib/incidents.js";
+import { logAction as defaultLogAction } from "./_lib/audit.js";
+import { createIncident as defaultCreateIncident } from "./_lib/incidents.js";
+import { searchParams } from "./_lib/http.js";
+import { issueScanProof, verifyScanProof } from "./_lib/scan-proof.js";
+import { parseMealRequest, parseQrToken } from "../shared/meal.js";
 
-const QR_PREFIX = "ELEVATE1:";
 
 /* Meal (and admin) only: the scan lookup, the manual-code fallback, the
    confirm-and-log step, and the running tally all share this file — see
@@ -11,8 +13,13 @@ const QR_PREFIX = "ELEVATE1:";
    ("log" logs, "lookup-by-code" looks up by typed team code instead of a
    camera scan, "flag-low-stock"/"log-guest" raise an incident for admin,
    anything else is the normal QR lookup). */
+export function createMealHandler({ sql = defaultSql, logAction = defaultLogAction, createIncident = defaultCreateIncident } = {}) {
 async function handler(req, res) {
-  if (req.method === "GET") return tally(req, res);
+  if (req.session.role === "team") {
+    if (req.method === "GET" && searchParams(req).get("receipt") === "1") return receipt(req, res);
+    return res.status(403).json({ error: "This action is for meal counters" });
+  }
+  if (req.method === "GET") return searchParams(req).has("slotCode") ? history(req, res) : tally(req, res);
   if (req.method === "POST") {
     const { action } = req.body || {};
     if (action === "log") return logMeal(req, res);
@@ -40,9 +47,56 @@ async function tally(req, res) {
   });
 }
 
+async function receipt(req, res) {
+  const afterValue = searchParams(req).get("after");
+  const after = afterValue === null ? null : Number(afterValue);
+  if (after !== null && (!Number.isSafeInteger(after) || after < 0)) {
+    return res.status(400).json({ error: "Invalid receipt cursor" });
+  }
+  const rows = await sql`
+    select ml.id, ms.label, ms.code, tm.name, ml.given_at
+    from meal_logs ml join meal_slots ms on ms.id = ml.meal_slot_id
+    join team_members tm on tm.id = ml.member_id
+    where ml.team_id = ${req.session.teamId} order by ml.id desc limit 28
+  `;
+  res.status(200).json({ latestId: rows[0]?.id || 0,
+    meals: after === null ? [] : rows.filter(row => row.id > after).reverse().map(row => ({
+      id: row.id, slotCode: row.code, slotLabel: row.label, name: row.name, givenAt: row.given_at
+    })) });
+}
+
+async function history(req, res) {
+  const slotCode = searchParams(req).get("slotCode");
+  const [slot] = await sql`select id, code, label from meal_slots where code = ${slotCode}`;
+  if (!slot) return res.status(400).json({ error: "Unknown meal slot" });
+  const rows = await sql`
+    select t.id as team_id, t.team_code, t.seat_no, a.display_name as team_name,
+      tm.id as member_id, tm.name, to_jsonb(tm)->>'food_preference' as food_preference,
+      ml.given_at, counter.display_name as counter_name
+    from meal_logs ml join teams t on t.id = ml.team_id
+    join accounts a on a.id = t.account_id
+    join team_members tm on tm.id = ml.member_id
+    left join accounts counter on counter.id = ml.given_by
+    where ml.meal_slot_id = ${slot.id} order by ml.given_at desc, ml.id desc
+  `;
+  const groups = new Map();
+  for (const row of rows) {
+    if (!groups.has(row.team_id)) groups.set(row.team_id, {
+      id: row.team_id, teamCode: row.team_code, teamName: row.team_name,
+      seatNo: row.seat_no, members: []
+    });
+    groups.get(row.team_id).members.push({ id: row.member_id, name: row.name,
+      foodPreference: row.food_preference, givenAt: row.given_at, counter: row.counter_name });
+  }
+  res.status(200).json({ slot: { code: slot.code, label: slot.label },
+    teams: [...groups.values()], served: rows.length, updatedAt: new Date().toISOString() });
+}
+
 function teamAndSlotToMembers(team, slot) {
   return sql`
     select tm.id, tm.name, tm.is_lead,
+      to_jsonb(tm)->>'food_preference' as food_preference,
+      exists(select 1 from registration_checkins rc where rc.member_id = tm.id and rc.team_id = tm.team_id) as registered,
       exists(
         select 1 from meal_logs ml
         where ml.member_id = tm.id and ml.meal_slot_id = ${slot.id}
@@ -53,7 +107,7 @@ function teamAndSlotToMembers(team, slot) {
   `;
 }
 
-function respondWithLookup(res, team, slot, mealSlotCode, members, dietary) {
+function respondWithLookup(req, res, team, slot, mealSlotCode, members, dietary) {
   res.status(200).json({
     team: {
       id: team.id,
@@ -64,12 +118,16 @@ function respondWithLookup(res, team, slot, mealSlotCode, members, dietary) {
       seatNo: team.seat_no,
       dietary: dietary || null,
     },
+    scanProof: issueScanProof("meal", team.id, req.session.accountId, mealSlotCode),
+    progress: { served: members.filter(m => m.already_given).length, total: members.length },
     slot: { code: mealSlotCode, label: slot.label },
     members: members.map((m) => ({
       id: m.id,
       name: m.name,
       isLead: m.is_lead,
       alreadyGiven: m.already_given,
+      registered: m.registered,
+      foodPreference: m.food_preference || null,
     })),
   });
 }
@@ -83,8 +141,8 @@ async function lookup(req, res) {
     return;
   }
 
-  const trimmed = qrPayload.trim();
-  const qrToken = trimmed.startsWith(QR_PREFIX) ? trimmed.slice(QR_PREFIX.length) : trimmed;
+  const qrToken = parseQrToken(qrPayload);
+  if (!qrToken) return res.status(400).json({ error: "Invalid Elevate QR code" });
   const teamRows = await sql`
     select t.id, t.team_code, t.seat_no, t.dietary, t.shortlisted, t.withdrawn, a.display_name, a.username
     from teams t
@@ -93,7 +151,7 @@ async function lookup(req, res) {
   `;
   const team = teamRows[0];
   if (!team) {
-    res.status(404).json({ error: `No team matches this QR code (scanned: "${trimmed.slice(0, 60)}")` });
+    res.status(404).json({ error: "No team matches this QR code" });
     return;
   }
   if (team.withdrawn) {
@@ -117,7 +175,7 @@ async function lookup(req, res) {
   }
 
   const members = await teamAndSlotToMembers(team, slot);
-  respondWithLookup(res, team, slot, mealSlotCode, members, team.dietary);
+  respondWithLookup(req, res, team, slot, mealSlotCode, members, team.dietary);
 }
 
 /* fallback when a phone's camera can't scan (broken, bad light) — look the
@@ -161,7 +219,7 @@ async function lookupByCode(req, res) {
   }
 
   const members = await teamAndSlotToMembers(team, slot);
-  respondWithLookup(res, team, slot, mealSlotCode, members, team.dietary);
+  respondWithLookup(req, res, team, slot, mealSlotCode, members, team.dietary);
 }
 
 /* undo an accidentally logged meal for a single member */
@@ -190,37 +248,43 @@ async function undoMeal(req, res) {
 /* logs the meal slot as served for each selected member — safe to call
    more than once, the unique constraint just no-ops a repeat */
 async function logMeal(req, res) {
-  const { teamId, mealSlotCode, memberIds } = req.body || {};
-  if (!teamId || !mealSlotCode || !Array.isArray(memberIds) || memberIds.length === 0) {
-    res.status(400).json({ error: "teamId, mealSlotCode and at least one memberId are required" });
-    return;
-  }
+  let input;
+  try { input = parseMealRequest(req.body); }
+  catch (error) { return res.status(400).json({ error: error.message }); }
+  const { teamId, mealSlotCode, memberIds } = input;
+  const scanId = verifyScanProof(req.body.scanProof, "meal", teamId, req.session.accountId, mealSlotCode);
+  if (!scanId) return res.status(409).json({ error: "Scan the team QR again; this scan is missing or expired." });
+  const [slot] = await sql`select id from meal_slots where code = ${mealSlotCode}`;
+  if (!slot) return res.status(400).json({ error: "Unknown meal slot" });
 
-  const slotRows = await sql`select id from meal_slots where code = ${mealSlotCode}`;
-  const slot = slotRows[0];
-  if (!slot) {
-    res.status(400).json({ error: "Unknown meal slot" });
-    return;
-  }
-
-  // every member must actually belong to this team — a stray id from a
-  // tampered request can't log a meal against someone else's roster
-  const validMembers = await sql`
-    select id from team_members where team_id = ${teamId} and id = any(${memberIds}::int[])
+  // Eligibility and insertion share one statement/snapshot. The unique
+  // member/slot key resolves simultaneous confirmations at different counters.
+  const [outcome] = await sql`
+    with eligible as (
+      select tm.id from team_members tm
+      join teams t on t.id = tm.team_id
+      join registration_checkins rc on rc.member_id = tm.id and rc.team_id = tm.team_id
+      where tm.team_id = ${teamId} and tm.id = any(${memberIds}::int[])
+        and t.withdrawn = false
+    ), inserted as (
+      insert into meal_logs (team_id, member_id, meal_slot_id, given_by, scan_id)
+      select ${teamId}, id, ${slot.id}, ${req.session.accountId}, ${scanId} from eligible
+      where (select count(*) from eligible) = ${memberIds.length}
+      on conflict do nothing
+      returning member_id
+    )
+    select (select count(*)::int from eligible) as eligible_count,
+      coalesce((select json_agg(member_id) from inserted), '[]'::json) as inserted_ids,
+      exists(select 1 from meal_logs where scan_id = ${scanId}) as scan_reused
   `;
-  const validIds = new Set(validMembers.map((m) => m.id));
-
-  for (const memberId of memberIds) {
-    if (!validIds.has(memberId)) continue;
-    await sql`
-      insert into meal_logs (team_id, member_id, meal_slot_id, given_by)
-      values (${teamId}, ${memberId}, ${slot.id}, ${req.session.accountId})
-      on conflict (member_id, meal_slot_id) do nothing
-    `;
+  if (outcome.eligible_count !== memberIds.length) {
+    return res.status(409).json({ error: "Every selected participant must belong to this team and be registered. Refresh the roster and try again." });
   }
-
-  await logAction(req.session.accountId, "meal.log", { teamId, mealSlotCode, count: validIds.size });
-  res.status(200).json({ ok: true, logged: validIds.size });
+  const insertedIds = outcome.inserted_ids;
+  if (!insertedIds.length && outcome.scan_reused) return res.status(409).json({ error: "This scan has already been used. Scan the team QR again for the next participant." });
+  await logAction(req.session.accountId, "meal.log", { teamId, mealSlotCode, count: insertedIds.length });
+  res.status(200).json({ ok: true, logged: insertedIds.length, memberIds: insertedIds,
+    alreadyServed: memberIds.length - insertedIds.length });
 }
 
 /* "we're almost out of X" — a visible flag for admin/organisers, not a
@@ -261,4 +325,7 @@ async function logGuest(req, res) {
   res.status(200).json({ ok: true });
 }
 
-export default requireRole(handler, ["meal", "admin"]);
+return handler;
+}
+
+export default requireRole(createMealHandler(), ["meal", "admin", "team"]);

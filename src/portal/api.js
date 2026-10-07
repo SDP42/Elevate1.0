@@ -76,13 +76,15 @@ export const mealLookup = (qrPayload, mealSlotCode) =>
 export const mealLookupByCode = (teamCode, mealSlotCode) =>
   request("/meal", { method: "POST", body: JSON.stringify({ action: "lookup-by-code", teamCode, mealSlotCode }) });
 
-export const mealLog = (teamId, mealSlotCode, memberIds) =>
-  request("/meal", { method: "POST", body: JSON.stringify({ action: "log", teamId, mealSlotCode, memberIds }) });
+export const mealLog = (teamId, mealSlotCode, memberIds, scanProof) =>
+  request("/meal", { method: "POST", body: JSON.stringify({ action: "log", teamId, mealSlotCode, memberIds, scanProof }) });
 
 export const mealUndo = (teamId, mealSlotCode, memberId) =>
   request("/meal", { method: "POST", body: JSON.stringify({ action: "undo", teamId, mealSlotCode, memberId }) });
 
 export const mealTally = () => request("/meal");
+export const mealReceipts = (after) => request(`/meal?receipt=1${after == null ? "" : `&after=${after}`}`);
+export const mealHistory = (slotCode) => request(`/meal?slotCode=${encodeURIComponent(slotCode)}`);
 
 export const coreTeams = () => request("/core");
 

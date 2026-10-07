@@ -39,3 +39,9 @@ elevate_credentials.*
 elevate-accounts.csv
 
 .local-release-check/
+
+# Private RSVP preparation, mapping and database backups
+.local-rsvp/
+
+# Python bytecode from local RSVP checks
+__pycache__/

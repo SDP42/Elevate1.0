@@ -23,6 +23,7 @@ export default function QrScanner({ onDecode, paused }) {
   useEffect(() => {
     let stream;
     let cancelled = false;
+    let lastFrame = 0, lastPayload = "", lastDecodedAt = 0;
 
     async function start() {
       try {
@@ -43,19 +44,25 @@ export default function QrScanner({ onDecode, paused }) {
       }
     }
 
-    function tick() {
+    function tick(time = 0) {
       frameRef.current = requestAnimationFrame(tick);
       const video = videoRef.current;
       const canvas = canvasRef.current;
+      if (time - lastFrame < 100) return;
+      lastFrame = time;
       if (pausedRef.current || !video || video.readyState !== video.HAVE_ENOUGH_DATA) return;
 
-      canvas.width = video.videoWidth;
-      canvas.height = video.videoHeight;
+      const scale = Math.min(1, 960 / video.videoWidth);
+      canvas.width = Math.round(video.videoWidth * scale);
+      canvas.height = Math.round(video.videoHeight * scale);
       const ctx = canvas.getContext("2d", { willReadFrequently: true });
       ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
       const frame = ctx.getImageData(0, 0, canvas.width, canvas.height);
       const code = jsQR(frame.data, frame.width, frame.height);
-      if (code?.data) onDecodeRef.current(code.data);
+      if (code?.data && (code.data !== lastPayload || time - lastDecodedAt > 2000)) {
+        lastPayload = code.data; lastDecodedAt = time;
+        onDecodeRef.current(code.data);
+      }
     }
 
     start();

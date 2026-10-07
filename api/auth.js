@@ -118,7 +118,7 @@ async function login(req, res) {
   const rows = await sql`
     select id, username, password_hash, role, display_name
     from accounts
-    where username = ${cleanUsername}
+    where lower(username) = ${cleanUsername}
   `;
   const account = rows[0];
 
@@ -133,7 +133,7 @@ async function login(req, res) {
 
   // a clean login clears this account's slate — no reason to keep
   // counting against someone who just proved they know the password
-  await sql`delete from login_attempts where username = ${cleanUsername}`;
+  await sql`delete from login_attempts where lower(username) = ${cleanUsername}`;
 
   let team = null;
   if (account.role === "team") {
@@ -191,8 +191,10 @@ async function me(req, res) {
     team = teamRows[0] || null;
     if (team) {
       team.members = await sql`
-        select id, name, is_lead
-        from team_members
+        select tm.id, tm.name, tm.is_lead,
+          to_jsonb(tm)->>'food_preference' as food_preference,
+          to_jsonb(tm)->>'college' as college
+        from team_members tm
         where team_id = ${team.id}
         order by sort_order asc, id asc
       `;

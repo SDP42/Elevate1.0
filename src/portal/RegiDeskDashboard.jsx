@@ -4,7 +4,7 @@ import RequireRole from "./RequireRole";
 import QrScanner from "./QrScanner";
 import { logout, regideskLookup, regideskLookupByCode, regideskSave } from "./api";
 
-function MemberRow({ member, teamId, onSaved }) {
+function MemberRow({ member, teamId, scanProof, onSaved }) {
   const [githubId, setGithubId] = useState(member.githubId);
   const [govtIdChecked, setGovtIdChecked] = useState(member.govtIdChecked);
   const [bagChecked, setBagChecked] = useState(member.bagChecked);
@@ -14,6 +14,7 @@ function MemberRow({ member, teamId, onSaved }) {
   const [notes, setNotes] = useState(member.notes);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [error, setError] = useState("");
 
   const fields = { githubId, govtIdChecked, bagChecked, kitChecked, medicalNote, lateArrival, notes };
 
@@ -21,10 +22,10 @@ function MemberRow({ member, teamId, onSaved }) {
     setSaving(true);
     setSaved(false);
     try {
-      await regideskSave(member.id, teamId, fields);
+      const receipt = await regideskSave(member.id, teamId, { ...fields, scanProof });
       setSaved(true);
-      onSaved(member.id, fields);
-    } finally {
+      onSaved(receipt);
+    } catch (error) { setError(error.message); } finally {
       setSaving(false);
     }
   }
@@ -48,6 +49,7 @@ function MemberRow({ member, teamId, onSaved }) {
       <div className="portal-regiRow__name">
         {member.name}
         {member.isLead && <em>Lead</em>}
+        {member.foodPreference && <span className="meal-diet">{member.foodPreference}</span>}
       </div>
 
       <div className="portal-regiRow__checks">
@@ -84,8 +86,9 @@ function MemberRow({ member, teamId, onSaved }) {
         </label>
       </div>
 
+      {error && <p role="alert" className="portal-auth__error">{error}</p>}
       <button type="button" className="portal-logout portal-regiRow__save" onClick={save} disabled={saving}>
-        {saving ? "Saving…" : saved ? "Saved ✓" : "Save"}
+        {saving ? "Saving…" : saved ? "Saved ✓" : "Register this scan"}
       </button>
     </li>
   );
@@ -95,6 +98,8 @@ function RegiDeskHome({ session }) {
   const navigate = useNavigate();
   const [scanning, setScanning] = useState(true);
   const [result, setResult] = useState(null);
+  const [selectedMember, setSelectedMember] = useState(null);
+  const [status, setStatus] = useState("");
   const [error, setError] = useState("");
   const [manualCode, setManualCode] = useState("");
   const [manualBusy, setManualBusy] = useState(false);
@@ -108,6 +113,7 @@ function RegiDeskHome({ session }) {
       try {
         const data = await regideskLookup(payload);
         setResult(data);
+        setSelectedMember(data.members.find(m => !m.registered)?.id || null);
         setScanning(false);
       } catch (err) {
         setError(err.message);
@@ -120,26 +126,28 @@ function RegiDeskHome({ session }) {
 
   async function lookUpManually(e) {
     e.preventDefault();
-    if (!manualCode.trim()) return;
+    if (!manualCode.trim() || busyRef.current) return;
+    busyRef.current = true;
     setManualBusy(true);
     setError("");
     try {
       const data = await regideskLookupByCode(manualCode.trim());
       setResult(data);
+      setSelectedMember(data.members.find(m => !m.registered)?.id || null);
       setScanning(false);
       setManualCode("");
     } catch (err) {
       setError(err.message);
     } finally {
+      busyRef.current = false;
       setManualBusy(false);
     }
   }
 
-  function onMemberSaved(memberId, details) {
-    setResult((prev) => ({
-      ...prev,
-      members: prev.members.map((m) => (m.id === memberId ? { ...m, ...details } : m)),
-    }));
+  function onMemberSaved(receipt) {
+    const { registered, total } = receipt.progress;
+    setStatus(`${result.team.teamCode}: ${registered} of ${total} registered. ${registered === total ? "Whole team registered." : "Scan the same team QR for the next participant."}`);
+    reset();
   }
 
   function reset() {
@@ -167,10 +175,10 @@ function RegiDeskHome({ session }) {
       <section className="portal-card">
         <h3>Check in a team</h3>
         <p className="portal-card__hint">
-          Scan the team's boarding pass, then record each member's GitHub ID, government ID check,
-          bag check, ideation kit, any medical note, and flag late arrivals as they come in.
+          Scan the same team boarding pass once for each participant. Each scan registers one person after their ID and kit checks.
         </p>
 
+        {status && <p className="portal-status" role="status">{status}</p>}
         {error && <p className="portal-auth__error">{error}</p>}
 
         {scanning ? (
@@ -179,7 +187,7 @@ function RegiDeskHome({ session }) {
             <form className="portal-manualLookup" onSubmit={lookUpManually}>
               <span className="portal-manualLookup__label">Camera not working? Look up by team code:</span>
               <div className="portal-manualLookup__row">
-                <input value={manualCode} onChange={(e) => setManualCode(e.target.value)} placeholder="e.g. T07" />
+                <input value={manualCode} onChange={(e) => setManualCode(e.target.value)} placeholder="e.g. ELEV07" />
                 <button type="submit" className="portal-logout" disabled={manualBusy || !manualCode.trim()}>
                   {manualBusy ? "Looking up…" : "Look up"}
                 </button>
@@ -199,13 +207,20 @@ function RegiDeskHome({ session }) {
                   {result.team.username ? <span> · <code>{result.team.username}</code></span> : null}
                 </div>
               </div>
-              <ul className="portal-regiList portal-u-mt">
-                {result.members.map((m) => (
-                  <MemberRow key={m.id} member={m} teamId={result.team.id} onSaved={onMemberSaved} />
-                ))}
-              </ul>
+              <p className="portal-status">{result.progress.registered} of {result.progress.total} registered</p>
+              {result.progress.registered < result.progress.total ? <>
+                <label className="portal-field portal-u-mt"><span>Participant for this scan</span>
+                  <select value={selectedMember || ""} onChange={event => setSelectedMember(Number(event.target.value))}>
+                    {result.members.filter(member => !member.registered).map(member => <option key={member.id} value={member.id}>{member.name}{member.foodPreference ? ` · ${member.foodPreference}` : ""}</option>)}
+                  </select>
+                </label>
+                <ul className="portal-regiList portal-u-mt">
+                  {result.members.filter(member => member.id === selectedMember).map(member =>
+                    <MemberRow key={member.id} member={member} teamId={result.team.id} scanProof={result.scanProof} onSaved={onMemberSaved} />)}
+                </ul>
+              </> : <p className="portal-card__hint">Whole team registered. No more registration scans are needed.</p>}
               <button type="button" className="portal-logout portal-u-mt" onClick={reset}>
-                Done / scan next team
+                Scan next participant / team
               </button>
             </div>
           )

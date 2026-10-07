@@ -1,3 +1,4 @@
+import { saveRoster } from "./_lib/roster.js";
 import bcrypt from "bcryptjs";
 import crypto from "node:crypto";
 import { sql } from "./_lib/db.js";
@@ -570,19 +571,15 @@ async function saveTeamMembers(req, res) {
     return;
   }
 
-  await sql`delete from team_members where team_id = ${teamId}`;
-  for (let i = 0; i < names.length; i += 1) {
-    await sql`
-      insert into team_members (team_id, name, is_lead, sort_order)
-      values (${teamId}, ${names[i]}, ${i === 0}, ${i + 1})
-    `;
-  }
+  try { await saveRoster(sql, teamId, names); }
+  catch (error) { if (error.code !== "ROSTER_CONFLICT") throw error; return res.status(409).json({ error: error.message }); }
 
   await logAction(req.session.accountId, "roster.save", { teamId });
   res.status(200).json({ ok: true });
 }
 
 function generateTeamUsername(displayName, teamCode) {
+  if (/^ELEV\d{2,4}$/i.test(teamCode || "")) return teamCode.toUpperCase();
   const base = (displayName || teamCode || "team")
     .toLowerCase()
     .replace(/\s+/g, "")
@@ -652,6 +649,7 @@ async function createTeam(req, res) {
     return;
   }
   const cleanCode = teamCode.trim().toUpperCase();
+  if (!/^ELEV(?:0[1-9]|[1-9]\d{1,3})$/.test(cleanCode)) return res.status(400).json({ error: "Use an issued team code such as ELEV01" });
   const existingTeam = await sql`select id from teams where upper(team_code) = upper(${cleanCode})`;
   if (existingTeam[0]) {
     res.status(409).json({ error: `Team code ${cleanCode} already exists` });
@@ -660,10 +658,13 @@ async function createTeam(req, res) {
 
   const cleanName = displayName?.trim() || `Team ${cleanCode}`;
   let username = generateTeamUsername(cleanName, cleanCode);
-  let existingAccount = await sql`select id from accounts where username = ${username}`;
+  let existingAccount = await sql`select id from accounts where lower(username) = lower(${username})`;
+  if (existingAccount[0] && /^ELEV\d{2,4}$/i.test(cleanCode)) {
+    res.status(409).json({ error: "That ELEV login already exists" }); return;
+  }
   while (existingAccount[0]) {
     username = generateTeamUsername(cleanName, cleanCode);
-    existingAccount = await sql`select id from accounts where username = ${username}`;
+    existingAccount = await sql`select id from accounts where lower(username) = lower(${username})`;
   }
 
   const password = randomPassword();
@@ -783,12 +784,16 @@ async function bulkImport(req, res) {
     if (!team) {
       // Create team on the fly if it doesn't exist
       const cleanCode = teamCode.toUpperCase();
+      if (!/^ELEV(?:0[1-9]|[1-9]\d{1,3})$/.test(cleanCode)) { results.push({teamCode,ok:false,error:"New team codes must use ELEV01, ELEV02, etc."}); continue; }
       const displayName = teamName?.trim() || `Team ${cleanCode}`;
       let username = generateTeamUsername(displayName, cleanCode);
-      let existingAccount = await sql`select id from accounts where username = ${username}`;
+      let existingAccount = await sql`select id from accounts where lower(username) = lower(${username})`;
+      if (existingAccount[0] && /^ELEV\d{2,4}$/i.test(cleanCode)) {
+        results.push({teamCode,ok:false,error:"That ELEV login already exists"}); continue;
+      }
       while (existingAccount[0]) {
         username = generateTeamUsername(displayName, cleanCode);
-        existingAccount = await sql`select id from accounts where username = ${username}`;
+        existingAccount = await sql`select id from accounts where lower(username) = lower(${username})`;
       }
 
       const password = randomPassword();
@@ -809,18 +814,11 @@ async function bulkImport(req, res) {
       `;
       team = { id: newTeamRows[0].id, account_id: accountId, username, display_name: displayName };
       createdCredentials = { username, password };
-    } else if (teamName && teamName.trim()) {
-      const cleanDisplayName = teamName.trim();
-      await sql`update accounts set display_name = ${cleanDisplayName} where id = ${team.account_id}`;
     }
 
-    await sql`delete from team_members where team_id = ${team.id}`;
-    for (let i = 0; i < cleanNames.length; i += 1) {
-      await sql`
-        insert into team_members (team_id, name, is_lead, sort_order)
-        values (${team.id}, ${cleanNames[i]}, ${i === 0}, ${i + 1})
-      `;
-    }
+    try { await saveRoster(sql, team.id, cleanNames); }
+    catch (error) { if (error.code !== "ROSTER_CONFLICT") throw error; results.push({ teamCode, ok: false, error: error.message }); continue; }
+    if (teamName?.trim()) await sql`update accounts set display_name=${teamName.trim()} where id=${team.account_id}`;
     results.push({ teamCode, ok: true, ...(createdCredentials || {}) });
   }
 

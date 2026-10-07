@@ -1,6 +1,7 @@
 // Adds missing demo accounts. Existing passwords, teams, rosters and event
 // history are preserved. Optional: --credentials-file /private/accounts.json
 import { neon } from "@neondatabase/serverless";
+import { teamCode, issuedTeamNumber } from "../shared/team-code.js";
 import bcrypt from "bcryptjs";
 import crypto from "node:crypto";
 import fs from "node:fs";
@@ -20,7 +21,7 @@ if (args.length && (args.length !== 2 || args[0] !== "--credentials-file")) {
 const supplied = args.length ? JSON.parse(fs.readFileSync(path.resolve(args[1]), "utf8")) : null;
 const candidates = supplied || Object.entries(counts).flatMap(([role, count]) =>
   Array.from({ length: count }, (_, i) => ({
-    role, username: `${role}${String(i + 1).padStart(2, "0")}`,
+    role, username: role === "team" ? teamCode(i + 1) : `${role}${String(i + 1).padStart(2, "0")}`,
     password: crypto.randomBytes(12).toString("base64url"), label: `${labels[role]} ${i + 1}`,
   }))
 );
@@ -28,16 +29,16 @@ if (!Array.isArray(candidates) || !candidates.length) throw new Error("A nonempt
 const usernames = new Set();
 for (const account of candidates) {
   if (!Object.hasOwn(counts, account.role) || typeof account.username !== "string" ||
-      !/^[a-z0-9_]{1,80}$/.test(account.username) || typeof account.password !== "string" ||
+      !/^[a-zA-Z0-9_]{1,80}$/.test(account.username) || typeof account.password !== "string" ||
       account.password.length < 8 || typeof account.label !== "string" || !account.label.trim() ||
       usernames.has(account.username)) throw new Error("Invalid or duplicate account in seed input.");
-  if (account.role === "team" && !/^team\d{2}$/.test(account.username)) {
-    throw new Error("Team seed usernames must use team01, team02, etc.");
+  if (account.role === "team" && !/^(?:team|ELEV)\d{2,4}$/i.test(account.username)) {
+    throw new Error("Team seed usernames must use ELEV01, ELEV02, etc. Legacy team01 inputs are accepted.");
   }
   usernames.add(account.username);
 }
-const existing = new Set((await sql`select username from accounts`).map((a) => a.username));
-const missing = candidates.filter((a) => !existing.has(a.username));
+const existing = new Set((await sql`select username from accounts`).flatMap((a) => [a.username.toLowerCase(), ...(issuedTeamNumber(a.username) ? [teamCode(issuedTeamNumber(a.username)).toLowerCase(), `team${String(issuedTeamNumber(a.username)).padStart(2, "0")}`] : [])]));
+const missing = candidates.filter((a) => !existing.has(a.username.toLowerCase()));
 if (missing.length) {
   const output = path.join(directory, "credentials.generated.json");
   const previous = fs.existsSync(output) ? JSON.parse(fs.readFileSync(output, "utf8")) : [];
@@ -54,10 +55,10 @@ for (const account of missing) {
     values (${account.username}, ${hash}, ${account.role}, ${account.label})
   `];
   if (account.role === "team") {
-    const number = Number(account.username.slice(4));
+    const number = issuedTeamNumber(account.username);
     statements.push(sql`
       insert into teams (account_id, team_code, seat_no, qr_token)
-      select id, ${`T${number}`}, ${number}, ${crypto.randomBytes(16).toString("hex")}
+      select id, ${teamCode(number)}, ${number}, ${crypto.randomBytes(16).toString("hex")}
       from accounts where username = ${account.username}
     `);
     for (let member = 1; member <= 4; member += 1) {

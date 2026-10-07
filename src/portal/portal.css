@@ -440,67 +440,34 @@
   white-space: nowrap;
 }
 
-/* A labelled logo panel: each sponsor gets a real, readable cell. */
+/* Sponsor wall: equal readable tiles, with identity and partner role. */
 .ticket__sponsors {
-  display: flex;
-  flex-direction: column;
-  align-items: stretch;
-  gap: 10px;
-  flex: none;
-  padding: 12px 16px;
-  border-radius: 10px;
-  background: rgba(201, 168, 106, 0.1);
+  padding: 14px;
+  border: 1px solid #e4dccb;
+  border-radius: 12px;
+  background: #f7f5ef;
 }
-.ticket__sponsorsLabel {
-  color: #69758c;
-  font-size: 11px;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: .1em;
+.ticket__sponsorsHead { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 12px; }
+.ticket__sponsorsLabel { color: #766345; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .14em; }
+.ticket__sponsorsCount { color: #8890a0; font-size: 9px; }
+.ticket__sponsorLogos { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; list-style: none; margin: 0; padding: 0; }
+.ticket__sponsorLogos li { min-width: 0; display: flex; }
+.ticket__sponsorTile {
+  width: 100%; min-width: 0; display: flex; flex-direction: column; align-items: center;
+  justify-content: center; gap: 7px; padding: 10px 7px; border: 1px solid #e9e5dc;
+  border-radius: 7px; background: #fff; color: #17233d; text-decoration: none;
+  transition: border-color .2s, box-shadow .2s;
 }
-.ticket__sponsorLogos {
-  display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
-  gap: 12px 16px;
-  list-style: none;
-  margin: 0;
-  padding: 0;
-}
-.ticket__sponsorLogos li {
-  min-width: 0;
-  height: 30px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-.ticket__sponsorLogos img {
-  display: block;
-  max-width: 100%;
-  width: auto;
-  height: auto;
-  max-height: 30px;
-  object-fit: contain;
-}
-.ticket__sponsorLockup {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 4px;
-  max-width: 100%;
-  color: #17233d;
-  text-decoration: none;
-  font-size: 9px;
-  font-weight: 700;
-  white-space: nowrap;
-}
-.ticket__sponsorLockup img { max-height: 24px; max-width: 40%; }
-.ticket__sponsorName--arina {
-  font-family: "Bodoni 72", Didot, "Times New Roman", Georgia, serif;
-  font-size: 11px;
-  font-style: italic;
-  font-weight: 500;
-  letter-spacing: .04em;
-}
+.ticket__sponsorLogos li:nth-child(-n+2) .ticket__sponsorTile { border-color: #d2ba8d; background: #fffdfa; }
+a.ticket__sponsorTile:hover, a.ticket__sponsorTile:focus-visible { border-color: #b38c46; box-shadow: 0 2px 9px #9c7a2820; }
+.ticket__sponsorArtwork { min-width: 0; width: 100%; height: 36px; display: flex; align-items: center; justify-content: center; gap: 5px; font-size: clamp(9px, 2.4cqi, 12px); font-weight: 700; }
+.ticket__sponsorArtwork img { display: block; width: auto; height: auto; max-width: 100%; max-height: 36px; object-fit: contain; }
+.ticket__sponsorTile--lockup .ticket__sponsorArtwork img { max-width: 24%; max-height: 30px; flex-shrink: 1; }
+.ticket__sponsorName--arina { font-family: "Bodoni 72", Didot, "Times New Roman", Georgia, serif; font-size: clamp(10px, 2.5cqi, 13px); font-style: italic; font-weight: 500; letter-spacing: .025em; white-space: nowrap; }
+.ticket__sponsorRole { display: flex; align-items: center; justify-content: center; min-height: 24px; color: #6d7482; font-size: 8px; line-height: 1.35; text-align: center; }
+.ticket__foodBadge { display: inline-block; margin-left: 6px; padding: 2px 6px; border-radius: 5px; color: #286745; background: #eaf4ec; font-size: 10px; font-weight: 600; }
+.ticket__foodBadge--jain { color: #7a5420; background: #fbefd9; }
+@container participant-ticket (max-width: 560px) { .ticket__sponsorLogos { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
 
 .ticket__passengers {
   border-top: 1px solid #eef0f4;
@@ -620,7 +587,7 @@
   .ticket__rows dt { font-size: 12px; }
   .ticket__rows dd { font-size: 18px; }
   .ticket__sponsors { grid-row: 4; padding: 14px; }
-  .ticket__sponsorLogos { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px 12px; }
+  .ticket__sponsorLogos { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
   .ticket__passengers { grid-row: 5; padding-top: 16px; }
   .ticket__passengersLabel { font-size: 11px; }
   .ticket__passengers ul { gap: 10px 16px; }
@@ -2247,3 +2214,48 @@ pre.submission-viewer__document { white-space: pre-wrap; }
 }
 .submission-clock__half--top { background: linear-gradient(135deg, #ffffff0e, #ffffff02), #211a2bd9; }
 .submission-clock__half--bottom { background: linear-gradient(135deg, #ffffff06, #ffffff01), #15111dd9; }
+
+/* Meal history */
+.meal-history__slots { list-style: none; margin: 16px 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px; }
+.meal-history__slots button { width: 100%; min-height: 80px; display: flex; flex-direction: column; align-items: flex-start; gap: 8px; padding: 14px; border: 1px solid #ffffff20; border-radius: 10px; background: #ffffff05; color: inherit; font: inherit; font-size: 12px; text-align: left; cursor: pointer; }
+.meal-history__slots button[aria-pressed="true"] { border-color: var(--gold); background: #c9a86a16; }
+.meal-history__slots strong { font-size: 24px; color: var(--gold); }
+.meal-history__head { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; flex-wrap: wrap; }
+.meal-history__head h4 { margin: 0; }
+.meal-history__head small { color: #aaa; }
+.meal-history__teams { display: grid; gap: 12px; margin-top: 16px; }
+.meal-history__team { border: 1px solid #ffffff18; border-radius: 10px; padding: 14px; }
+.meal-history__team h5 { font-size: 15px; margin: 0 0 12px; }
+.meal-history__team ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.meal-history__team li { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; font-size: 13px; }
+.meal-history__team time { font-size: 11px; color: #aaa; }
+.meal-diet { display: inline-flex; margin-left: 8px; padding: 3px 7px; border-radius: 5px; font-size: 11px; color: #a5dfb9; background: #35845b26; }
+.meal-diet--jain { color: #e2c18b; background: #c9a86a22; }
+
+/* A modal top layer blocks the underlying portal until the receipt closes. */
+.meal-celebration { position: fixed; inset: 0; width: 100vw; height: 100dvh; max-width: none; max-height: none; margin: 0; padding: 0; border: 0; overflow: hidden; color: #fff; background: #060708; }
+.meal-celebration[open] { display: grid; place-items: center; }
+.meal-celebration::backdrop { background: #000; }
+.meal-celebration__message { position: relative; z-index: 2; text-align: center; padding: 24px; max-width: 700px; animation: meal-message 1.2s both .8s; }
+.meal-celebration__message h2 { margin: 18px 0; color: #e6c78a; font-family: var(--font-body); font-size: clamp(32px, 7vw, 64px); letter-spacing: -.025em; line-height: 1.1; }
+.meal-celebration__eyebrow { color: #aaa397; text-transform: uppercase; letter-spacing: .13em; font-size: 11px; }
+.meal-celebration__message p { margin: 10px 0; font-size: 17px; }
+.meal-celebration__names { color: #bcb7b1; font-size: 13px !important; line-height: 1.6; }
+.meal-celebration__countdown { display: inline-block; margin-top: 28px; font-size: 11px; color: #7c7973; }
+.meal-celebration__flight { position: absolute; z-index: 3; top: 5vh; left: 0; width: clamp(200px, 33vw, 500px); aspect-ratio: 1; animation: meal-flight 3.4s cubic-bezier(.4,.05,.25,1) both; pointer-events: none; }
+.meal-celebration__jet { width: 100%; height: 100%; transform: rotate(90deg); }
+.meal-celebration__jet .jx-jet-art { position: static; width: 100%; height: 100%; object-fit: contain; }
+.meal-celebration__food { position: absolute; inset: 0; pointer-events: none; }
+.meal-celebration__food span { position: absolute; left: calc(3% + var(--i) * 12%); top: calc(10% + var(--i) * 9%); opacity: .13; font-size: clamp(30px, 5vw, 64px); animation: meal-food 5s ease-in-out infinite alternate; animation-delay: calc(var(--i) * -.5s); }
+.meal-celebration__food span:nth-child(even) { animation-direction: alternate-reverse; }
+.meal-celebration__confetti { position: absolute; top: 75%; width: 20%; height: 1px; pointer-events: none; }
+.meal-celebration__confetti--left { left: 0; }
+.meal-celebration__confetti--right { right: 0; transform: scaleX(-1); }
+.meal-celebration__confetti i { position: absolute; left: calc(var(--i) * 4%); width: 6px; height: 12px; background: #d9b874; animation: meal-confetti 3s ease-out 3; animation-delay: calc(var(--i) * .08s); opacity: 0; }
+.meal-celebration__confetti i:nth-child(3n) { background: #7cb8cc; }
+.meal-celebration__confetti i:nth-child(3n+1) { background: #ece4cf; }
+@keyframes meal-flight { 0% { transform: translate(-110%, 13vh) rotate(-8deg); } 40% { transform: translate(35vw, 0) rotate(-6deg); } 70% { transform: translate(72vw, 8vh) rotate(9deg); } 100% { transform: translate(125vw, -10vh) rotate(-10deg); } }
+@keyframes meal-message { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: none; } }
+@keyframes meal-food { from { transform: translateY(-30px) rotate(-7deg); } to { transform: translateY(30px) rotate(7deg); } }
+@keyframes meal-confetti { 0% { opacity: 0; transform: translate(0, 0) rotate(0); } 15% { opacity: .9; } 100% { opacity: 0; transform: translate(12vw, -65vh) rotate(540deg); } }
+@media (prefers-reduced-motion: reduce) { .meal-celebration * { animation: none !important; } .meal-celebration__flight { display: none; } }

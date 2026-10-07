@@ -1,0 +1,103 @@
+// Disposable local PostgreSQL integration verification. Never loads .env.
+import assert from "node:assert/strict";
+import fs from "node:fs/promises";
+import os from "node:os";
+import path from "node:path";
+import crypto from "node:crypto";
+import { execFile } from "node:child_process";
+import { promisify } from "node:util";
+const exec = promisify(execFile);
+process.env.DATABASE_URL = "postgresql://fixture:fixture@localhost/elevate_fixture";
+process.env.SESSION_SECRET = crypto.randomBytes(48).toString("hex");
+const { createMealHandler } = await import("../api/meal.js");
+const { createRegistrationHandler } = await import("../api/regidesk.js");
+const folder = await fs.mkdtemp(path.join(os.tmpdir(), "elevate-meals-pg-"));
+const data = path.join(folder,"data"), port = "55449";
+const params = ["-h",folder,"-p",port,"-d","postgres","-v","ON_ERROR_STOP=1","-q"];
+const literal = value => value == null ? "null" : Array.isArray(value) ? `'${JSON.stringify(value).replaceAll("[","{").replaceAll("]","}")}'` : typeof value === "boolean" ? String(value) : typeof value === "number" ? String(value) : `'${String(value).replaceAll("'","''")}'`;
+function csv(text) {
+  const rows=[];let row=[],field="",quoted=false;
+  for(let i=0;i<text.length;i++) {
+    const c=text[i];
+    if(c==='"') { if(quoted && text[i+1]==='"'){field+='"';i++;} else quoted=!quoted; }
+    else if(!quoted && c===','){row.push(field);field="";}
+    else if(!quoted && c==='\n'){row.push(field);rows.push(row);row=[];field="";}
+    else field+=c;
+  }
+  if(field||row.length){row.push(field);rows.push(row);}
+  const headers=rows.shift()||[];
+  return rows.filter(r=>r.length===headers.length).map(values=>Object.fromEntries(headers.map((key,i)=> {
+    const v=values[i]; return [key, v==="" ? null : v==="t" ? true : v==="f" ? false : /^\d+$/.test(v) ? Number(v) : /^[[{]/.test(v) ? JSON.parse(v) : v];
+  })));
+}
+async function sql(strings,...values) {
+  const query=strings.reduce((text,piece,index)=>text+piece+(index<values.length?literal(values[index]):""),"");
+  const result=await exec("psql",[...params,"--csv","-c",query]);return csv(result.stdout);
+}
+const meal=createMealHandler({sql,logAction:async()=>{},createIncident:async()=>{}});
+const registration=createRegistrationHandler({sql,logAction:async()=>{},createIncident:async()=>{}});
+async function call(handler,body,{role="meal",accountId=3,teamId,url="/api/meal",method="POST"}={}) {
+  const res={code:200,status(code){this.code=code;return this;},json(body){this.body=body;return this;}};
+  await handler({body,method,url,session:{role,accountId,teamId}},res);return res;
+}
+let started=false;
+try {
+  await exec("initdb",["-D",data,"-A","trust","--no-locale","-E","UTF8"]);
+  await exec("pg_ctl",["-D",data,"-l",path.join(folder,"postgres.log"),"-o",`-F -k ${folder} -c listen_addresses='' -p ${port}`,"-w","start"]);started=true;
+  await exec("psql",[...params,"-f",path.resolve("db/schema.sql")]);
+  await exec("psql",[...params,"-f",path.resolve("db/participant-details.sql")]);
+  await sql`insert into accounts (id,username,password_hash,role,display_name) values
+    (1,'fixture_team_a','unused','team','Fixture Four'),(2,'fixture_team_b','unused','team','Fixture Two'),
+    (3,'fixture_meal_a','unused','meal','Counter A'),(4,'fixture_meal_b','unused','meal','Counter B'),
+    (5,'fixture_registration','unused','regidesk','Desk A'),(6,'fixture_team_c','unused','team','Fixture Three')`;
+  await sql`insert into teams (id,account_id,team_code,seat_no,qr_token,shortlisted) values
+    (1,1,'T1',1,${'a'.repeat(32)},true),(2,2,'T2',2,${'b'.repeat(32)},true),(3,6,'T3',3,${'c'.repeat(32)},true)`;
+  await sql`insert into team_members (id,team_id,name,is_lead,sort_order,food_preference) values
+    (1,1,'Ada',true,1,'Veg'),(2,1,'Bea',false,2,'Jain'),(3,1,'Chen',false,3,'Veg'),(4,1,'Dev',false,4,'Veg'),
+    (5,2,'Eli',true,1,'Veg'),(6,2,'Flo',false,2,'Veg'),(7,3,'Gio',true,1,'Veg'),(8,3,'Hari',false,2,'Veg'),(9,3,'Ira',false,3,'Veg')`;
+  assert.equal((await call(meal,{qrPayload:'ELEVATE1:'+ 'a'.repeat(32),mealSlotCode:'d1_breakfast'})).code,403);
+  for(const [teamId,token,ids] of [[1,'a',[1,2,3,4]],[2,'b',[5,6]],[3,'c',[7,8,9]]]) {
+    for(let index=0;index<ids.length;index++) {
+      const lookup=await call(registration,{qrPayload:'ELEVATE1:'+token.repeat(32)},{role:'regidesk',accountId:5});
+      assert.equal(lookup.body.progress.registered,index);
+      const body={action:'save',teamId,memberId:ids[index],govtIdChecked:true,scanProof:lookup.body.scanProof};
+      const result=await call(registration,body,{role:'regidesk',accountId:5});
+      assert.equal(result.code,200);assert.equal(result.body.progress.registered,index+1);assert.equal(result.body.progress.total,ids.length);
+      assert.equal((await call(registration,body,{role:"regidesk",accountId:5})).code,409);
+      if(index===0 && ids.length>1) assert.equal((await call(registration,{...body,memberId:ids[1]},{role:'regidesk',accountId:5})).code,409);
+    }
+  }
+  const lookup=async(accountId=3,slot='d1_breakfast')=>(await call(meal,{qrPayload:'ELEVATE1:'+'a'.repeat(32),mealSlotCode:slot},{accountId})).body;
+  let scan=await lookup();assert.equal(scan.members[1].foodPreference,'Jain');
+  assert.equal((await call(meal,{action:'log',teamId:1,mealSlotCode:'d1_breakfast',memberIds:[1,2],scanProof:scan.scanProof})).code,400);
+  const body={action:'log',teamId:1,mealSlotCode:'d1_breakfast',memberIds:[1],scanProof:scan.scanProof};
+  assert.equal((await call(meal,body)).body.logged,1);
+  assert.equal((await sql`select count(*)::int as n from meal_logs`)[0].n,1);
+  assert.equal((await call(meal,body)).code,409);
+  assert.equal((await call(meal,{...body,memberIds:[2]})).code,409);
+  scan=await lookup();assert.equal(scan.progress.served,1);
+  assert.equal((await call(meal,{...body,memberIds:[2],scanProof:scan.scanProof})).body.logged,1);
+  const [scanA,scanB]=await Promise.all([lookup(3),lookup(4)]);
+  const concurrent=await Promise.all([call(meal,{...body,memberIds:[3],scanProof:scanA.scanProof},{accountId:3}),call(meal,{...body,memberIds:[3],scanProof:scanB.scanProof},{accountId:4})]);
+  assert.equal(concurrent.reduce((total,r)=>total+r.body.logged,0),1);
+  assert.equal((await sql`select count(*)::int as n from meal_logs where member_id=3`)[0].n,1);
+  const receipt=await call(meal,null,{role:'team',teamId:1,method:'GET',url:'/api/meal?receipt=1'});assert.equal(receipt.body.meals.length,0);
+  scan=await lookup();assert.equal((await call(meal,{...body,memberIds:[4],scanProof:scan.scanProof})).body.logged,1);
+  const incoming=await call(meal,null,{role:'team',teamId:1,method:'GET',url:`/api/meal?receipt=1&after=${receipt.body.latestId}`});assert.equal(incoming.body.meals.length,1);assert.equal(incoming.body.meals[0].name,'Dev');
+  const other=await call(meal,null,{role:'team',teamId:2,method:'GET',url:'/api/meal?receipt=1&after=0'});assert.equal(other.body.meals.length,0);
+  assert.equal((await call(meal,null,{role:'team',teamId:1,method:'GET',url:'/api/meal?slotCode=d1_breakfast'})).code,403);
+  assert.equal((await call(meal,body,{role:'team',teamId:1})).code,403);
+  const breakfast=await call(meal,null,{method:'GET',url:'/api/meal?slotCode=d1_breakfast'});assert.equal(breakfast.body.served,4);assert.equal(breakfast.body.teams[0].members.length,4);
+  const lunchScan=await lookup(3,'d1_lunch');
+  assert.equal((await call(meal,{...body,mealSlotCode:'d1_lunch',scanProof:lunchScan.scanProof})).body.logged,1);
+  const lunch=await call(meal,null,{method:'GET',url:'/api/meal?slotCode=d1_lunch'});assert.equal(lunch.body.served,1);
+  assert.equal((await call(meal,{qrPayload:'https://unrelated.example',mealSlotCode:'d1_breakfast'})).code,400);
+  assert.equal((await call(meal,{...body,memberIds:[99],scanProof:(await lookup()).scanProof})).code,409);
+  assert.equal((await call(meal,{...body,mealSlotCode:'d1_lunch',scanProof:(await lookup()).scanProof})).code,409);
+  const withdrawnScan=await lookup(3,'d1_dinner');await sql`update teams set withdrawn=true where id=1`;
+  assert.equal((await call(meal,{...body,mealSlotCode:'d1_dinner',scanProof:withdrawnScan.scanProof})).code,409);
+  console.log('PASS: 2/3/4-person repeated team QR registration; single-use proofs; atomic meal writes; concurrent counters; immediate database reads; food preferences; slot history; private participant receipts; invalid QR/ownership/slot/withdrawal checks.');
+} finally {
+  if(started) await exec('pg_ctl',['-D',data,'-m','fast','-w','stop']);
+  await fs.rm(folder,{recursive:true,force:true});
+}

@@ -25,14 +25,16 @@ supported by the current connection module.
 5. Run `npm run dev -- --host 127.0.0.1 --port 5173 --strictPort` and visit
    http://127.0.0.1:5173/portal/login. Vite serves both the frontend and API.
 
-Default demo usernames are `team01`–`team35`, `core01`–`core05`,
+Default demo usernames are `ELEV01`–`ELEV35`, `core01`–`core05`,
 `admin01`–`admin02`, `meal01`–`meal03`, and `regidesk01`–`regidesk03`.
 Passwords are individually assigned; the API stores only bcrypt hashes.
 Super-admin uses the separate `superadmin` identity. Its creation/reset script
 requires `SUPERADMIN_PASSWORD` and must only run when that reset is intended.
 
 The role buttons on the login form are guidance. The server determines the
-role from the matching account, then returns its dashboard. Team renaming
+role from the matching account, then returns its dashboard. Login is case insensitive.
+Existing team accounts use the reviewed `db/team-identities.mjs` migration to
+change both username and displayed code without changing passwords or QR tokens. Team renaming
 preserves issued usernames so distributed credentials continue to work.
 
 ### Participant document submissions

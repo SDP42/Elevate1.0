@@ -627,7 +627,7 @@ function CreateTeamModal({ onCreated, onClose }) {
                 <input
                   value={teamCode}
                   onChange={(e) => setTeamCode(e.target.value)}
-                  placeholder="e.g. T36"
+                  placeholder="e.g. ELEV36"
                   required
                 />
               </label>
@@ -1244,7 +1244,7 @@ function BulkImport({ onDone }) {
           rows={6}
           value={csvText}
           onChange={(e) => setCsvText(e.target.value)}
-          placeholder={"T1,CyberKnights,Asha Rao,Vikram Shah,Dev Patel\nT2,AlphaCoders,John Doe,Jane Doe\n..."}
+          placeholder={"ELEV01,CyberKnights,Asha Rao,Vikram Shah,Dev Patel\nELEV02,AlphaCoders,John Doe,Jane Doe\n..."}
           className="portal-bulkTextarea"
         />
         <button className="portal-auth__submit" type="submit" disabled={busy || !csvText.trim()}>

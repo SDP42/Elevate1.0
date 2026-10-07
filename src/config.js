@@ -63,17 +63,17 @@ export const CONTACTS = [
 // sponsors — shown on the back of the boarding pass, one row of tiles
 export const SPONSORS = [
   {
+    role: "Education Partner",
+    name: "Fateh",
+    url: null,
+    logo: "/fateh-logo.webp",
+  },
+  {
     role: "Official AI Technology Partner",
     name: "ARINA AI",
     url: "https://arina.ai/",
     logo: "/arina-ai-logo.png",
     showName: true,
-  },
-  {
-    role: "Education Partner",
-    name: "Fateh",
-    url: null,
-    logo: "/fateh-logo.webp",
   },
   {
     role: "Learning Partner",
