@@ -174,7 +174,7 @@ export default function Shortlisted() {
           Shortlisted teams
         </h2>
         <p className="sl__lead">
-          Thirty teams earned a seat on the flight to campus for the 24-hour finale on 10 and 11
+          {SHORTLISTED.length} teams earned a seat on the flight to campus for the 24-hour finale on 10 and 11
           October. Scroll down to meet them.
         </p>
         <div className="sl__chips">

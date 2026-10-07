@@ -157,7 +157,7 @@ const TrophyIcon = () => (
    behind a perforated notch, a route down the middle, a dark stub on the
    right — now floating over the same painted cloud sea as that section,
    not just a flat dark page, with the same sponsor strip for every team. */
-function Ticket({ team, rosterLocked }) {
+function Ticket({ team, teamName, rosterLocked }) {
   const [qrUrl, setQrUrl] = useState("");
   const cloudUrl = useHeroCloud();
 
@@ -230,7 +230,7 @@ function Ticket({ team, rosterLocked }) {
             <dl className="ticket__rows">
               <div>
                 <dt>Team</dt>
-                <dd>{team.team_code}</dd>
+                <dd>{team.team_code}<span className="ticket__teamName">{teamName}</span></dd>
               </div>
               <div>
                 <dt>Seat</dt>
@@ -617,6 +617,7 @@ function TeamHome({ session }) {
 
       {session.team && (
         <Ticket
+          teamName={session.displayName}
           team={session.team}
           rosterLocked={psData?.selectionStatus === "approved"}
         />

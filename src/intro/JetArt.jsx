@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
    same proportions as the reference render: nose at 6.8% of the plate,
    tail at 98%, wingtips at 9% / 92% across and 69.5% down, engines between
    63% and 76%. The photo plate is rasterised once, like the cabin plates;
-   the blueprint stays live so its thirty seats can be animated one by one. */
+   the blueprint stays live so its 32 seats can be animated one by one. */
 
 export const JET_W = 2160;
 export const JET_H = 2400;
@@ -254,14 +254,14 @@ export function JetPhoto() {
 }
 
 /* Cabin plan: a wider outline than the painted fuselage (as the reference
-   blueprint is) with fifteen rows of single seats either side of the aisle. */
-export const SEAT_ROWS = 15;
+   blueprint is) with sixteen rows of single seats either side of the aisle. */
+export const SEAT_ROWS = 16;
 const BP = { l: C - 148, r: C + 148, top: 500, bottom: 2080 };
 
 export function JetBlueprint() {
   const seats = [];
   for (let row = 0; row < SEAT_ROWS; row++) {
-    const y = 600 + row * 94;
+    const y = 600 + row * 88;
     [BP.l + 20, BP.r - 20 - 104].forEach((x, side) => {
       const n = row * 2 + side + 1;
       seats.push(
