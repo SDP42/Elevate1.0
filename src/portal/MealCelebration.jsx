@@ -49,7 +49,7 @@ export function MealCelebration({ meal, onDone }) {
 export default function ParticipantMealNotice() {
   const [queue, setQueue] = useState([]);
   useEffect(() => {
-    let live = true, cursor = null, busy = false;
+    let live = true, cursor = null, busy = false, timer, activeUntil=0;
     async function refresh() {
       if (busy || document.hidden) return;
       busy = true;
@@ -64,14 +64,14 @@ export default function ParticipantMealNotice() {
           if (!groups.has(entry.slotCode)) groups.set(entry.slotCode, { key: entry.id, slotLabel: entry.slotLabel, names: [] });
           groups.get(entry.slotCode).names.push(entry.name);
         }
-        if (groups.size) setQueue(previous => [...previous, ...groups.values()]);
+        if (groups.size) { activeUntil=Date.now()+30000; setQueue(previous => [...previous, ...groups.values()]); }
       } catch { /* transient polling failures retry on the next refresh */ }
-      finally { busy = false; }
+      finally { busy = false; if(live)timer=setTimeout(refresh,Date.now()<activeUntil?3000:10000); }
     }
+    const visible=()=>{if(!document.hidden){clearTimeout(timer);refresh();}};
     refresh();
-    const timer = setInterval(refresh, 3000);
-    document.addEventListener("visibilitychange", refresh);
-    return () => { live = false; clearInterval(timer); document.removeEventListener("visibilitychange", refresh); };
+    document.addEventListener("visibilitychange", visible);
+    return () => { live = false; clearTimeout(timer); document.removeEventListener("visibilitychange", visible); };
   }, []);
   return queue.length ? <MealCelebration key={queue[0].key} meal={queue[0]} onDone={() => setQueue(previous => previous.slice(1))} /> : null;
 }

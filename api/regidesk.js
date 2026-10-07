@@ -1,3 +1,4 @@
+import { staffRevision, teamDirectory } from "./_lib/staff-sync.js";
 import { sql as defaultSql } from "./_lib/db.js";
 import { requireRole } from "./_lib/auth.js";
 import { logAction as defaultLogAction } from "./_lib/audit.js";
@@ -15,6 +16,11 @@ import { parseQrToken } from "../shared/meal.js";
    (the default) is the lookup. */
 export function createRegistrationHandler({ sql = defaultSql, logAction = defaultLogAction, createIncident = defaultCreateIncident } = {}) {
 async function handler(req, res) {
+  if (req.method === "GET") {
+    const revision=await staffRevision(sql,req,res);
+    if(revision === null)return;
+    return res.status(200).json({revision,directory:await teamDirectory(sql),updatedAt:new Date().toISOString()});
+  }
   if (req.method !== "POST") {
     res.status(405).json({ error: "Method not allowed" });
     return;

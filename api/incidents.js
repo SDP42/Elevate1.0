@@ -64,7 +64,7 @@ async function list(req, res) {
    teamId they're looking at (e.g. a meal counter flagging a guest). */
 async function raise(req, res) {
   const { type, message } = req.body || {};
-  const allowedTypes = ["sos", "low_stock", "guest", "late_arrival", "other"];
+  const allowedTypes = ["sos", "guest", "late_arrival", "other"];
   if (!type || !allowedTypes.includes(type) || !message || !message.trim()) {
     res.status(400).json({ error: "A valid type and message are required" });
     return;

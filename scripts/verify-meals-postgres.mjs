@@ -75,6 +75,12 @@ try {
   assert.equal((await sql`select count(*)::int as n from meal_logs`)[0].n,1);
   assert.equal((await call(meal,body)).code,409);
   assert.equal((await call(meal,{...body,memberIds:[2]})).code,409);
+  const partial = await call(meal,null,{method:'GET',url:'/api/meal?resource=staff&slotCode=d1_breakfast'});
+  assert.equal(partial.body.teams.length,0);assert.equal(partial.body.served,1);assert.equal(partial.body.directory[0].registered,4);
+  const unchanged = await call(meal,null,{method:'GET',url:`/api/meal?resource=staff&slotCode=d1_breakfast&since=${partial.body.revision}`});
+  assert.deepEqual(unchanged.body,{unchanged:true,revision:partial.body.revision});
+  const registry = await call(registration,null,{role:'regidesk',accountId:5,method:'GET',url:'/api/regidesk?resource=staff'});
+  assert.equal(registry.body.directory.length,3);assert.equal(registry.body.directory[1].registered,2);
   scan=await lookup();assert.equal(scan.progress.served,1);
   assert.equal((await call(meal,{...body,memberIds:[2],scanProof:scan.scanProof})).body.logged,1);
   const [scanA,scanB]=await Promise.all([lookup(3),lookup(4)]);
@@ -90,7 +96,14 @@ try {
   const breakfast=await call(meal,null,{method:'GET',url:'/api/meal?slotCode=d1_breakfast'});assert.equal(breakfast.body.served,4);assert.equal(breakfast.body.teams[0].members.length,4);
   const lunchScan=await lookup(3,'d1_lunch');
   assert.equal((await call(meal,{...body,mealSlotCode:'d1_lunch',scanProof:lunchScan.scanProof})).body.logged,1);
-  const lunch=await call(meal,null,{method:'GET',url:'/api/meal?slotCode=d1_lunch'});assert.equal(lunch.body.served,1);
+  const lunch=await call(meal,null,{method:'GET',url:'/api/meal?slotCode=d1_lunch'});assert.equal(lunch.body.served,1);assert.equal(lunch.body.teams.length,0);
+  const complete=await call(meal,null,{method:'GET',url:`/api/meal?resource=staff&slotCode=d1_breakfast&since=${partial.body.revision}`});
+  assert.equal(complete.body.teams.length,1);assert.notEqual(complete.body.revision,partial.body.revision);
+  const before=(await sql`select version from portal_revisions where domain='meals'`)[0].version;
+  await assert.rejects(sql`insert into meal_logs (team_id,member_id,meal_slot_id,given_by) select 2,1,id,3 from meal_slots where code='d1_dinner'`);
+  assert.equal((await sql`select version from portal_revisions where domain='meals'`)[0].version,before);
+  await assert.rejects(sql`update registration_checkins set team_id=2 where member_id=1`);
+  assert.equal((await call(meal,{action:'flag-low-stock',mealSlotCode:'d1_lunch',note:'test'})).code,410);
   assert.equal((await call(meal,{qrPayload:'https://unrelated.example',mealSlotCode:'d1_breakfast'})).code,400);
   assert.equal((await call(meal,{...body,memberIds:[99],scanProof:(await lookup()).scanProof})).code,409);
   assert.equal((await call(meal,{...body,mealSlotCode:'d1_lunch',scanProof:(await lookup()).scanProof})).code,409);

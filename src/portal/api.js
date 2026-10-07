@@ -167,9 +167,6 @@ export const incidentResolve = (id) =>
 export const coreToggleRecuse = (teamId) =>
   request("/core", { method: "POST", body: JSON.stringify({ action: "toggle-recuse", teamId }) });
 
-export const mealFlagLowStock = (mealSlotCode, note) =>
-  request("/meal", { method: "POST", body: JSON.stringify({ action: "flag-low-stock", mealSlotCode, note }) });
-
 export const mealLogGuest = (teamId, mealSlotCode, note) =>
   request("/meal", { method: "POST", body: JSON.stringify({ action: "log-guest", teamId, mealSlotCode, note }) });
 
@@ -203,3 +200,5 @@ export const adminCreateStaff = (payload) =>
 export const submissionFiles = (teamId) => request(`/auth?resource=submission-files${teamId ? `&teamId=${teamId}` : ""}`);
 export const submissionFile = (id, teamId) => request(`/auth?resource=submission-files&fileId=${id}${teamId ? `&teamId=${teamId}` : ""}`);
 export const uploadSubmission = (name, base64) => request("/auth", { method: "POST", body: JSON.stringify({ action: "upload", name, base64 }) });
+
+export const staffSnapshot = (endpoint, slotCode, revision) => request(`/${endpoint}?resource=staff${slotCode ? `&slotCode=${encodeURIComponent(slotCode)}` : ""}${revision ? `&since=${encodeURIComponent(revision)}` : ""}`);

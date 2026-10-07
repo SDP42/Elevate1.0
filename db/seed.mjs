@@ -19,13 +19,15 @@ if (args.length && (args.length !== 2 || args[0] !== "--credentials-file")) {
   throw new Error("Usage: npm run db:seed -- [--credentials-file /private/accounts.json]");
 }
 const supplied = args.length ? JSON.parse(fs.readFileSync(path.resolve(args[1]), "utf8")) : null;
-const candidates = supplied || Object.entries(counts).flatMap(([role, count]) =>
+const rawCandidates = supplied || Object.entries(counts).flatMap(([role, count]) =>
   Array.from({ length: count }, (_, i) => ({
-    role, username: role === "team" ? teamCode(i + 1) : `${role}${String(i + 1).padStart(2, "0")}`,
+    role, username: role === "team" ? teamCode(i + 1).toLowerCase() : `${role}${String(i + 1).padStart(2, "0")}`,
     password: crypto.randomBytes(12).toString("base64url"), label: `${labels[role]} ${i + 1}`,
   }))
 );
-if (!Array.isArray(candidates) || !candidates.length) throw new Error("A nonempty account array is required.");
+if (!Array.isArray(rawCandidates) || !rawCandidates.length) throw new Error("A nonempty account array is required.");
+const candidates = rawCandidates.map(account => account.role === "team" && issuedTeamNumber(account.username)
+  ? { ...account, username: teamCode(issuedTeamNumber(account.username)).toLowerCase() } : account);
 const usernames = new Set();
 for (const account of candidates) {
   if (!Object.hasOwn(counts, account.role) || typeof account.username !== "string" ||
@@ -33,7 +35,7 @@ for (const account of candidates) {
       account.password.length < 8 || typeof account.label !== "string" || !account.label.trim() ||
       usernames.has(account.username)) throw new Error("Invalid or duplicate account in seed input.");
   if (account.role === "team" && !/^(?:team|ELEV)\d{2,4}$/i.test(account.username)) {
-    throw new Error("Team seed usernames must use ELEV01, ELEV02, etc. Legacy team01 inputs are accepted.");
+    throw new Error("Team seed usernames must use ELEV01, ELEV02, etc. Legacy team01 inputs are normalized to ELEV01.");
   }
   usernames.add(account.username);
 }

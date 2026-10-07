@@ -1,3 +1,6 @@
+import RegistrationHistory from "./RegistrationHistory";
+import TeamSearch from "./TeamSearch";
+import useStaffSnapshot, { notifyStaffWrite } from "./useStaffSnapshot";
 import { useCallback, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import RequireRole from "./RequireRole";
@@ -101,9 +104,9 @@ function RegiDeskHome({ session }) {
   const [selectedMember, setSelectedMember] = useState(null);
   const [status, setStatus] = useState("");
   const [error, setError] = useState("");
-  const [manualCode, setManualCode] = useState("");
   const [manualBusy, setManualBusy] = useState(false);
   const busyRef = useRef(false);
+  const staff = useStaffSnapshot("regidesk");
 
   const onDecode = useCallback(
     async (payload) => {
@@ -124,8 +127,7 @@ function RegiDeskHome({ session }) {
     [scanning]
   );
 
-  async function lookUpManually(e) {
-    e.preventDefault();
+  async function lookUpManually(manualCode) {
     if (!manualCode.trim() || busyRef.current) return;
     busyRef.current = true;
     setManualBusy(true);
@@ -135,7 +137,6 @@ function RegiDeskHome({ session }) {
       setResult(data);
       setSelectedMember(data.members.find(m => !m.registered)?.id || null);
       setScanning(false);
-      setManualCode("");
     } catch (err) {
       setError(err.message);
     } finally {
@@ -145,6 +146,7 @@ function RegiDeskHome({ session }) {
   }
 
   function onMemberSaved(receipt) {
+    notifyStaffWrite();
     const { registered, total } = receipt.progress;
     setStatus(`${result.team.teamCode}: ${registered} of ${total} registered. ${registered === total ? "Whole team registered." : "Scan the same team QR for the next participant."}`);
     reset();
@@ -184,15 +186,7 @@ function RegiDeskHome({ session }) {
         {scanning ? (
           <>
             <QrScanner onDecode={onDecode} paused={!scanning} />
-            <form className="portal-manualLookup" onSubmit={lookUpManually}>
-              <span className="portal-manualLookup__label">Camera not working? Look up by team code:</span>
-              <div className="portal-manualLookup__row">
-                <input value={manualCode} onChange={(e) => setManualCode(e.target.value)} placeholder="e.g. ELEV07" />
-                <button type="submit" className="portal-logout" disabled={manualBusy || !manualCode.trim()}>
-                  {manualBusy ? "Looking up…" : "Look up"}
-                </button>
-              </div>
-            </form>
+            <TeamSearch teams={staff.data?.directory} busy={manualBusy} onLookup={lookUpManually} />
           </>
         ) : (
           result && (
@@ -226,6 +220,7 @@ function RegiDeskHome({ session }) {
           )
         )}
       </section>
+      <RegistrationHistory snapshot={staff} />
     </div>
   );
 }

@@ -1,3 +1,4 @@
+import { staffRevision, mealSnapshot } from "./_lib/staff-sync.js";
 import { sql as defaultSql } from "./_lib/db.js";
 import { requireRole } from "./_lib/auth.js";
 import { logAction as defaultLogAction } from "./_lib/audit.js";
@@ -11,7 +12,7 @@ import { parseMealRequest, parseQrToken } from "../shared/meal.js";
    confirm-and-log step, and the running tally all share this file — see
    api/auth.js for why. GET is the tally; POST's `action` picks the write
    ("log" logs, "lookup-by-code" looks up by typed team code instead of a
-   camera scan, "flag-low-stock"/"log-guest" raise an incident for admin,
+   camera scan, "log-guest" raises an incident for admin,
    anything else is the normal QR lookup). */
 export function createMealHandler({ sql = defaultSql, logAction = defaultLogAction, createIncident = defaultCreateIncident } = {}) {
 async function handler(req, res) {
@@ -19,13 +20,14 @@ async function handler(req, res) {
     if (req.method === "GET" && searchParams(req).get("receipt") === "1") return receipt(req, res);
     return res.status(403).json({ error: "This action is for meal counters" });
   }
+  if (req.method === "GET" && searchParams(req).get("resource") === "staff") return staffSnapshot(req, res);
   if (req.method === "GET") return searchParams(req).has("slotCode") ? history(req, res) : tally(req, res);
   if (req.method === "POST") {
     const { action } = req.body || {};
     if (action === "log") return logMeal(req, res);
     if (action === "undo") return undoMeal(req, res);
     if (action === "lookup-by-code") return lookupByCode(req, res);
-    if (action === "flag-low-stock") return flagLowStock(req, res);
+    if (action === "flag-low-stock") return res.status(410).json({ error: "This option has been removed" });
     if (action === "log-guest") return logGuest(req, res);
     return lookup(req, res);
   }
@@ -53,13 +55,16 @@ async function receipt(req, res) {
   if (after !== null && (!Number.isSafeInteger(after) || after < 0)) {
     return res.status(400).json({ error: "Invalid receipt cursor" });
   }
+  const [latest] = await sql`select coalesce(max(id),0) as latest_id from meal_logs where team_id=${req.session.teamId}`;
+  const latestId=Number(latest.latest_id);
+  if (after === null || after >= latestId) return res.status(200).json({latestId,meals:[]});
   const rows = await sql`
     select ml.id, ms.label, ms.code, tm.name, ml.given_at
     from meal_logs ml join meal_slots ms on ms.id = ml.meal_slot_id
     join team_members tm on tm.id = ml.member_id
-    where ml.team_id = ${req.session.teamId} order by ml.id desc limit 28
+    where ml.team_id = ${req.session.teamId} and ml.id > ${after} order by ml.id desc limit 28
   `;
-  res.status(200).json({ latestId: rows[0]?.id || 0,
+  res.status(200).json({ latestId: Math.max(latestId,Number(rows[0]?.id || 0)),
     meals: after === null ? [] : rows.filter(row => row.id > after).reverse().map(row => ({
       id: row.id, slotCode: row.code, slotLabel: row.label, name: row.name, givenAt: row.given_at
     })) });
@@ -71,6 +76,7 @@ async function history(req, res) {
   if (!slot) return res.status(400).json({ error: "Unknown meal slot" });
   const rows = await sql`
     select t.id as team_id, t.team_code, t.seat_no, a.display_name as team_name,
+      (select count(*)::int from team_members roster where roster.team_id=t.id) as total,
       tm.id as member_id, tm.name, to_jsonb(tm)->>'food_preference' as food_preference,
       ml.given_at, counter.display_name as counter_name
     from meal_logs ml join teams t on t.id = ml.team_id
@@ -83,13 +89,21 @@ async function history(req, res) {
   for (const row of rows) {
     if (!groups.has(row.team_id)) groups.set(row.team_id, {
       id: row.team_id, teamCode: row.team_code, teamName: row.team_name,
-      seatNo: row.seat_no, members: []
+      seatNo: row.seat_no, total: row.total, members: []
     });
     groups.get(row.team_id).members.push({ id: row.member_id, name: row.name,
       foodPreference: row.food_preference, givenAt: row.given_at, counter: row.counter_name });
   }
   res.status(200).json({ slot: { code: slot.code, label: slot.label },
-    teams: [...groups.values()], served: rows.length, updatedAt: new Date().toISOString() });
+    teams: [...groups.values()].filter(team => team.total > 0 && team.members.length === team.total), served: rows.length, updatedAt: new Date().toISOString() });
+}
+
+async function staffSnapshot(req, res) {
+  const revision = await staffRevision(sql,req,res);
+  if (revision === null) return;
+  const snapshot=await mealSnapshot(sql,searchParams(req).get("slotCode"));
+  if (!snapshot.slot) return res.status(400).json({error:"Unknown meal slot"});
+  res.status(200).json({...snapshot,updatedAt:new Date().toISOString(),revision});
 }
 
 function teamAndSlotToMembers(team, slot) {
@@ -285,24 +299,6 @@ async function logMeal(req, res) {
   await logAction(req.session.accountId, "meal.log", { teamId, mealSlotCode, count: insertedIds.length });
   res.status(200).json({ ok: true, logged: insertedIds.length, memberIds: insertedIds,
     alreadyServed: memberIds.length - insertedIds.length });
-}
-
-/* "we're almost out of X" — a visible flag for admin/organisers, not a
-   passive count they'd have to keep refreshing to notice */
-async function flagLowStock(req, res) {
-  const { mealSlotCode, note } = req.body || {};
-  if (!mealSlotCode || !note || !note.trim()) {
-    res.status(400).json({ error: "mealSlotCode and a note are required" });
-    return;
-  }
-  await createIncident({
-    type: "low_stock",
-    message: `${mealSlotCode}: ${note.trim()}`,
-    createdBy: req.session.accountId,
-    createdRole: req.session.role,
-  });
-  await logAction(req.session.accountId, "meal.flag_low_stock", { mealSlotCode });
-  res.status(200).json({ ok: true });
 }
 
 /* a team shows up with someone not on the roster — logged as an incident

@@ -59,3 +59,12 @@ with `{ name, phone }` entries. Use country code plus digits. The Help card open
 `wa.me` with team, seat, and message prefilled; the participant must tap Send in
 WhatsApp. No WhatsApp Business API keys are needed. The button stays disabled
 until a recipient is configured.
+
+### Staff scanner data
+
+Existing databases need the additive `participant-details.sql`, `staff-sync.sql`
+and `scan-integrity.sql` migrations. Take a private backup and apply them in one
+transaction. Integrity validation fails instead of silently deleting mismatched
+records. Fresh databases receive these changes through `schema.sql`. Staff
+search/history share a cached snapshot; lookups and confirmations always
+revalidate current database state. See `RSVP-IMPORT.md` for event operation.

@@ -15,7 +15,7 @@ export function identityPlan(teams, accounts) {
       problems.push(`${code}: identity collision`); continue;
     }
     used.add(code);
-    changes.push({ id:team.id, accountId:team.account_id, oldUsername:team.username, oldCode:team.team_code, username:code, code });
+    changes.push({ id:team.id, accountId:team.account_id, oldUsername:team.username, oldCode:team.team_code, username:code.toLowerCase(), loginLabel:code, code });
   }
   return { changes, problems };
 }

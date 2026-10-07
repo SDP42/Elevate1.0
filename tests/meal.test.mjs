@@ -56,7 +56,7 @@ test("ELEV identities preserve account ownership and reject collisions",()=>{
  assert.equal(teamCode(1),"ELEV01");assert.equal(teamCode(32),"ELEV32");assert.equal(issuedTeamNumber("team01"),1);assert.equal(issuedTeamNumber("elev01"),1);
  const legacy=[{id:1,account_id:2,username:"team01",team_code:"T1"}];
  const plan=identityPlan(legacy,[{id:2,username:"team01"}]);
- assert.deepEqual(plan.problems,[]);assert.equal(plan.changes[0].username,"ELEV01");assert.equal(plan.changes[0].accountId,2);
+ assert.deepEqual(plan.problems,[]);assert.equal(plan.changes[0].username,"elev01");assert.equal(plan.changes[0].accountId,2);
  assert.ok(identityPlan(legacy,[{id:2,username:"team01"},{id:3,username:"elev01"}]).problems.length);
  assert.equal(buildImportPlan(source,[{...mapping[0],username:"ELEV01"}],teams,members).problems.length,0);
 });

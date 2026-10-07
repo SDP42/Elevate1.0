@@ -579,7 +579,7 @@ async function saveTeamMembers(req, res) {
 }
 
 function generateTeamUsername(displayName, teamCode) {
-  if (/^ELEV\d{2,4}$/i.test(teamCode || "")) return teamCode.toUpperCase();
+  if (/^ELEV\d{2,4}$/i.test(teamCode || "")) return teamCode.toLowerCase();
   const base = (displayName || teamCode || "team")
     .toLowerCase()
     .replace(/\s+/g, "")

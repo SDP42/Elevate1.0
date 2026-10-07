@@ -80,7 +80,7 @@ async function run() {
     participants: plan.assignments.reduce((count,a) => count+a.members.length,0), problems: plan.problems }, null, 2));
   if (plan.problems.length) { process.exitCode = 1; return; }
   if (!apply) return;
-  if (plan.assignments.some(a => a.team.username !== teamCode(issuedTeamNumber(a.team.username)) || a.team.team_code !== teamCode(issuedTeamNumber(a.team.username)))) throw new Error("Apply the ELEV team identity migration first");
+  if (plan.assignments.some(a => identity(a.team.username) !== identity(teamCode(issuedTeamNumber(a.team.username))) || a.team.team_code !== teamCode(issuedTeamNumber(a.team.username)))) throw new Error("Apply the ELEV team identity migration first");
   const [{ ready }] = await sql`select exists(select 1 from information_schema.columns where table_name='team_members' and column_name='food_preference') and exists(select 1 from information_schema.tables where table_name='team_rsvp_details') as ready`;
   if (!ready) throw new Error("Apply db/participant-details.sql to the approved target before importing");
   const backupDirectory = path.dirname(path.resolve(paths[0]));

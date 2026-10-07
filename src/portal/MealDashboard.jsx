@@ -1,3 +1,5 @@
+import TeamSearch from "./TeamSearch";
+import useStaffSnapshot, { notifyStaffWrite } from "./useStaffSnapshot";
 import { useCallback, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import RequireRole from "./RequireRole";
@@ -5,54 +7,7 @@ import QrScanner from "./QrScanner";
 import MealHistory from "./MealHistory";
 import { MealCelebration } from "./MealCelebration";
 import { MEAL_SLOTS } from "./mealSlots";
-import { logout, mealFlagLowStock, mealLog, mealLogGuest, mealLookup, mealLookupByCode, mealUndo } from "./api";
-
-function LowStockFlag({ slotCode }) {
-  const [open, setOpen] = useState(false);
-  const [note, setNote] = useState("");
-  const [busy, setBusy] = useState(false);
-  const [sent, setSent] = useState(false);
-
-  async function send(e) {
-    e.preventDefault();
-    if (!note.trim()) return;
-    setBusy(true);
-    try {
-      await mealFlagLowStock(slotCode, note.trim());
-      setSent(true);
-      setNote("");
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  if (!open) {
-    return (
-      <button
-        type="button"
-        className="portal-logout"
-        onClick={() => {
-          setOpen(true);
-          setSent(false);
-        }}
-      >
-        Flag low stock
-      </button>
-    );
-  }
-
-  return (
-    <form className="portal-manualLookup__row portal-u-mt" onSubmit={send}>
-      <input value={note} onChange={(e) => setNote(e.target.value)} placeholder="e.g. Running low on rice" />
-      <button type="submit" className="portal-auth__submit" disabled={busy || !note.trim()}>
-        {busy ? "Sending…" : sent ? "Sent ✓" : "Flag"}
-      </button>
-      <button type="button" className="portal-logout" onClick={() => setOpen(false)}>
-        Cancel
-      </button>
-    </form>
-  );
-}
+import { logout, mealLog, mealLogGuest, mealLookup, mealLookupByCode, mealUndo } from "./api";
 
 function GuestOverride({ teamId, slotCode }) {
   const [open, setOpen] = useState(false);
@@ -113,9 +68,8 @@ function MealHome({ session }) {
   const [selected, setSelected] = useState(() => new Set());
   const [error, setError] = useState("");
   const [status, setStatus] = useState("");
-  const [manualCode, setManualCode] = useState("");
   const [manualBusy, setManualBusy] = useState(false);
-  const [tallyKey, setTallyKey] = useState(0);
+  const staff = useStaffSnapshot("meal", slotCode);
   const [undoing, setUndoing] = useState(null);
   const [confirmBusy, setConfirmBusy] = useState(false);
   const [celebration, setCelebration] = useState(null);
@@ -140,8 +94,7 @@ function MealHome({ session }) {
     [scanning, slotCode]
   );
 
-  async function lookUpManually(e) {
-    e.preventDefault();
+  async function lookUpManually(manualCode) {
     if (!manualCode.trim() || busyRef.current) return;
     busyRef.current = true;
     setManualBusy(true);
@@ -151,7 +104,6 @@ function MealHome({ session }) {
       setResult(data);
       setSelected(new Set(data.members.filter((m) => !m.alreadyGiven && m.registered).slice(0, 1).map((m) => m.id)));
       setScanning(false);
-      setManualCode("");
     } catch (err) {
       setError(err.message);
     } finally {
@@ -170,7 +122,7 @@ function MealHome({ session }) {
       setStatus(receipt.logged > 0
         ? `Recorded ${result.slot.label} for ${result.team.teamCode} (${receipt.logged} participants).`
         : "These participants have already been served for this meal.");
-      setTallyKey(k => k + 1);
+      if(receipt.logged > 0) notifyStaffWrite();
       const names = result.members.filter(member => receipt.memberIds.includes(member.id)).map(member => member.name);
       const slotLabel = result.slot.label;
       reset();
@@ -195,7 +147,7 @@ function MealHome({ session }) {
           m.id === memberId ? { ...m, alreadyGiven: false } : m
         ),
       }));
-      setTallyKey((k) => k + 1);
+      notifyStaffWrite();
     } catch (err) {
       setError(err.message);
     } finally {
@@ -251,24 +203,11 @@ function MealHome({ session }) {
         {status && <p className="portal-status">{status}</p>}
         {error && <p className="portal-auth__error">{error}</p>}
 
-        <LowStockFlag slotCode={slotCode} />
 
         {scanning ? (
           <>
             <QrScanner onDecode={onDecode} paused={!scanning} />
-            <form className="portal-manualLookup" onSubmit={lookUpManually}>
-              <span className="portal-manualLookup__label">Camera not working? Look up by team code:</span>
-              <div className="portal-manualLookup__row">
-                <input
-                  value={manualCode}
-                  onChange={(e) => setManualCode(e.target.value)}
-                  placeholder="e.g. ELEV07"
-                />
-                <button type="submit" className="portal-logout" disabled={manualBusy || !manualCode.trim()}>
-                  {manualBusy ? "Looking up…" : "Look up"}
-                </button>
-              </div>
-            </form>
+            <TeamSearch teams={staff.data?.directory} busy={manualBusy} onLookup={lookUpManually} />
           </>
         ) : (
           result && (
@@ -329,7 +268,7 @@ function MealHome({ session }) {
         )}
       </section>
 
-      <MealHistory refreshKey={tallyKey} />
+      <MealHistory snapshot={staff} slotCode={slotCode} onSelectSlot={code=>{setSlotCode(code);reset();}} />
       {celebration && <MealCelebration meal={celebration} onDone={() => { setCelebration(null); reset(); }} />}
     </div>
   );
