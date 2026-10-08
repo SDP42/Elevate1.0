@@ -87,15 +87,23 @@ Elevate and EL04 Obliq. Initial capacities are 8 each; re-running that file
 preserves subsequently configured capacities.
 
 Teams submit four distinct revealed PS IDs in ranked order. The database stores
-all four, but allocation examines only preferences 1–3. A short READ COMMITTED
+all four and allocates the first available choice in order 1, 2, 3, 4. A short READ COMMITTED
 transaction locks the PS/selection tables and the requesting team's row before
 checking occupancy and inserting the allocation. Capacity changes and allocation
 writes serialize through PostgreSQL locks. No team-code or staff preference is
 used to break contention; transactions are processed in database lock order.
 Once allocated, duplicate submissions return the locked allocation. If the top
-three are full, preferences are saved without an allocation; the fourth is never
-assigned automatically. All teams choosing the same top three can leave the
-fourth PS empty, even though it has capacity.
+three are full, the fourth is allocated automatically if it has capacity. If all
+four are full, preferences are saved without an allocation; no capacity is exceeded.
+
+Participant selection opens automatically at **10 October 2026, 9:30 AM IST**
+(`2026-10-10T04:00:00.000Z`), configured in `shared/ps-schedule.js`.
+The server rejects early submissions and hides PS details from participant reads
+until that timestamp. Staff can inspect/configure statements before opening.
+Visible participant tabs schedule an immediate refresh at the boundary using
+server time; device clock changes cannot open selection early. No cron job or
+database mutation is needed to open it. The API gate is authoritative; rendering
+on each device additionally depends on its network latency and browser scheduling.
 
 Run the isolated concurrency check without loading `.env`:
 

@@ -1,5 +1,42 @@
 # Portal update verification — 8 October 2026
 
+## Latest: scheduled selection opening and fourth-choice fallback
+
+This update supersedes the earlier fourth-choice exclusion policy below.
+Selection opens at **Saturday, 10 October 2026, 9:30 AM IST**
+(`2026-10-10T04:00:00.000Z`). The API hides participant PS details and rejects
+early submissions before any allocation/database queries. Staff can inspect PS
+configuration before opening. Server time controls both the inclusive API gate
+and the browser's boundary refresh; an incorrect device clock cannot unlock it.
+Visible tabs automatically fetch the form at opening, subject to network latency
+and browser scheduling; hidden tabs refresh when made visible.
+
+Allocation now considers preferences **1, 2, 3, 4** in order. If the first three
+are full, preference four is allocated if available. If all four are full, the
+preferences are saved without exceeding capacity. Existing transaction locks and
+immutable approved assignments are preserved. EL01–EL04 remain at capacity 8
+each; further organizer PS details are pending. No event data was changed.
+
+Verification for this update:
+
+- 45 Node tests passed, including exact before/at/after opening boundaries,
+  early read/write denial without SQL, forged client time rejection and staff
+  visibility before opening.
+- Disposable PostgreSQL: 32 concurrent identical ranked submissions filled
+  capacities 2/3/5 and assigned the remaining 22 to the fourth choice; first-three
+  full/fourth available, all-four full, hidden choices and immutable duplicates
+  passed. Balanced 32-team requests filled all four capacities at 8 each.
+- Browser fixtures: server-timed automatic opening with the device clock set to
+  2099, four rank fields and no overflow at 1440/390/320 widths. The existing
+  event UI regression checks also passed at these widths.
+- Live read-only handlers: participant details hidden before opening, staff
+  configuration visible, four final statements visible with an injected opening
+  clock. No live allocation, registration, meal or score writes were made.
+- Production build passed. Changed-module lint has only two existing React
+  effect warnings; the existing large bundle warning remains.
+
+These checks do not establish authenticated production-browser or load evidence.
+
 ## Changes
 
 - PS requests and approvals share serialized PostgreSQL transactions, enforce
