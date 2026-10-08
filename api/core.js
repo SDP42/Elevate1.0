@@ -1,6 +1,6 @@
-import { sql } from "./_lib/db.js";
+import { sql as defaultSql } from "./_lib/db.js";
 import { requireRole } from "./_lib/auth.js";
-import { logAction } from "./_lib/audit.js";
+import { logAction as defaultLogAction } from "./_lib/audit.js";
 import { CRITERIA } from "../shared/criteria.js";
 
 const QR_PREFIX = "ELEVATE1:";
@@ -13,6 +13,7 @@ const QR_PREFIX = "ELEVATE1:";
    mentoring slot time if one was set. POST's `action` field picks the
    write: submitting a mark (the default), a Round 1 note, toggling a
    recusal, or the two steps of a door check-in scan. */
+export function createCoreHandler({ sql = defaultSql, logAction = defaultLogAction } = {}) {
 async function handler(req, res) {
   if (req.method === "GET") return listTeams(req, res);
   if (req.method === "POST") {
@@ -46,7 +47,7 @@ async function listTeams(req, res) {
 
   const teams = await sql`
     select
-      t.id, t.team_code, t.seat_no, t.shortlisted,
+      t.id, t.team_code, t.seat_no, t.shortlisted, t.withdrawn,
       a.display_name, a.username,
       m.score, m.criteria, m.feedback, m.feedback_approved,
       p.code as ps_code, p.title as ps_title, p.description as ps_description,
@@ -61,8 +62,8 @@ async function listTeams(req, res) {
     left join lateral (
       select note from round1_notes where team_id = t.id order by entered_at desc limit 1
     ) rn on true
-    where t.withdrawn = false
-      and exists (select 1 from registration_checkins rc where rc.team_id = t.id)
+    where (${isAdmin} or t.withdrawn = false)
+      and (${isAdmin} or exists (select 1 from registration_checkins rc where rc.team_id = t.id))
     order by t.id asc
   `;
 
@@ -80,6 +81,7 @@ async function listTeams(req, res) {
       username: t.username,
       seatNo: t.seat_no,
       shortlisted: t.shortlisted,
+      withdrawn: t.withdrawn,
       score: t.score === null ? null : Number(t.score),
       criteria: t.criteria || null,
       feedback: t.feedback || "",
@@ -124,7 +126,7 @@ async function toggleRecuse(req, res) {
    the client, so it can never drift from the sum of what was entered. */
 async function submitMark(req, res) {
   const { teamId, criteria, feedback } = req.body || {};
-  if (!teamId || !criteria || typeof criteria !== "object") {
+  if (!Number.isSafeInteger(Number(teamId)) || Number(teamId) < 1 || !criteria || typeof criteria !== "object" || Array.isArray(criteria) || (feedback != null && (typeof feedback !== "string" || feedback.length > 10000))) {
     res.status(400).json({ error: "teamId and a criteria score for each category are required" });
     return;
   }
@@ -229,4 +231,7 @@ async function checkinLog(req, res) {
   res.status(200).json({ ok: true, checkedIn: validIds.size });
 }
 
-export default requireRole(handler, ["core", "admin", "superadmin"]);
+return handler;
+}
+
+export default requireRole(createCoreHandler(), ["core", "admin", "superadmin"]);

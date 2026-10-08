@@ -10,6 +10,7 @@ import { validateFinalists, resetStatements } from '../db/replace-finalists.mjs'
 const exec = promisify(execFile);
 process.env.DATABASE_URL = "postgresql://fixture:fixture@localhost/elevate_fixture";
 process.env.SESSION_SECRET = crypto.randomBytes(48).toString("hex");
+const { createCoreHandler } = await import("../api/core.js");
 const { createMealHandler } = await import("../api/meal.js");
 const { createRegistrationHandler } = await import("../api/regidesk.js");
 const folder = await fs.mkdtemp(path.join(os.tmpdir(), "elevate-meals-pg-"));
@@ -35,6 +36,7 @@ async function sql(strings,...values) {
   const query=strings.reduce((text,piece,index)=>text+piece+(index<values.length?literal(values[index]):""),"");
   const result=await exec("psql",[...params,"--csv","-c",query]);return csv(result.stdout);
 }
+const core=createCoreHandler({sql,logAction:async()=>{}});
 const meal=createMealHandler({sql,logAction:async()=>{},createIncident:async()=>{}});
 const registration=createRegistrationHandler({sql,logAction:async()=>{},createIncident:async()=>{}});
 async function call(handler,body,{role="meal",accountId=3,teamId,url="/api/meal",method="POST"}={}) {
@@ -56,6 +58,22 @@ try {
   await sql`insert into team_members (id,team_id,name,is_lead,sort_order,food_preference) values
     (1,1,'Ada',true,1,'Veg'),(2,1,'Bea',false,2,'Jain'),(3,1,'Chen',false,3,'Veg'),(4,1,'Dev',false,4,'Veg'),
     (5,2,'Eli',true,1,'Veg'),(6,2,'Flo',false,2,'Veg'),(7,3,'Gio',true,1,'Veg'),(8,3,'Hari',false,2,'Veg'),(9,3,'Ira',false,3,'Veg')`;
+  await sql`insert into accounts(id,username,password_hash,role,display_name) values (7,'fixture_admin','unused','admin','Fixture Admin')`;
+  const allTeams = await call(core,null,{role:'admin',accountId:7,method:'GET'});
+  assert.equal(allTeams.body.teams.length,3); // No registrations yet; admin still sees everyone.
+  assert.equal((await call(core,null,{role:'core',accountId:7,method:'GET'})).body.teams.length,0);
+  const criteria={innovation:20,technical:21,presentation:22,impact:23};
+  const mark = await call(core,{teamId:1,criteria,feedback:'Fixture feedback'},{role:'admin',accountId:7});
+  assert.equal(mark.body.score,86);
+  const savedMark=(await sql`select score::int as score,criteria,feedback,feedback_approved from marks where team_id=1`)[0];
+  assert.deepEqual(savedMark,{score:86,criteria,feedback:'Fixture feedback',feedback_approved:false});
+  await sql`update marks set feedback_approved=true where team_id=1`;
+  assert.equal((await call(core,{teamId:1,criteria:{...criteria,innovation:19},feedback:'Revised'},{role:'admin',accountId:7})).body.score,85);
+  assert.equal((await sql`select feedback_approved from marks where team_id=1`)[0].feedback_approved,false);
+  assert.equal((await call(core,{teamId:1,criteria:{...criteria,impact:26}},{role:'admin',accountId:7})).code,400);
+  assert.equal((await call(core,{teamId:1,criteria:[]},{role:'admin',accountId:7})).code,400);
+  assert.equal((await call(core,{teamId:1,criteria,feedback:{}},{role:'admin',accountId:7})).code,400);
+  assert.equal((await call(core,{teamId:1,criteria:{...criteria,impact:Infinity}},{role:'admin',accountId:7})).code,400);
   assert.equal((await call(meal,{qrPayload:'ELEVATE1:'+ 'a'.repeat(32),mealSlotCode:'d1_breakfast'})).code,403);
   for(const [teamId,token,ids] of [[1,'a',[1,2,3,4]],[2,'b',[5,6]],[3,'c',[7,8,9]]]) {
     for(let index=0;index<ids.length;index++) {
@@ -80,6 +98,19 @@ try {
   assert.equal(partial.body.teams.length,0);assert.equal(partial.body.served,1);assert.equal(partial.body.directory[0].registered,4);
   const unchanged = await call(meal,null,{method:'GET',url:`/api/meal?resource=staff&slotCode=d1_breakfast&since=${partial.body.revision}`});
   assert.deepEqual(unchanged.body,{unchanged:true,revision:partial.body.revision});
+  const analysis = await call(meal,null,{method:'GET',url:'/api/meal?resource=meal-analysis&slotCode=d1_breakfast'});
+  assert.equal(analysis.body.teams.length,3);
+  assert.equal(analysis.body.summary.total,9);
+  assert.equal(analysis.body.summary.served,1);
+  assert.equal(analysis.body.summary.partialTeams,1);
+  assert.equal(analysis.body.summary.completeTeams,0);
+  assert.deepEqual(analysis.body.summary.diets.Jain,{total:1,served:0});
+  assert.equal(analysis.body.summary.counters['Counter A'],1);
+  assert.equal(analysis.body.teams[0].members[0].served,true);
+  assert.ok(analysis.body.teams[0].members[0].givenAt);
+  assert.equal((await call(meal,null,{role:'team',teamId:1,method:'GET',url:'/api/meal?resource=meal-analysis&slotCode=d1_breakfast'})).code,403);
+  assert.equal((await call(meal,null,{method:'GET',url:'/api/meal?resource=meal-analysis&slotCode=invalid'})).code,404);
+  assert.equal((await call(meal,null,{method:'GET',url:`/api/meal?resource=meal-analysis&slotCode=d1_breakfast&since=${analysis.body.revision}`})).body.unchanged,true);
   const registry = await call(registration,null,{role:'regidesk',accountId:5,method:'GET',url:'/api/regidesk?resource=staff'});
   assert.equal(registry.body.directory.length,3);assert.equal(registry.body.directory[1].registered,2);
   scan=await lookup();assert.equal(scan.progress.served,1);
@@ -100,6 +131,10 @@ try {
   const lunch=await call(meal,null,{method:'GET',url:'/api/meal?slotCode=d1_lunch'});assert.equal(lunch.body.served,1);assert.equal(lunch.body.teams.length,0);
   const complete=await call(meal,null,{method:'GET',url:`/api/meal?resource=staff&slotCode=d1_breakfast&since=${partial.body.revision}`});
   assert.equal(complete.body.teams.length,1);assert.notEqual(complete.body.revision,partial.body.revision);
+  const completeAnalysis = await call(meal,null,{method:'GET',url:'/api/meal?resource=meal-analysis&slotCode=d1_breakfast'});
+  assert.equal(completeAnalysis.body.summary.served,4);
+  assert.equal(completeAnalysis.body.summary.completeTeams,1);
+  assert.equal(completeAnalysis.body.summary.diets.Jain.served,1);
   const before=(await sql`select version from portal_revisions where domain='meals'`)[0].version;
   await assert.rejects(sql`insert into meal_logs (team_id,member_id,meal_slot_id,given_by) select 2,1,id,3 from meal_slots where code='d1_dinner'`);
   assert.equal((await sql`select version from portal_revisions where domain='meals'`)[0].version,before);
@@ -110,6 +145,11 @@ try {
   assert.equal((await call(meal,{...body,mealSlotCode:'d1_lunch',scanProof:(await lookup()).scanProof})).code,409);
   const withdrawnScan=await lookup(3,'d1_dinner');await sql`update teams set withdrawn=true where id=1`;
   assert.equal((await call(meal,{...body,mealSlotCode:'d1_dinner',scanProof:withdrawnScan.scanProof})).code,409);
+  const withdrawnAnalysis = await call(meal,null,{method:'GET',url:'/api/meal?resource=meal-analysis&slotCode=d1_breakfast'});
+  assert.equal(withdrawnAnalysis.body.teams.length,3);
+  assert.equal(withdrawnAnalysis.body.summary.total,5);
+  assert.equal(withdrawnAnalysis.body.summary.served,0);
+  assert.equal((await call(core,null,{role:'admin',accountId:7,method:'GET'})).body.teams.length,3);
   // Exercise the actual destructive importer only in this disposable cluster.
   for (let i=1;i<=35;i++) {
     const code=`ELEV${String(i).padStart(2,'0')}`;
@@ -148,6 +188,7 @@ try {
       assert.equal(list.body.teams.some(t=>t.id===teamId),member===total-1);
     }
   }
+  console.log('PASS: meal analysis includes partial/complete/waiting teams, preferences, timestamps/counters, revision refresh, privacy and withdrawal totals; admin sees all teams and rubric score/feedback writes validate and reset release status.');
   console.log('PASS: finalist replacement transaction; 35→32 accounts; leader/seat/QR/profile mapping; passwords preserved; old scans cleared; imported 2/3/4-person team QR registration and meal completion lists.');
   console.log('PASS: 2/3/4-person repeated team QR registration; single-use proofs; atomic meal writes; concurrent counters; immediate database reads; food preferences; slot history; private participant receipts; invalid QR/ownership/slot/withdrawal checks.');
 } finally {
