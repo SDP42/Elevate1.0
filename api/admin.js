@@ -138,7 +138,8 @@ async function getTeams(req, res) {
   const teams = await sql`
     select t.id, t.team_code, t.seat_no, t.dietary, t.shortlisted, t.withdrawn,
       t.submission_url, t.submission_note, t.submitted_at, t.qr_token,
-      a.id as account_id, a.display_name, a.username
+      a.id as account_id, a.display_name, a.username,
+      (select count(*)::int from meal_logs ml where ml.team_id = t.id) as meals_claimed
     from teams t
     join accounts a on a.id = t.account_id
     order by t.id asc
@@ -171,6 +172,7 @@ async function getTeams(req, res) {
       accountId: t.account_id,
       displayName: t.display_name,
       username: t.username,
+      mealsClaimed: Number(t.meals_claimed),
       members: byTeam.get(t.id) || [],
     })),
   });
