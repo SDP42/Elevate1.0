@@ -63,10 +63,10 @@ export const CONTACTS = [
 // sponsors — shown on the back of the boarding pass, one row of tiles
 export const SPONSORS = [
   {
-    role: "Education Partner",
-    name: "Fateh",
-    url: null,
-    logo: "/fateh-logo.webp",
+    role: "Drinks & Energy Partner",
+    name: "Red Bull",
+    url: "https://www.redbull.com/in-en/energydrink",
+    logo: "/redbull-logo.svg",
   },
   {
     role: "Official AI Technology Partner",
@@ -138,11 +138,11 @@ export const SPONSORS = [
     logo: "/mumbai-tech-community-logo.png",
   },
   {
-    role: "Drinks & Energy Partner",
-    name: "Red Bull",
+    role: "Study Abroad Partner",
+    name: "Fateh",
     featured: true,
-    url: "https://www.redbull.com/in-en/energydrink",
-    logo: "/redbull-logo.svg",
+    url: null,
+    logo: "/fateh-logo.webp",
   },
 ];
 
