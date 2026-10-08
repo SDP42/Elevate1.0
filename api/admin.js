@@ -1,3 +1,5 @@
+import { mealAnalysis } from "./_lib/meal-analysis.js";
+import { staffRevision } from "./_lib/staff-sync.js";
 import { createPsAllocation } from "./_lib/ps-allocation.js";
 import { saveRoster } from "./_lib/roster.js";
 import bcrypt from "bcryptjs";
@@ -29,6 +31,13 @@ async function handler(req, res) {
     }
     if (resource === "accounts") return getAccounts(req, res);
     if (resource === "meals") return getMeals(req, res);
+    if (resource === "meal-analysis") {
+      const revision = await staffRevision(sql, req, res);
+      if (revision === null) return;
+      const analysis = await mealAnalysis(sql, searchParams(req).get("slotCode"));
+      if (!analysis) return res.status(404).json({ error: "Unknown meal slot" });
+      return res.status(200).json({ ...analysis, revision, updatedAt: new Date().toISOString() });
+    }
     if (resource === "audit") return getAudit(req, res);
     if (resource === "announcements") return getAnnouncements(req, res);
     if (resource === "assignments") return getAssignments(req, res);

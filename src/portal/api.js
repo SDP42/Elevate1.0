@@ -198,4 +198,4 @@ export const submissionFiles = (teamId) => request(`/auth?resource=submission-fi
 export const submissionFile = (id, teamId) => request(`/auth?resource=submission-files&fileId=${id}${teamId ? `&teamId=${teamId}` : ""}`);
 export const uploadSubmission = (name, base64) => request("/auth", { method: "POST", body: JSON.stringify({ action: "upload", name, base64 }) });
 
-export const staffSnapshot = (endpoint, slotCode, revision) => request(`/${endpoint}?resource=staff${slotCode ? `&slotCode=${encodeURIComponent(slotCode)}` : ""}${revision ? `&since=${encodeURIComponent(revision)}` : ""}`);
+export const staffSnapshot = (endpoint, slotCode, revision, resource = "staff") => request(`/${endpoint}?resource=${encodeURIComponent(resource)}${slotCode ? `&slotCode=${encodeURIComponent(slotCode)}` : ""}${revision ? `&since=${encodeURIComponent(revision)}` : ""}`);

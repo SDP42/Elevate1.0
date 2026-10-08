@@ -5,7 +5,7 @@ export function notifyStaffWrite() { window.dispatchEvent(new Event("elevate:sta
 
 // One shared snapshot drives search, totals and history in each staff screen.
 // Active: 5s; unchanged idle: 30s; hidden: no requests; failures back off to 60s.
-export default function useStaffSnapshot(endpoint, slotCode) {
+export default function useStaffSnapshot(endpoint, slotCode, { resource = "staff", liveRefresh = false } = {}) {
   const [state,setState]=useState({data:null,error:""});
   useEffect(()=>{
     let live=true,busy=false,timer,revision=null,activeUntil=0,failures=0;
@@ -15,7 +15,7 @@ export default function useStaffSnapshot(endpoint, slotCode) {
       if(document.hidden){schedule(30000);return;}
       busy=true;
       try{
-        const response=await staffSnapshot(endpoint,slotCode,revision);
+        const response=await staffSnapshot(endpoint,slotCode,revision,resource);
         if(!live)return;
         failures=0;
         if(response.unchanged)setState(previous=>previous.error?{...previous,error:""}:previous);
@@ -27,7 +27,7 @@ export default function useStaffSnapshot(endpoint, slotCode) {
       }catch{if(live){failures++;setState(previous=>({...previous,error:"Sync interrupted. Retrying automatically…"}));}}
       finally{
         busy=false;
-        schedule(failures?Math.min(60000,5000*2**failures):Date.now()<activeUntil?5000:30000);
+        schedule(failures?Math.min(60000,5000*2**failures):liveRefresh || Date.now()<activeUntil?5000:30000);
       }
     }
     const changed=()=>{activeUntil=Date.now()+45000;schedule(500);};
@@ -36,6 +36,6 @@ export default function useStaffSnapshot(endpoint, slotCode) {
     window.addEventListener("elevate:staff-write",changed);
     document.addEventListener("visibilitychange",visible);
     return()=>{live=false;clearTimeout(timer);window.removeEventListener("elevate:staff-write",changed);document.removeEventListener("visibilitychange",visible);};
-  },[endpoint,slotCode]);
+  },[endpoint,slotCode,resource,liveRefresh]);
   return state;
 }

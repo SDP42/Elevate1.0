@@ -1,7 +1,10 @@
+import { useState } from "react";
+import MealAnalysisPopup from "./MealAnalysisPopup";
 import { MEAL_SLOTS } from "./mealSlots";
 import StaffGlass from "./StaffGlass";
 
 export default function MealHistory({snapshot,slotCode,onSelectSlot}) {
+  const [analysisSlot, setAnalysisSlot] = useState(null);
   const currentHistory = snapshot.data?.requestSlot === slotCode ? snapshot.data : null;
   const slots = currentHistory?.slots || [];
   const currentError = snapshot.error;
@@ -10,7 +13,7 @@ export default function MealHistory({snapshot,slotCode,onSelectSlot}) {
       <h3>Meals served</h3>
       <p className="portal-card__hint">Choose a meal to view fully served teams. A team appears after every participant has been served.</p>
       <ul className="meal-history__slots">
-        {MEAL_SLOTS.map(slot => <li key={slot.code}><button type="button" aria-pressed={slotCode === slot.code} onClick={() => onSelectSlot(slot.code)}>
+        {MEAL_SLOTS.map(slot => <li key={slot.code}><button type="button" aria-pressed={slotCode === slot.code} onClick={() => { onSelectSlot(slot.code); setAnalysisSlot(slot.code); }}>
           <span>{slot.label}</span><strong>{slots.find(item => item.code === slot.code)?.served ?? "—"}</strong><span>View teams →</span>
         </button></li>)}
       </ul>
@@ -30,6 +33,7 @@ export default function MealHistory({snapshot,slotCode,onSelectSlot}) {
           </li>)}</ul>
         </article>)}
       </div>
+      {analysisSlot && <MealAnalysisPopup slotCode={analysisSlot} endpoint="meal" onClose={() => setAnalysisSlot(null)} />}
     </StaffGlass>
   );
 }

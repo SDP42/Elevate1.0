@@ -1,3 +1,4 @@
+import { mealAnalysis } from "./_lib/meal-analysis.js";
 import { staffRevision, mealSnapshot } from "./_lib/staff-sync.js";
 import { sql as defaultSql } from "./_lib/db.js";
 import { requireRole } from "./_lib/auth.js";
@@ -19,6 +20,13 @@ async function handler(req, res) {
   if (req.session.role === "team") {
     if (req.method === "GET" && searchParams(req).get("receipt") === "1") return receipt(req, res);
     return res.status(403).json({ error: "This action is for meal counters" });
+  }
+  if (req.method === "GET" && searchParams(req).get("resource") === "meal-analysis") {
+    const revision = await staffRevision(sql, req, res);
+    if (revision === null) return;
+    const analysis = await mealAnalysis(sql, searchParams(req).get("slotCode"));
+    if (!analysis) return res.status(404).json({ error: "Unknown meal slot" });
+    return res.status(200).json({ ...analysis, revision, updatedAt: new Date().toISOString() });
   }
   if (req.method === "GET" && searchParams(req).get("resource") === "staff") return staffSnapshot(req, res);
   if (req.method === "GET") return searchParams(req).has("slotCode") ? history(req, res) : tally(req, res);
