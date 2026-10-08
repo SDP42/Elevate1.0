@@ -1,3 +1,4 @@
+import useLivePs from "./useLivePs";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import QRCode from "qrcode";
@@ -9,7 +10,7 @@ import RequireRole from "./RequireRole";
 import { EVENT, SUBMISSION_DEADLINE, SPONSORS, HELP_CONTACTS } from "../config";
 import { CRITERIA } from "../../shared/criteria.js";
 import useHeroCloud from "./useHeroCloud";
-import { leaderboard, logout, psList, selectPs, submitProject } from "./api";
+import { logout, psList, selectPs, submitProject } from "./api";
 
 /* Days/hours/minutes/seconds to a target — the same mechanic as the
    marketing site's own "Gates open in" timer (src/components/BoardingPass),
@@ -132,18 +133,6 @@ const LightbulbIcon = () => (
   <svg className="portal-card__icon" viewBox="0 0 24 24" fill="none" aria-hidden="true">
     <path
       d="M9 18h6M10 21h4M12 3a6 6 0 0 0-3.4 10.9c.5.4.9 1 .9 1.6V16h5v-.5c0-.6.3-1.2.9-1.6A6 6 0 0 0 12 3Z"
-      stroke="currentColor"
-      strokeWidth="1.6"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    />
-  </svg>
-);
-
-const TrophyIcon = () => (
-  <svg className="portal-card__icon" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-    <path
-      d="M8 21h8M12 17v4M7 4h10v4a5 5 0 0 1-10 0V4ZM7 5H4v1a4 4 0 0 0 4 4M17 5h3v1a4 4 0 0 1-4 4"
       stroke="currentColor"
       strokeWidth="1.6"
       strokeLinecap="round"
@@ -379,7 +368,7 @@ function ProblemStatement({ data, error, picking, onPick }) {
         <ul className="portal-psList">
           {data.problemStatements.map((ps) => {
             const isMine = data.selectedPsId === ps.id;
-            const disabled = (locked && !isMine) || picking === ps.id;
+            const disabled = locked || picking !== null;
             let label = picking === ps.id ? "Requesting…" : "Request";
             if (isMine && locked) label = "Approved ✓";
             else if (isMine) label = "Requested — pending";
@@ -387,14 +376,14 @@ function ProblemStatement({ data, error, picking, onPick }) {
             return (
               <li key={ps.id} className={isMine ? (locked ? "is-approved" : "is-selected") : undefined}>
                 <div className="portal-psList__head">
-                  <strong>{ps.title}</strong>
+                  <strong>{ps.code} · {ps.title}</strong>
                   {ps.capacity !== null && (
                     <span className="portal-psList__seats">
                       {ps.taken}/{ps.capacity} approved
                     </span>
                   )}
                 </div>
-                {ps.description && <p>{ps.description}</p>}
+
                 <button
                   type="button"
                   className="portal-auth__submit"
@@ -468,7 +457,7 @@ function ProjectSubmission({ team }) {
   }
 
   return (
-    <section className="portal-card">
+    <section className="portal-card portal-submission">
       <h3><SubmitIcon />Submission</h3>
       <SubmissionFiles editable />
       <form className="portal-auth__form" onSubmit={save}>
@@ -510,61 +499,6 @@ function MentorFeedback({ team }) {
   );
 }
 
-function Leaderboard({ ownTeamCode }) {
-  const [rows, setRows] = useState(null);
-  const [frozen, setFrozen] = useState(false);
-  const [error, setError] = useState("");
-
-  useEffect(() => {
-    leaderboard()
-      .then((d) => {
-        setRows(d.leaderboard);
-        setFrozen(Boolean(d.frozen));
-      })
-      .catch((err) => setError(err.message));
-  }, []);
-
-  const anyScored = rows?.some((r) => r.score !== null);
-
-  return (
-    <section className="portal-card">
-      <h3>
-        <TrophyIcon />
-        {frozen ? "Final results" : "Leaderboard"}
-      </h3>
-      <p className="portal-card__hint">
-        {frozen
-          ? "Results are final — the event has wrapped and admin has frozen the board."
-          : "Round 1 doesn't carry marks — these are Round 2 mentoring scores, updated live."}
-      </p>
-      {error && <p className="portal-auth__error">{error}</p>}
-      {rows && !anyScored && <p>No Round 2 scores entered yet — check back after your mentoring session.</p>}
-      {rows && anyScored && (
-        <ul className="portal-leaderboard">
-          {rows.map((r) => {
-            const isOwn = r.teamCode === ownTeamCode;
-            const rankClass = r.rank === 1 ? " is-rank-1" : r.rank === 2 ? " is-rank-2" : r.rank === 3 ? " is-rank-3" : "";
-            return (
-              <li key={r.teamCode} className={`${isOwn ? "is-own" : ""}${rankClass}`}>
-                <span className="portal-leaderboard__rank">{r.rank ?? "—"}</span>
-                <span className="portal-leaderboard__team">
-                  <span className="portal-leaderboard__code">
-                    {r.teamName ? `${r.teamName} (${r.teamCode})` : r.teamCode}
-                    {isOwn && <span className="portal-leaderboard__you">You</span>}
-                  </span>
-                </span>
-                <span className={`portal-leaderboard__score${r.score === null ? " is-pending" : ""}`}>
-                  {r.score === null ? "Pending" : r.score}
-                </span>
-              </li>
-            );
-          })}
-        </ul>
-      )}
-    </section>
-  );
-}
-
 function TeamHome({ session }) {
   const navigate = useNavigate();
   const [psData, setPsData] = useState(null);
@@ -572,20 +506,21 @@ function TeamHome({ session }) {
   const [picking, setPicking] = useState(null);
 
   function loadPs() {
-    psList()
-      .then(setPsData)
+    return psList()
+      .then(data => { setPsData(data); setPsError(""); })
       .catch((err) => setPsError(err.message));
   }
 
-  useEffect(loadPs, []);
+  useLivePs(loadPs);
 
   async function onPick(psId) {
     setPsError("");
     setPicking(psId);
     try {
       await selectPs(psId);
-      loadPs();
+      await loadPs();
     } catch (err) {
+      await loadPs();
       setPsError(err.message);
     } finally {
       setPicking(null);
@@ -629,7 +564,6 @@ function TeamHome({ session }) {
 
       <MentorFeedback team={session.team} />
 
-      <Leaderboard ownTeamCode={session.team?.team_code} />
 
       <HelpRequest team={session.team} />
     </div>

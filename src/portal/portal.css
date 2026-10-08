@@ -2284,3 +2284,89 @@ pre.submission-viewer__document { white-space: pre-wrap; }
 .ticket__sponsor--featured .ticket__sponsorArtwork { height: 54px; }
 .ticket__sponsor--featured .ticket__sponsorArtwork img { max-height: 54px; max-width: min(100%, 240px); }
 .ticket__sponsor--featured .ticket__sponsorRole { font-size: 9px; min-height: 16px; }
+
+/* Admin sections remain reachable above mobile safe areas. */
+.portal-adminPage { padding-bottom: calc(120px + env(safe-area-inset-bottom)); }
+.portal-adminNav { position: fixed; z-index: 80; bottom: max(16px, env(safe-area-inset-bottom)); left: 50%; transform: translateX(-50%); width: min(620px, calc(100% - 24px)); display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 4px; padding: 8px; border-radius: 24px; }
+.portal-adminNav button { min-width: 0; min-height: 62px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; padding: 6px 3px; background: transparent; border: 1px solid transparent; border-radius: 16px; color: var(--cream-dim); font: inherit; font-size: 11px; line-height: 1.25; cursor: pointer; }
+.portal-adminNav svg { width: 21px; height: 21px; flex: none; }
+.portal-adminNav button[aria-current="page"] { color: #ecd39c; background: linear-gradient(155deg, rgba(255,255,255,.15), rgba(201,168,106,.1)); border-color: rgba(230,211,168,.5); box-shadow: inset 0 1px 0 rgba(255,255,255,.23), 0 3px 14px rgba(0,0,0,.2); }
+.portal-adminNav button:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
+.portal-submission, .portal-submission form, .portal-submission .portal-field { min-width: 0; max-width: 100%; }
+.portal-submission input, .portal-submission textarea { box-sizing: border-box; min-width: 0; max-width: 100%; }
+.portal-submission .portal-field > span, .portal-submission p { overflow-wrap: anywhere; }
+.submission-fileRow { min-width: 0; }
+.submission-fileRow__name { min-width: 0; overflow-wrap: anywhere; }
+@media (max-width: 480px) {
+  .portal-adminNav { width: calc(100% - 16px); padding: 6px; gap: 2px; border-radius: 20px; }
+  .portal-adminNav button { font-size: 10px; min-height: 60px; }
+  .submission-fileRow { flex-wrap: wrap; gap: 10px; }
+  .portal-submission .portal-auth__submit { width: 100%; white-space: normal; }
+}
+@media (max-width: 480px) {
+  .submission-fileRow { display: grid; grid-template-columns: 42px minmax(0, 1fr); align-items: start; }
+  .submission-fileRow__preview { grid-column: 1 / -1; justify-self: end; min-height: 44px; }
+  .portal-submission input[type="url"] { font-size: 16px; }
+}
+
+.portal-adminNav button { transition: background .2s ease, border-color .2s ease, box-shadow .2s ease; }
+.portal-adminNav button:hover { background-color: rgba(255,255,255,.06); }
+
+/* Live meal analysis stays scrollable and readable on small screens. */
+.meal-analysisOpen { display: grid; gap: 5px; padding: 8px 0; min-height: 44px; background: none; border: 0; color: var(--cream); font: inherit; text-align: left; cursor: pointer; }
+.meal-analysisOpen span { color: var(--gold); font-size: 11px; }
+.meal-analysisOpen:focus-visible { outline: 2px solid var(--gold); outline-offset: 3px; }
+.meal-analysisSync { font: 12px/1.5 var(--font-body); color: var(--cream-dim); margin: 8px 0 0; }
+.meal-analysisStats { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px,1fr)); gap: 12px; margin-bottom: 18px; }
+.meal-analysisStats > div { display: grid; gap: 8px; padding: 16px; border-radius: 14px; border: 1px solid #c9a86a40; background: #ffffff07; }
+.meal-analysisStats strong { font-size: 23px; color: var(--gold); }
+.meal-analysisStats span { font-size: 12px; color: var(--cream-dim); }
+.meal-analysisBreakdown { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 18px; margin: 24px 0; }
+.meal-analysisBreakdown h3, .meal-analysisTeam h3 { margin: 0 0 8px; font: 600 16px var(--font-body); color: var(--cream); }
+.meal-analysisBreakdown p { display: grid; gap: 4px; font-size: 13px; overflow-wrap: anywhere; }
+.meal-analysisBreakdown span { color: var(--cream-dim); }
+.meal-analysisFilters { display: grid; grid-template-columns: minmax(0,2fr) minmax(0,1fr); gap: 14px; margin-bottom: 22px; }
+.meal-analysisFilters input, .meal-analysisFilters select { min-width: 0; width: 100%; box-sizing: border-box; padding: 12px; background: #09111bcc; color: var(--cream); border: 1px solid #c9a86a55; border-radius: 10px; font: inherit; }
+.meal-analysisTeam { margin-bottom: 16px; padding: 18px; border-radius: 16px; background: #ffffff06; border: 1px solid #ffffff22; }
+.meal-analysisTeam > header { display: flex; justify-content: space-between; gap: 16px; align-items: center; }
+.meal-analysisTeam header span { font-size: 12px; color: var(--cream-dim); }
+.meal-analysisStatus { padding: 7px 10px; border: 1px solid #c9a86a66; border-radius: 20px; font-size: 12px; white-space: nowrap; color: var(--gold); }
+.meal-analysisStatus.is-complete, .meal-analysisServed { color: #b4dcbf; }
+.meal-analysisTeam ul { list-style: none; padding: 0; margin: 14px 0 0; }
+.meal-analysisTeam li { display: flex; justify-content: space-between; gap: 12px; padding: 12px 0; border-top: 1px solid #ffffff14; font-size: 13px; }
+.meal-analysisTeam li > div { display: grid; gap: 5px; min-width: 0; overflow-wrap: anywhere; }
+.meal-analysisTeam li span, .meal-analysisTeam time { font-size: 12px; color: var(--cream-dim); }
+.meal-analysisTeam .meal-analysisServed { color: #b4dcbf; }
+.meal-analysisScan { text-align: right; }
+@media (max-width: 560px) {
+  .meal-analysisBreakdown, .meal-analysisFilters { grid-template-columns: minmax(0,1fr); }
+  .meal-analysisTeam { padding: 14px; }
+  .meal-analysisTeam > header { flex-wrap: wrap; gap: 10px; }
+  .meal-analysisTeam li { flex-direction: column; }
+  .meal-analysisScan { text-align: left; }
+  .meal-analysisDialog .submission-previewHeader { align-items: start; }
+}
+.round2-scoreEditor { min-width: 240px; max-width: 440px; display: grid; gap: 12px; }
+.round2-scoreEditor > strong, .round2-total strong { color: var(--gold); }
+.round2-scoreEditor form { display: grid; gap: 14px; }
+.round2-rubric { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 12px; }
+.round2-scoreEditor input, .round2-scoreEditor textarea { box-sizing: border-box; min-width: 0; width: 100%; padding: 10px; font: inherit; color: var(--cream); background: #0b1019; border: 1px solid #c9a86a55; border-radius: 9px; }
+.round2-editorActions { display: flex; gap: 10px; flex-wrap: wrap; }
+.round2-editorActions button { width: auto; white-space: normal; }
+.round2-leaderboard { margin-top: 28px; border-top: 1px solid var(--line); padding-top: 24px; }
+.round2-leaderboard ol { list-style: none; display: grid; gap: 10px; padding: 0; }
+.round2-leaderboard li { display: flex; align-items: center; gap: 14px; padding: 14px; border: 1px solid #c9a86a33; border-radius: 14px; background: #ffffff05; }
+.round2-rank { color: var(--gold); flex: none; min-width: 25px; text-align: center; }
+.round2-leaderboard li > div { flex: 1; min-width: 0; display: grid; gap: 5px; overflow-wrap: anywhere; }
+.round2-leaderboard li > strong { flex: none; color: var(--gold); }
+.round2-leaderboard li span:not(.round2-rank), .round2-leaderboard small { font-size: 12px; color: var(--cream-dim); }
+@media (max-width: 480px) { .round2-leaderboard li { gap: 9px; padding: 12px 10px; } .round2-scoreEditor { min-width: 230px; } }
+.round2-teamGrid { display: grid; grid-template-columns: repeat(auto-fit,minmax(min(100%,320px),1fr)); gap: 18px; }
+.round2-teamCard { min-width: 0; padding: 20px; background: #ffffff05; border: 1px solid #c9a86a33; border-radius: 16px; display: flex; flex-direction: column; gap: 18px; }
+.round2-teamCard h4 { margin: 0 0 6px; color: var(--cream); font: 600 18px var(--font-body); overflow-wrap: anywhere; }
+.round2-teamCard header > span { color: var(--gold); font-size: 12px; }
+.round2-teamCard .round2-scoreEditor { min-width: 0; max-width: none; }
+.round2-teamCard > button { margin-top: auto; white-space: normal; min-height: 44px; }
+.round2-savedFeedback > span { font-size: 11px; color: var(--gold); }
+.round2-savedFeedback p { margin: 7px 0 0; font-size: 13px; line-height: 1.6; color: var(--cream-dim); overflow-wrap: anywhere; white-space: pre-wrap; }
+@media (max-width: 480px) { .round2-teamCard { padding: 16px; } .round2-rubric { grid-template-columns: minmax(0,1fr); } }

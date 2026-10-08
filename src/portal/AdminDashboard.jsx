@@ -1,4 +1,9 @@
-import { useEffect, useState } from "react";
+import { CRITERIA, MAX_TOTAL } from "../../shared/criteria";
+import MealAnalysisPopup from "./MealAnalysisPopup";
+import { Glass, GlassSystemProvider } from "open-glass-ui";
+import "open-glass-ui/styles.css";
+import useLivePs from "./useLivePs";
+import { useCallback, useEffect, useId, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import QRCode from "qrcode";
 import JSZip from "jszip";
@@ -11,9 +16,7 @@ import {
   adminApproveAllFeedback,
   adminApproveFeedback,
   adminApprovePs,
-  adminAssignments,
   adminAudit,
-  adminBulkImport,
   adminCreateStaff,
   adminCreateTeam,
   adminExport,
@@ -23,7 +26,6 @@ import {
   adminPsRequests,
   adminRevokePs,
   adminSaveAnnouncement,
-  adminSaveAssignment,
   adminSavePs,
   adminSaveTeamMembers,
   adminSaveTeamName,
@@ -33,8 +35,7 @@ import {
   adminSettings,
   adminTeams,
   coreTeams,
-  incidentResolve,
-  incidentsList,
+  coreSubmitMark,
   logout,
   psList,
 } from "./api";
@@ -83,7 +84,6 @@ function Overview() {
     ["Submitted", data.submittedCount ?? 0],
     ["PS approved", data.psApprovedCount ?? 0],
     ["Meals served", data.mealsServedCount ?? 0],
-    ["Open incidents", data.openIncidentsCount ?? 0],
   ];
 
   return (
@@ -102,82 +102,6 @@ function Overview() {
           </div>
         ))}
       </div>
-    </section>
-  );
-}
-
-function IncidentLog() {
-  const [incidents, setIncidents] = useState(null);
-  const [busy, setBusy] = useState(null);
-
-  function load() {
-    incidentsList()
-      .then((d) => setIncidents(d.incidents))
-      .catch(() => {});
-  }
-
-  useEffect(load, []);
-
-  async function resolve(id) {
-    setBusy(id);
-    try {
-      await incidentResolve(id);
-      load();
-    } finally {
-      setBusy(null);
-    }
-  }
-
-  const TYPE_LABELS = {
-    sos: "🆘 SOS",
-    low_stock: "🍽️ Low stock",
-    guest: "👤 Guest",
-    late_arrival: "⏰ Late arrival",
-    other: "Other",
-  };
-
-  return (
-    <section className="portal-card">
-      <h3>Incident log</h3>
-      <p className="portal-card__hint">
-        Team SOS requests, low-stock flags, guest/headcount notes, late arrivals — everything that
-        needs a real person's attention, separate from the plain audit trail below.
-      </p>
-      {incidents && incidents.length === 0 && <p>No incidents raised yet.</p>}
-      {incidents && incidents.length > 0 && (
-        <div className="portal-tableWrap">
-          <table className="portal-table">
-            <thead>
-              <tr>
-                <th>Type</th>
-                <th>Team</th>
-                <th>Message</th>
-                <th>When</th>
-                <th>Status</th>
-                <th></th>
-              </tr>
-            </thead>
-            <tbody>
-              {incidents.map((i) => (
-                <tr key={i.id} className={i.status === "open" ? "is-alert-row" : undefined}>
-                  <td>{TYPE_LABELS[i.type] || i.type}</td>
-                  <td>{i.teamCode || "—"}</td>
-                  <td className="portal-table__note">{i.message}</td>
-                  <td>{new Date(i.createdAt).toLocaleString()}</td>
-                  <td className="portal-table__role">{i.status}</td>
-                  <td>
-                    {i.status === "open" && (
-                      <button type="button" className="portal-logout" onClick={() => resolve(i.id)} disabled={busy === i.id}>
-                        {busy === i.id ? "…" : "Resolve"}
-                      </button>
-                    )}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
     </section>
   );
 }
@@ -749,7 +673,7 @@ function CreateStaffModal({ onCreated, onClose }) {
 
 
 function PsManager({ problemStatements, onSaved }) {
-  const [form, setForm] = useState({ code: "", title: "", description: "", capacity: "" });
+  const [form, setForm] = useState({ code: "", title: "" });
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
 
@@ -770,7 +694,7 @@ function PsManager({ problemStatements, onSaved }) {
     e.preventDefault();
     if (!form.code.trim() || !form.title.trim()) return;
     await addOrUpdate({ ...form, revealed: false });
-    setForm({ code: "", title: "", description: "", capacity: "" });
+    setForm({ code: "", title: "" });
   }
 
   return (
@@ -778,7 +702,7 @@ function PsManager({ problemStatements, onSaved }) {
       <h3>Problem statements</h3>
       <p className="portal-card__hint">
         Add them here hidden, check them over, then hit Reveal when you're ready for teams to see
-        and pick them.
+        and request them. New PS entries start at capacity 0; configure capacities in the backend before opening allocation.
       </p>
 
       {error && <p className="portal-auth__error">{error}</p>}
@@ -813,8 +737,6 @@ function PsManager({ problemStatements, onSaved }) {
                         addOrUpdate({
                           code: ps.code,
                           title: ps.title,
-                          description: ps.description,
-                          capacity: ps.capacity,
                           revealed: !ps.revealed,
                         })
                       }
@@ -838,18 +760,6 @@ function PsManager({ problemStatements, onSaved }) {
           <span>Title</span>
           <input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} required />
         </label>
-        <label className="portal-field">
-          <span>Description</span>
-          <input value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} />
-        </label>
-        <label className="portal-field">
-          <span>Capacity (teams, blank = unlimited)</span>
-          <input
-            type="number"
-            value={form.capacity}
-            onChange={(e) => setForm({ ...form, capacity: e.target.value })}
-          />
-        </label>
         <button className="portal-auth__submit" type="submit" disabled={busy}>
           Add problem statement (hidden)
         </button>
@@ -864,7 +774,7 @@ function PsRequestsManager() {
   const [busy, setBusy] = useState(null);
 
   function load() {
-    adminPsRequests()
+    return adminPsRequests()
       .then((d) => {
         setRequests(d.requests);
         setError("");
@@ -872,15 +782,16 @@ function PsRequestsManager() {
       .catch((err) => setError(err.message));
   }
 
-  useEffect(load, []);
+  useLivePs(load);
 
   async function approve(teamId) {
     setBusy(teamId);
     setError("");
     try {
       await adminApprovePs(teamId);
-      load();
+      await load();
     } catch (err) {
+      await load();
       setError(err.message);
     } finally {
       setBusy(null);
@@ -891,7 +802,10 @@ function PsRequestsManager() {
     setBusy(teamId);
     try {
       await adminRevokePs(teamId);
-      load();
+      await load();
+    } catch (err) {
+      await load();
+      setError(err.message);
     } finally {
       setBusy(null);
     }
@@ -1045,101 +959,6 @@ function AnnouncementsManager() {
   );
 }
 
-function AssignmentsManager({ teams }) {
-  const [cores, setCores] = useState(null);
-  const [editing, setEditing] = useState(null);
-  const [draft, setDraft] = useState(new Set());
-  const [slotDraft, setSlotDraft] = useState({});
-  const [busy, setBusy] = useState(false);
-
-  function load() {
-    adminAssignments()
-      .then((d) => setCores(d.cores))
-      .catch(() => {});
-  }
-
-  useEffect(load, []);
-
-  function startEdit(core) {
-    setEditing(core.id);
-    setDraft(new Set(core.teamIds));
-    setSlotDraft({ ...core.slotTimes });
-  }
-
-  function toggleTeam(id) {
-    setDraft((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
-  }
-
-  async function save(coreAccountId) {
-    setBusy(true);
-    try {
-      await adminSaveAssignment(coreAccountId, [...draft], slotDraft);
-      setEditing(null);
-      load();
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  return (
-    <section className="portal-card">
-      <h3>Core assignments</h3>
-      <p className="portal-card__hint">
-        Narrow which teams a core account judges, with an optional mentoring time slot per team —
-        lets everyone know "which team, when" instead of a scramble. Leave a core with no teams
-        picked and they see every team — that's the default.
-      </p>
-
-      {cores && (
-        <ul className="portal-assignList">
-          {cores.map((c) => (
-            <li key={c.id}>
-              <div className="portal-assignList__head">
-                <strong>{c.username}</strong>
-                <span>{c.teamIds.length === 0 ? "sees all teams" : `${c.teamIds.length} team(s) assigned`}</span>
-                {editing === c.id ? (
-                  <button type="button" className="portal-logout" onClick={() => save(c.id)} disabled={busy}>
-                    {busy ? "Saving…" : "Save"}
-                  </button>
-                ) : (
-                  <button type="button" className="portal-logout" onClick={() => startEdit(c)}>
-                    Edit
-                  </button>
-                )}
-              </div>
-              {editing === c.id && teams && (
-                <div className="portal-assignList__teams">
-                  {teams.map((t) => (
-                    <div key={t.id} className="portal-assignList__teamRow">
-                      <label>
-                        <input type="checkbox" checked={draft.has(t.id)} onChange={() => toggleTeam(t.id)} />
-                        {t.teamCode}
-                      </label>
-                      {draft.has(t.id) && (
-                        <input
-                          className="portal-feedbackInput"
-                          value={slotDraft[t.id] || ""}
-                          onChange={(e) => setSlotDraft((prev) => ({ ...prev, [t.id]: e.target.value }))}
-                          placeholder="e.g. 10:00 AM"
-                        />
-                      )}
-                    </div>
-                  ))}
-                </div>
-              )}
-            </li>
-          ))}
-        </ul>
-      )}
-    </section>
-  );
-}
-
 function AuditLog() {
   const [entries, setEntries] = useState(null);
 
@@ -1181,69 +1000,65 @@ function AuditLog() {
   );
 }
 
-function BulkImport({ onDone }) {
-  const [csvText, setCsvText] = useState("");
+function Round2ScoreEditor({ team, onSaved }) {
+  const feedbackLabel = useId();
+  const [editing, setEditing] = useState(false);
+  const [values, setValues] = useState({});
+  const [feedback, setFeedback] = useState("");
   const [busy, setBusy] = useState(false);
-  const [results, setResults] = useState(null);
   const [error, setError] = useState("");
-
-  async function run(e) {
-    e.preventDefault();
-    if (!csvText.trim()) return;
-    setBusy(true);
-    setError("");
+  const total = CRITERIA.reduce((sum, c) => sum + Number(values[c.key] || 0), 0);
+  async function save(e) {
+    e.preventDefault(); setBusy(true); setError("");
     try {
-      const data = await adminBulkImport(csvText);
-      setResults(data.results);
-      onDone();
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      setBusy(false);
-    }
+      const criteria = Object.fromEntries(CRITERIA.map(c => [c.key, Number(values[c.key])]));
+      const result = await coreSubmitMark(team.id, criteria, feedback.trim());
+      onSaved({ ...team, score: result.score, criteria, feedback: feedback.trim(), feedbackApproved: false });
+      setEditing(false);
+    } catch (err) { setError(err.message); } finally { setBusy(false); }
   }
+  return <div className="round2-scoreEditor">
+    {!editing ? <><strong>{team.score ?? "Unscored"}{team.score != null && ` / ${MAX_TOTAL}`}</strong><button type="button" className="portal-logout" onClick={() => { setValues(Object.fromEntries(CRITERIA.map(c => [c.key, team.criteria?.[c.key] ?? 0]))); setFeedback(team.feedback || ""); setError(""); setEditing(true); }}>Edit scores &amp; feedback</button></> :
+      <form onSubmit={save}><div className="round2-rubric">{CRITERIA.map(c => <label className="portal-field" key={c.key}><span>{c.label} / {c.max}</span><input type="number" min="0" max={c.max} step="0.01" required value={values[c.key] ?? ""} onChange={e => setValues(previous => ({ ...previous, [c.key]: e.target.value }))} /></label>)}</div>
+        <p className="round2-total">Total score: <strong>{total} / {MAX_TOTAL}</strong></p>
+        <label className="portal-field"><span id={feedbackLabel}>Feedback</span><textarea aria-labelledby={feedbackLabel} rows={4} maxLength={10000} value={feedback} onChange={e => setFeedback(e.target.value)} /></label>
+        {error && <p role="alert" className="portal-auth__error">{error}</p>}
+        <div className="round2-editorActions"><button type="submit" className="portal-auth__submit" disabled={busy}>{busy ? "Saving…" : "Save scores & feedback"}</button><button type="button" className="portal-logout" disabled={busy} onClick={() => setEditing(false)}>Cancel</button></div>
+      </form>}
+  </div>;
+}
 
-  return (
-    <section className="portal-card">
-      <h3>Bulk roster import</h3>
-      <p className="portal-card__hint">
-        One team per line: <code>team_code,team_name,name1,name2,name3,name4</code>.
-        Providing <code>team_name</code> updates the display name while preserving existing logins.
-        New accounts receive credentials shown once below. Save these before leaving this page.
-      </p>
-      {error && <p className="portal-auth__error">{error}</p>}
-      <form className="portal-auth__form" onSubmit={run}>
-        <textarea
-          rows={6}
-          value={csvText}
-          onChange={(e) => setCsvText(e.target.value)}
-          placeholder={"ELEV01,CyberKnights,Asha Rao,Vikram Shah,Dev Patel\nELEV02,AlphaCoders,John Doe,Jane Doe\n..."}
-          className="portal-bulkTextarea"
-        />
-        <button className="portal-auth__submit" type="submit" disabled={busy || !csvText.trim()}>
-          {busy ? "Importing…" : "Import"}
-        </button>
-      </form>
-      {results && (
-        <ul className="portal-importResults">
-          {results.map((r, i) => (
-            <li key={i} className={r.ok ? "is-ok" : "is-error"}>
-              {r.teamCode}: {r.ok ? "updated" : r.error}
-              {r.password && <div className="portal-newPassword">New login: <code>{r.username}</code> · Password: <code>{r.password}</code> — save now.</div>}
-            </li>
-          ))}
-        </ul>
-      )}
-    </section>
-  );
+function AdminRound2Leaderboard({ teams }) {
+  const rows = (teams || []).filter(team => team.shortlisted && !team.withdrawn).sort((a,b) => (b.score ?? -1) - (a.score ?? -1) || a.teamCode.localeCompare(b.teamCode));
+  return <section className="round2-leaderboard" aria-label="Round 2 leaderboard"><h3>Round 2 leaderboard</h3><p className="portal-card__hint">Current saved scores for active shortlisted teams. Equal scores share a rank. Unreleased results are visible here to admins.</p><ol>{rows.map(team => {
+    const rank = team.score == null ? null : rows.findIndex(row => row.score === team.score) + 1;
+    return <li key={team.id}><span className="round2-rank">{team.score == null ? "—" : rank}</span><div><strong>{team.teamName}</strong><span>{team.teamCode}</span></div><strong>{team.score ?? "—"}<small> / {MAX_TOTAL}</small></strong></li>;
+  })}</ol></section>;
+}
+
+function AdminNavIcon({ name }) {
+  const paths = {
+    home: "M3 10 12 3l9 7v11h-6v-7H9v7H3Z",
+    teams: "M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8M20 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75",
+    staff: "M12 3 3 7v6c0 5 9 9 9 9s9-4 9-9V7ZM8 12l3 3 5-6",
+    marks: "M4 21V10h4v11M10 21V3h4v18M16 21v-7h4v7",
+    audit: "M6 3h12v18H6ZM9 7h6M9 11h6M9 15h4",
+  };
+  return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d={paths[name]} /></svg>;
 }
 
 export function AdminHome({ session, superAdmin = false }) {
   const navigate = useNavigate();
+  const [panel, setPanel] = useState("overview");
   const [teams, setTeams] = useState(null);
   const [accounts, setAccounts] = useState(null);
   const [marksTeams, setMarksTeams] = useState(null);
   const [meals, setMeals] = useState(null);
+  const [mealAnalysisSlot, setMealAnalysisSlot] = useState(null);
+  const onMealAnalysisUpdate = useCallback(data => {
+    const count = data.teams.reduce((sum, team) => sum + team.served, 0);
+    setMeals(previous => previous?.map(slot => slot.code === data.slot.code ? { ...slot, served: count } : slot));
+  }, []);
   const [problemStatements, setProblemStatements] = useState(null);
   const [viewQrTeam, setViewQrTeam] = useState(null);
   const [showAddTeam, setShowAddTeam] = useState(false);
@@ -1269,6 +1084,21 @@ export function AdminHome({ session, superAdmin = false }) {
       })
       .catch((err) => setError(err.message));
   }
+
+  useEffect(() => {
+    if (panel !== "marks") return;
+    let stopped = false, timer, busy = false;
+    async function refresh() {
+      if (stopped || busy || document.hidden) return;
+      busy = true;
+      try { const data = await coreTeams(); if (!stopped) setMarksTeams(data.teams); }
+      catch (err) { if (!stopped) setError(err.message); }
+      finally { busy = false; if (!stopped) timer = setTimeout(refresh, 5000); }
+    }
+    const visible = () => { clearTimeout(timer); if (!document.hidden) refresh(); };
+    refresh(); document.addEventListener("visibilitychange", visible);
+    return () => { stopped = true; clearTimeout(timer); document.removeEventListener("visibilitychange", visible); };
+  }, [panel]);
 
   useEffect(() => {
     loadAll();
@@ -1367,7 +1197,7 @@ export function AdminHome({ session, superAdmin = false }) {
   }
 
   return (
-    <div className="portal-page">
+    <div className="portal-page portal-adminPage">
       <div className="portal-page__head">
         <div>
           <span className="portal-page__eyebrow">
@@ -1384,8 +1214,9 @@ export function AdminHome({ session, superAdmin = false }) {
 
       {superAdmin && <SuperAdminOversight />}
 
-      <Overview />
+      {panel === "overview" && <Overview />}
 
+      {panel === "teams" && (
       <section className="portal-card">
         <div className="portal-card__headRow">
           <h3>Teams ({teams?.length ?? "…"})</h3>
@@ -1501,17 +1332,19 @@ export function AdminHome({ session, superAdmin = false }) {
           </div>
         )}
       </section>
+      )}
 
-      <BulkImport onDone={loadAll} />
-
+      {panel === "overview" && <>
       <PsManager problemStatements={problemStatements} onSaved={loadPs} />
 
       <PsRequestsManager />
 
       <AnnouncementsManager />
 
-      <AssignmentsManager teams={teams} />
 
+      </>}
+
+      {panel === "staff" && (
       <section className="portal-card">
         <div className="portal-card__headRow">
           <h3>Staff accounts ({accounts?.length ?? "…"})</h3>
@@ -1548,7 +1381,9 @@ export function AdminHome({ session, superAdmin = false }) {
           </div>
         )}
       </section>
+      )}
 
+      {panel === "marks" && (
       <section className="portal-card">
         <div className="portal-card__headRow">
           <h3>Round 2 marks &amp; feedback</h3>
@@ -1583,64 +1418,23 @@ export function AdminHome({ session, superAdmin = false }) {
           </div>
         </div>
         <p className="portal-card__hint">
-          Scores and mentor feedback entered by Core. Mentoring feedback stays hidden from participants
-          until you hit &ldquo;Release All Results to Participants&rdquo; (or approve them individually).
+          Every team is listed, including teams that have not checked in. Edit the four rubric scores and feedback; totals are calculated by the server. Saving hides that team's updated result until it is released. This section refreshes every five seconds while visible.
         </p>
-        {marksTeams && (
-          <div className="portal-tableWrap">
-            <table className="portal-table">
-              <thead>
-                <tr>
-                  <th>Team</th>
-                  <th>Score</th>
-                  <th>Mentor feedback</th>
-                  <th>Participant visibility</th>
-                </tr>
-              </thead>
-              <tbody>
-                {marksTeams.map((t) => (
-                  <tr key={t.id}>
-                    <td>
-                      <strong>{t.teamCode}</strong>
-                      {t.teamName && <div className="portal-table__sub">{t.teamName}</div>}
-                    </td>
-                    <td>{t.score ?? "—"}</td>
-                    <td className="portal-table__note" style={{ maxWidth: "320px" }}>
-                      {t.feedback ? `“${t.feedback}”` : "—"}
-                    </td>
-                    <td>
-                      {t.score !== null ? (
-                        <button
-                          type="button"
-                          className={t.feedbackApproved ? "portal-logout" : "portal-auth__submit"}
-                          style={{
-                            padding: "0.3rem 0.75rem",
-                            fontSize: "0.8rem",
-                            width: "auto",
-                            borderColor: t.feedbackApproved ? "#27c93f" : undefined,
-                            color: t.feedbackApproved ? "#27c93f" : undefined,
-                          }}
-                          disabled={feedbackBusy === t.id}
-                          onClick={() => toggleFeedbackApproval(t.id, t.feedbackApproved)}
-                        >
-                          {feedbackBusy === t.id
-                            ? "…"
-                            : t.feedbackApproved
-                            ? "Approved (Visible to Team) ✓"
-                            : "Approve for Team"}
-                        </button>
-                      ) : (
-                        <span className="portal-table__sub">Unscored</span>
-                      )}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
+        <div className="round2-teamGrid">
+          {marksTeams?.map(team => <article className="round2-teamCard" key={team.id}>
+            <header><h4>{team.teamName}</h4><span>{team.teamCode} · Team ID {team.id}{team.seatNo != null && ` · Seat ${team.seatNo}`}{team.withdrawn && " · Withdrawn"}</span></header>
+            <Round2ScoreEditor team={team} onSaved={saved => setMarksTeams(previous => previous.map(row => row.id === saved.id ? saved : row))} />
+            <div className="round2-savedFeedback"><span>Saved feedback</span><p>{team.feedback || "No feedback entered."}</p></div>
+            <button type="button" className="portal-logout" disabled={feedbackBusy === team.id || team.score == null} onClick={() => toggleFeedbackApproval(team.id, team.feedbackApproved)}>
+              {feedbackBusy === team.id ? "Updating…" : team.feedbackApproved ? "Visible to participants · Hide" : "Hidden from participants · Release"}
+            </button>
+          </article>)}
+        </div>
+        <AdminRound2Leaderboard teams={marksTeams} />
       </section>
+      )}
 
+      {panel === "overview" && (
       <section className="portal-card">
         <div className="portal-card__headRow">
           <h3>Meals served</h3>
@@ -1659,10 +1453,8 @@ export function AdminHome({ session, superAdmin = false }) {
               <tbody>
                 {meals.map((s) => (
                   <tr key={s.code}>
-                    <td>
-                      Day {s.dayNo} — {s.label}
-                    </td>
-                    <td>{s.served}</td>
+                    <td><button type="button" className="meal-analysisOpen" onClick={() => setMealAnalysisSlot(s.code)} aria-label={`View Day ${s.dayNo} ${s.label} meal analysis`}>Day {s.dayNo} — {s.label}<span>View live analysis →</span></button></td>
+                    <td><button type="button" className="meal-analysisOpen" onClick={() => setMealAnalysisSlot(s.code)} aria-label={`View ${s.label} served participants`}>{s.served}</button></td>
                   </tr>
                 ))}
               </tbody>
@@ -1670,13 +1462,22 @@ export function AdminHome({ session, superAdmin = false }) {
           </div>
         )}
       </section>
+      )}
 
-      <IncidentLog />
+      {panel === "overview" && <FreezeResultsToggle />}
+      {panel === "audit" && <AuditLog />}
+      <GlassSystemProvider design="liquid" renderer="auto" theme={{ appearance: "dark" }} toasts={false}>
+      <Glass as="nav" material="regular" className="portal-adminNav" aria-label="Admin sections"
+        look={{ blur: .55, opacity: .65, tint: "#101827", saturation: 1.35, brightness: .88, rim: 1.6, highlight: 1.4, lensing: 1.7, lightAngle: 315, shadow: 1.3 }}>
+        {[["overview", "Overview", "home"], ["teams", "Teams", "teams"], ["staff", "Staff accounts", "staff"], ["marks", "Round 2 marks", "marks"], ["audit", "Audit log", "audit"]].map(([key, label, icon]) => (
+          <button key={key} type="button" aria-current={panel === key ? "page" : undefined} onClick={() => { setPanel(key); window.scrollTo({ top: 0, behavior: "smooth" }); }}>
+            <AdminNavIcon name={icon} /><span>{label}</span>
+          </button>
+        ))}
+      </Glass>
+      </GlassSystemProvider>
 
-      <FreezeResultsToggle />
-
-      <AuditLog />
-
+      {mealAnalysisSlot && <MealAnalysisPopup slotCode={mealAnalysisSlot} onClose={() => setMealAnalysisSlot(null)} onUpdate={onMealAnalysisUpdate} />}
       {viewQrTeam && <QrModal team={viewQrTeam} onClose={() => setViewQrTeam(null)} />}
       {showAllQrs && <AllQrsModal teams={teams || []} onClose={() => setShowAllQrs(false)} />}
       {showAddTeam && (
