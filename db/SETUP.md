@@ -68,3 +68,34 @@ transaction. Integrity validation fails instead of silently deleting mismatched
 records. Fresh databases receive these changes through `schema.sql`. Staff
 search/history share a cached snapshot; lookups and confirmations always
 revalidate current database state. See `RSVP-IMPORT.md` for event operation.
+
+### Problem statement capacities
+
+The admin PS form accepts only code/title and reveal/hide actions. New entries
+start at capacity **0** (no approvals) until configured in PostgreSQL. Updating
+code/title or reveal status preserves the existing backend capacity. Description
+is not displayed to participants. Configure each cap directly, for example:
+
+```sql
+UPDATE ps_list SET capacity = 4 WHERE code = 'PS1';
+```
+
+Use a nonnegative integer, or NULL for unlimited. Do not lower a capacity below
+the already approved team count. Pending requests do not reserve capacity.
+Approvals enforce request order within each PS (timestamp, then team ID), and
+only revealed PS entries for active teams can be approved. Revocation moves the
+team to the end of the pending queue. Duplicate requests preserve queue position.
+Short transactions lock the PS/selection tables before reading or writing;
+READ COMMITTED ensures a waiting transaction sees the previous commit. This
+serializes concurrent requests and approvals without exceeding configured caps.
+No migration or production capacity changes are required for this update.
+
+Run the isolated 32-team concurrency check without loading .env:
+
+```sh
+node scripts/verify-ps-postgres.mjs
+```
+
+It requires local PostgreSQL tools and uses a temporary database that is removed
+on completion. Visible participant/request screens refresh every five seconds;
+a successful action refreshes immediately. Hidden tabs pause polling.

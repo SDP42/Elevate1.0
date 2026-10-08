@@ -1,3 +1,4 @@
+import { createPsAllocation } from "./_lib/ps-allocation.js";
 import { saveRoster } from "./_lib/roster.js";
 import bcrypt from "bcryptjs";
 import crypto from "node:crypto";
@@ -415,38 +416,14 @@ async function approvePs(req, res) {
     return;
   }
 
-  const rows = await sql`
-    select s.ps_id, s.status, p.capacity
-    from team_ps_selection s
-    join ps_list p on p.id = s.ps_id
-    where s.team_id = ${teamId}
-  `;
-  const current = rows[0];
-  if (!current) {
-    res.status(404).json({ error: "That team hasn't requested a problem statement" });
-    return;
+  const result = await createPsAllocation(sql).approve(teamId, req.session.accountId);
+  if (!result.selection) {
+    res.status(404).json({ error: "That team hasn't requested a problem statement" }); return;
   }
-  if (current.status === "approved") {
-    res.status(200).json({ ok: true });
-    return;
+  if (result.selection.status !== "approved") {
+    res.status(409).json({ error: "Cannot approve: check capacity, reveal status and the earlier requests in this PS queue. Refresh to see the current queue." }); return;
   }
-
-  if (current.capacity !== null) {
-    const takenRows = await sql`
-      select count(*) as n from team_ps_selection where ps_id = ${current.ps_id} and status = 'approved'
-    `;
-    if (Number(takenRows[0].n) >= current.capacity) {
-      res.status(409).json({ error: "That problem statement is already at capacity" });
-      return;
-    }
-  }
-
-  await sql`
-    update team_ps_selection
-    set status = 'approved', approved_at = now(), approved_by = ${req.session.accountId}
-    where team_id = ${teamId}
-  `;
-  await logAction(req.session.accountId, "ps.approve", { teamId, psId: current.ps_id });
+  if (result.changed) await logAction(req.session.accountId, "ps.approve", { teamId, psId: result.selection.ps_id });
   res.status(200).json({ ok: true });
 }
 
@@ -458,10 +435,7 @@ async function revokePs(req, res) {
     res.status(400).json({ error: "teamId is required" });
     return;
   }
-  await sql`
-    update team_ps_selection set status = 'pending', approved_at = null, approved_by = null
-    where team_id = ${teamId}
-  `;
+  await createPsAllocation(sql).revoke(teamId);
   await logAction(req.session.accountId, "ps.revoke", { teamId });
   res.status(200).json({ ok: true });
 }
@@ -532,8 +506,8 @@ async function exportCsv(req, res) {
 /* create a problem statement, or update one that already exists (matched
    by its code) */
 async function savePs(req, res) {
-  const { code, title, description, capacity, revealed, sortOrder } = req.body || {};
-  if (!code || !title) {
+  const { code, title, revealed, sortOrder } = req.body || {};
+  if (typeof code !== "string" || typeof title !== "string" || !code.trim() || !title.trim() || code.length > 40 || title.length > 300) {
     res.status(400).json({ error: "code and title are required" });
     return;
   }
@@ -543,15 +517,14 @@ async function savePs(req, res) {
     values (
       ${code.trim()},
       ${title.trim()},
-      ${description || null},
-      ${capacity === "" || capacity == null ? null : Number(capacity)},
+      ${null},
+      ${0},
       ${Boolean(revealed)},
       ${sortOrder ?? 0}
     )
     on conflict (code) do update set
       title = excluded.title,
       description = excluded.description,
-      capacity = excluded.capacity,
       revealed = excluded.revealed,
       sort_order = excluded.sort_order
   `;

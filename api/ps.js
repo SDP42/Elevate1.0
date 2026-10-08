@@ -1,3 +1,4 @@
+import { createPsAllocation } from "./_lib/ps-allocation.js";
 import { sql } from "./_lib/db.js";
 import { requireRole } from "./_lib/auth.js";
 
@@ -78,7 +79,7 @@ async function list(req, res) {
 /* request (or change) a problem statement — can't request a hidden one,
    and can't touch it at all once admin has approved the team's current
    pick. Not capacity-checked here: that's enforced when admin approves,
-   first-come-first-served by requested_at. */
+   first-come-first-served by requested_at. Writes are serialized with approvals. */
 async function select(req, res) {
   if (req.session.role !== "team") {
     res.status(403).json({ error: "Only a team account can select a problem statement" });
@@ -92,23 +93,13 @@ async function select(req, res) {
     return;
   }
 
-  const psRows = await sql`select id, revealed from ps_list where id = ${psId}`;
-  if (!psRows[0] || !psRows[0].revealed) {
-    res.status(404).json({ error: "That problem statement isn't available" });
-    return;
+  if (!Number.isSafeInteger(Number(psId)) || Number(psId) < 1) {
+    res.status(400).json({ error: "A valid PS ID is required" }); return;
   }
-
-  const currentRows = await sql`select status from team_ps_selection where team_id = ${teamId}`;
-  if (currentRows[0]?.status === "approved") {
-    res.status(409).json({ error: "Your problem statement is already approved and locked in" });
-    return;
+  const selection = await createPsAllocation(sql).request(teamId, Number(psId));
+  if (!selection) {
+    res.status(409).json({ error: "Request unavailable: your allocation is locked, your team is withdrawn, or this PS is hidden. Refresh and try again." }); return;
   }
-
-  await sql`
-    insert into team_ps_selection (team_id, ps_id, status, requested_at)
-    values (${teamId}, ${psId}, 'pending', now())
-    on conflict (team_id) do update set ps_id = excluded.ps_id, status = 'pending', requested_at = now()
-  `;
 
   res.status(200).json({ ok: true });
 }
