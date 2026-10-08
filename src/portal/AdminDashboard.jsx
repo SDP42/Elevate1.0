@@ -1099,7 +1099,7 @@ export function AdminHome({ session, superAdmin = false }) {
                     <td>{t.username}</td>
                     {[0, 1, 2, 3].map(index => <td key={index} className="portal-teamMember">{t.members[index]?.name || "—"}{t.members[index]?.isLead && <span className="portal-table__sub">Team leader</span>}</td>)}
                     <td className="portal-table__note">{t.submissionUrl ? <a className="portal-projectLink" href={t.submissionUrl} target="_blank" rel="noopener noreferrer">{t.submissionUrl}<span aria-hidden="true"> ↗</span></a> : "—"}</td>
-                    <td><details><summary>Uploaded documents</summary><SubmissionFiles teamId={t.id} /></details></td>
+                    <td><SubmissionFiles teamId={t.id} compact /></td>
                     <td>{t.mealsClaimed ?? 0}</td>
                     <td>
                       {t.qrToken ? (

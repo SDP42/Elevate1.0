@@ -79,7 +79,7 @@ function PdfViewer({ bytes }) {
   </>}</div>;
 }
 
-function FilePreview({ file, localFile, teamId }) {
+export function FilePreview({ file, localFile, teamId, loadedFile }) {
   const [data, setData] = useState(null);
   const [error, setError] = useState('');
   const [slide, setSlide] = useState(0);
@@ -88,7 +88,7 @@ function FilePreview({ file, localFile, teamId }) {
     let blobUrl;
     setData(null); setError(''); setSlide(0);
     (async () => {
-      const saved = localFile ? null : (await submissionFile(file.id, teamId)).file;
+      const saved = localFile ? null : loadedFile || (await submissionFile(file.id, teamId)).file;
       const bytes = localFile ? new Uint8Array(await localFile.arrayBuffer()) : bytesFromBase64(saved.base64);
       const kind = file.kind;
       const text = ['md', 'txt'].includes(kind) ? new TextDecoder().decode(bytes) : '';
@@ -98,7 +98,7 @@ function FilePreview({ file, localFile, teamId }) {
       else URL.revokeObjectURL(blobUrl);
     })().catch(e => { if (active) setError(e.message || 'Unable to preview file.'); });
     return () => { active = false; if (blobUrl) URL.revokeObjectURL(blobUrl); };
-  }, [file.id, file.kind, localFile, teamId]);
+  }, [file.id, file.kind, localFile, teamId, loadedFile]);
   if (error) return <p role="alert" className="portal-auth__error">{error}</p>;
   if (!data) return <p>Loading preview…</p>;
   return <div className="submission-viewer">
@@ -122,33 +122,36 @@ function CommonUpload({ onSaved }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const input = useRef(null);
+  const [progress, setProgress] = useState('');
   async function choose(e) {
-    const selected = e.target.files[0];
+    const selected = Array.from(e.target.files || []);
     setError('');
-    if (!selected) return;
-    const kind = selected.name.split('.').pop().toLowerCase();
-    if (!['pdf', 'pptx', 'md', 'txt'].includes(kind) || !selected.size || selected.size > LIMIT) {
-      setError('Choose a PDF, PPTX, MD, or TXT file up to 3 MB.'); e.target.value = ''; return;
+    if (!selected.length) return;
+    if (selected.some(file => !['pdf', 'pptx', 'md', 'txt'].includes(file.name.split('.').pop().toLowerCase()) || !file.size || file.size > LIMIT)) {
+      setError('Each document must be a PDF, PPTX, MD, or TXT file up to 3 MB.'); e.target.value = ''; return;
     }
     setBusy(true);
+    let completed = 0;
     try {
-      const base64 = await new Promise((resolve, reject) => {
-        const reader = new FileReader(); reader.onload = () => resolve(reader.result.split(',')[1]); reader.onerror = reject; reader.readAsDataURL(selected);
-      });
-      const result = await uploadSubmission(selected.name, base64);
-      onSaved(result.file);
-      input.current.value = '';
-    } catch (e) { setError(e.message || 'Upload failed. Choose the file again to retry.'); }
-    finally { setBusy(false); }
+      for (const file of selected) {
+        setProgress(`Uploading ${completed + 1} of ${selected.length} documents…`);
+        const base64 = await new Promise((resolve, reject) => {
+          const reader = new FileReader(); reader.onload = () => resolve(reader.result.split(',')[1]); reader.onerror = reject; reader.readAsDataURL(file);
+        });
+        const result = await uploadSubmission(file.name, base64);
+        onSaved(result.file); completed++;
+      }
+    } catch (err) { setError(`${completed} document(s) saved. ${err.message || 'Upload failed.'} Choose the remaining files to retry.`); }
+    finally { setBusy(false); setProgress(''); input.current.value = ''; }
   }
   return <div className="submission-upload">
-    <label className="portal-field"><span>Upload document · PDF, PPTX, MD, TXT · max 3 MB</span><input ref={input} type="file" accept=".pdf,.pptx,.md,.txt" disabled={busy} onChange={choose} /></label>
-    {busy && <p role="status">Uploading document…</p>}
+    <label className="portal-field"><span>Upload documents · PDF, PPTX, MD, TXT · max 3 MB each</span><input ref={input} type="file" multiple accept=".pdf,.pptx,.md,.txt" disabled={busy} onChange={choose} /></label>
+    {busy && <p role="status">{progress}</p>}
     {error && <p role="alert" className="portal-auth__error">{error}</p>}
   </div>;
 }
 
-export default function SubmissionFiles({ teamId, editable = false, onUploaded }) {
+export default function SubmissionFiles({ teamId, editable = false, compact = false, onUploaded }) {
   const [files, setFiles] = useState([]);
   const [openedFile, setOpenedFile] = useState(null);
   const [error, setError] = useState('');
@@ -159,9 +162,24 @@ export default function SubmissionFiles({ teamId, editable = false, onUploaded }
     return () => { active = false; };
   }, [teamId]);
   if (loading) return <p>Loading uploaded files…</p>;
+  if (compact) return <div className="submission-compact">
+    {error && <p role="alert" className="portal-auth__error">{error}</p>}
+    {!files.length && !error && <span className="portal-table__sub">—</span>}
+    <GlassSystemProvider design="liquid" renderer="auto" theme={{ appearance: 'dark' }} toasts={false}>
+      <ul className="submission-documentButtons">{files.map(file => <li key={file.id}>
+        <Glass material="regular" className="submission-documentGlass" look={{ blur: .6, rim: 1.4, lensing: 1.4 }}>
+          <a href={`/portal/document?fileId=${file.id}&teamId=${teamId}`} target="_blank" rel="noopener noreferrer" aria-label={`Open ${file.name} in a new tab`} title={file.name}>
+            <span className="submission-documentKind">{file.kind.toUpperCase()}</span>
+            <span className="submission-documentName"><span className="submission-documentTrack"><span>{file.name}</span><span aria-hidden="true">{file.name}</span></span></span>
+            <span className="submission-documentArrow" aria-hidden="true">↗</span>
+          </a>
+        </Glass>
+      </li>)}</ul>
+    </GlassSystemProvider>
+  </div>;
   return <div className="submission-files">
     {error && <p role="alert" className="portal-auth__error">{error}</p>}
-    {editable && <CommonUpload onSaved={file => { setFiles(fs => [...fs.filter(f => f.kind !== file.kind), file]); onUploaded?.(file); }} />}
+    {editable && <CommonUpload onSaved={file => { setFiles(fs => [file, ...fs]); onUploaded?.(file); }} />}
     <ul className="submission-fileList">
       {files.map(file => <li className="submission-fileRow" key={file.id}>
         <span className="submission-fileRow__type" aria-hidden="true">{file.kind.toUpperCase()}</span>

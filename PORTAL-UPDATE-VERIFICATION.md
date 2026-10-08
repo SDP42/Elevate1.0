@@ -84,3 +84,26 @@ counts against persisted meal logs. There are still 32 teams and 119 participant
 The build and changed-file lint passed. Browser fixtures at 1440/390/320px checked
 four member cells, absent controls, new-tab project links, displayed meal counts
 and contained table scrolling alongside the existing portal regression checks.
+
+## Uploaded document buttons and multiple uploads — 8 October 2026
+
+Admin Teams cells display uploaded files directly as liquid-glass buttons,
+without a dropdown or an embedded preview. File names remain clipped inside the
+button and scroll on hover or keyboard focus; reduced-motion settings disable
+scrolling. Each button opens an authenticated document viewer in a new tab.
+PDF, rendered Markdown, plain text and the existing PowerPoint slide-content
+viewer retain original-file download links. Participant popup previews remain.
+
+Participants can select multiple files and upload several documents of the same
+type. Each document has its own database row; subsequent uploads no longer
+replace earlier ones. There is no per-team document-count limit. The existing
+3 MB limit per file, file validation and team/admin access restrictions remain.
+The live constraint migration preserved the existing document byte-for-byte.
+
+Verification: 41 Node tests passed, including two same-type uploads without an
+upsert; disposable PostgreSQL integration accepted two PDF rows for one team.
+Browser fixtures checked real new-tab navigation, rendered Markdown and PDF,
+contained animated file names at 1440/390/320px, multi-select uploads retaining
+both TXT files, and participant preview dismissal with Escape. Browser uploads
+used fixtures and did not alter event submissions. Production build and new
+viewer lint passed; the existing bundle-size warning remains.

@@ -1,3 +1,4 @@
+import DocumentPage from "./DocumentPage";
 import { Navigate, Route, Routes } from "react-router-dom";
 import "./portal.css";
 import Login from "./Login";
@@ -11,6 +12,7 @@ import SuperAdminDashboard from "./SuperAdminDashboard";
 export default function Portal() {
   return (
     <Routes>
+      <Route path="document" element={<DocumentPage />} />
       <Route path="login" element={<Login />} />
       <Route path="team" element={<TeamDashboard />} />
       <Route path="admin" element={<AdminDashboard />} />
