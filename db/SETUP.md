@@ -72,30 +72,37 @@ revalidate current database state. See `RSVP-IMPORT.md` for event operation.
 ### Problem statement capacities
 
 The admin PS form accepts only code/title and reveal/hide actions. New entries
-start at capacity **0** (no approvals) until configured in PostgreSQL. Updating
+start at capacity **0** (no allocations) until configured in PostgreSQL. Updating
 code/title or reveal status preserves the existing backend capacity. Description
 is not displayed to participants. Configure each cap directly, for example:
 
 ```sql
-UPDATE ps_list SET capacity = 4 WHERE code = 'PS1';
+UPDATE ps_list SET capacity = 8 WHERE code = 'EL01';
 ```
 
 Use a nonnegative integer, or NULL for unlimited. Do not lower a capacity below
-the already approved team count. Pending requests do not reserve capacity.
-Approvals enforce request order within each PS (timestamp, then team ID), and
-only revealed PS entries for active teams can be approved. Revocation moves the
-team to the end of the pending queue. Duplicate requests preserve queue position.
-Short transactions lock the PS/selection tables before reading or writing;
-READ COMMITTED ensures a waiting transaction sees the previous commit. This
-serializes concurrent requests and approvals without exceeding configured caps.
-No migration or production capacity changes are required for this update.
+the already allocated team count. Run `ps-final-definitions.sql` explicitly in
+the database SQL editor to install EL01 Sports Analytics, EL02 AI Agents, EL03
+Elevate and EL04 Obliq. Initial capacities are 8 each; re-running that file
+preserves subsequently configured capacities.
 
-Run the isolated 32-team concurrency check without loading .env:
+Teams submit four distinct revealed PS IDs in ranked order. The database stores
+all four, but allocation examines only preferences 1–3. A short READ COMMITTED
+transaction locks the PS/selection tables and the requesting team's row before
+checking occupancy and inserting the allocation. Capacity changes and allocation
+writes serialize through PostgreSQL locks. No team-code or staff preference is
+used to break contention; transactions are processed in database lock order.
+Once allocated, duplicate submissions return the locked allocation. If the top
+three are full, preferences are saved without an allocation; the fourth is never
+assigned automatically. All teams choosing the same top three can leave the
+fourth PS empty, even though it has capacity.
+
+Run the isolated concurrency check without loading `.env`:
 
 ```sh
 node scripts/verify-ps-postgres.mjs
 ```
 
-It requires local PostgreSQL tools and uses a temporary database that is removed
-on completion. Visible participant/request screens refresh every five seconds;
-a successful action refreshes immediately. Hidden tabs pause polling.
+It requires local PostgreSQL tools and removes its temporary database on
+completion. Visible participant and admin overview screens refresh every five
+seconds; a successful submission refreshes immediately. Hidden tabs pause.

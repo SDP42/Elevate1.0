@@ -137,3 +137,64 @@ score/feedback saves, the release control and default All selector. Separate
 feedback with no rubric or page overflow. Build passed; existing bundle-size and
 unrelated effect warnings remain. These are fixture/local integration checks,
 not authenticated production browser evidence.
+
+## Ranked PS allocation, staged scores and participant arrivals — 8 October 2026
+
+Public waitlisted boards/counts are removed; shortlisted teams remain. Login now
+shows Team, Meal, Regi desk and Admin in a two-column layout. Core/superadmin
+accounts retain their existing role-based routes, without login selector tabs.
+The announcement audience control is an actual OpenGlass liquid dropdown with
+keyboard options, selected-state styling, outside-click and Escape dismissal.
+
+Marks have separate Mentoring 1, Judging Round 1 and Final Round scores (each
+currently bounded to 100). The former saved score is preserved as Mentoring 1.
+The admin's final-shortlist control is distinct from the event's existing
+shortlist, initially false for all teams. Final score entry and display are
+restricted by this flag in both UI and SQL, including row locking against
+concurrent eligibility changes. Judging and final leaderboards/export/print
+follow the appropriate stage; the leaderboard endpoint uses Judging Round 1
+while live and only final-shortlisted final scores when frozen. Two mentoring
+feedbacks and the organizer-controlled release gate remain.
+
+Participants submit four distinct ranked choices; the fourth is recorded only.
+A locked READ COMMITTED transaction checks current capacity and allocates the
+first available of preferences 1–3 immediately. Duplicate submits return the
+locked assignment; hidden/withdrawn/invalid choices are rejected. If all three
+are full, preferences persist without allocating the fourth. Transactions use
+database lock order, without priority based on team code or administrator.
+Admin PS occupancy refreshes while the overview is visible.
+
+Organizer-confirmed live PS configuration is EL01 Sports Analytics, EL02 AI
+Agents, EL03 Elevate and EL04 Obliq, descriptions NA and capacities 8 each.
+The two named legacy selections were cleared only after explicit authorization,
+with a private backup. Old placeholder PSs are hidden. Other participant,
+submission, meal, registration, feedback and score data were preserved. The
+schema migration keeps 32 teams and 119 participants.
+
+Meal-counter celebrations are removed; participant meal celebrations remain.
+Registration uses touch-sized member buttons with airplane selected/registered
+states, preserving one fresh QR/manual lookup proof per registered participant.
+GitHub ID, medical-note and note entry fields are removed. The same private
+participant receipt response includes that team's saved registration members;
+no staff/other-team registration receipts are exposed. Visible participant tabs
+refresh approximately every 3 seconds until registration is complete, then use
+the existing slower meal polling cadence. Hidden tabs pause. New check-ins show
+an actual liquid-glass welcome dialog with the supplied banner, close cross,
+Escape and backdrop dismissal; duplicate popups are deduplicated per tab/member.
+The banner is optimized from 8.4 MB PNG to approximately 210 KB WebP.
+
+Verification: 41 Node tests, production build and changed-module lint passed.
+Disposable PostgreSQL tests checked 32 simultaneous ranked requests, capacity
+fallback, fourth-choice exclusion, duplicate/hidden/full cases, invalid request
+shapes, and a balanced 32-team allocation at capacity 8 each. Score tests checked
+independent stages, final eligibility enforcement/removal, correct live/frozen
+leaderboard stages, release privacy and own-team registration receipt isolation.
+Browser fixtures checked 1440/390/320 layouts, glass audience choices, ranked
+submission, final-shortlist gating, registration buttons, no staff celebration,
+participant welcome/banner/close/Escape/backdrop, retained participant meal
+celebration, four login selectors and absent public waitlist. Live read-only
+handler checks confirmed the configured four PSs, cleared legacy selections,
+32 score teams and own-team registration responses. Fixtures did not write event
+scans/scores/uploads; these checks are not authenticated production-browser or
+123-session load evidence. Existing unrelated warnings and security findings
+remain as documented above.
