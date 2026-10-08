@@ -127,9 +127,6 @@ export const adminSaveTeamNotes = (teamId, dietary) =>
 export const adminBulkImport = (csvText) =>
   request("/admin", { method: "POST", body: JSON.stringify({ action: "bulk-import", csvText }) });
 
-export const adminResetPassword = (accountId) =>
-  request("/admin", { method: "POST", body: JSON.stringify({ action: "reset-password", accountId }) });
-
 export const adminSaveAnnouncement = (announcement) =>
   request("/admin", { method: "POST", body: JSON.stringify({ action: "save-announcement", ...announcement }) });
 

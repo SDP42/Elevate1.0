@@ -21,7 +21,6 @@ import {
   adminMeals,
   adminOverview,
   adminPsRequests,
-  adminResetPassword,
   adminRevokePs,
   adminSaveAnnouncement,
   adminSaveAssignment,
@@ -391,32 +390,6 @@ function TeamNameEditor({ team, onSaved }) {
           Cancel
         </button>
       </div>
-    </div>
-  );
-}
-
-function ResetPasswordButton({ account, onReset }) {
-  const [busy, setBusy] = useState(false);
-  const [result, setResult] = useState(null);
-
-  async function reset() {
-    if (!window.confirm(`Generate a new password for ${account.username}? Their old one stops working immediately.`)) return;
-    setBusy(true);
-    try {
-      const data = await adminResetPassword(account.id);
-      setResult(data.password);
-      if (onReset) onReset(data.password);
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  return (
-    <div>
-      <button type="button" className="portal-logout" onClick={reset} disabled={busy}>
-        {busy ? "…" : "Reset"}
-      </button>
-      {result && <div className="portal-newPassword">New: <code>{result}</code> — save now. <button type="button" className="portal-link-btn" onClick={() => setResult(null)}>Dismiss</button></div>}
     </div>
   );
 }
@@ -1466,7 +1439,6 @@ export function AdminHome({ session, superAdmin = false }) {
                   <th>Dietary</th>
                   <th>Roster</th>
                   <th>Withdraw</th>
-                  <th>Password</th>
                 </tr>
               </thead>
               <tbody>
@@ -1522,13 +1494,6 @@ export function AdminHome({ session, superAdmin = false }) {
                     <td>
                       <WithdrawToggle team={t} onChanged={onWithdrawnChanged} />
                     </td>
-                    <td>
-                      <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-                        <ResetPasswordButton
-                          account={{ id: t.accountId, username: t.username }}
-                        />
-                      </div>
-                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -1559,7 +1524,7 @@ export function AdminHome({ session, superAdmin = false }) {
             + Generate Staff Login
           </button>
         </div>
-        <p className="portal-card__hint">Staff account details. Passwords are shown once when created or reset; save them securely.</p>
+        <p className="portal-card__hint">Staff account details. Passwords are shown once when created; save them securely.</p>
         {accounts && (
           <div className="portal-tableWrap">
             <table className="portal-table">
@@ -1568,7 +1533,6 @@ export function AdminHome({ session, superAdmin = false }) {
                   <th>Role</th>
                   <th>Username</th>
                   <th>Name</th>
-                  <th>Password</th>
                 </tr>
               </thead>
               <tbody>
@@ -1577,13 +1541,6 @@ export function AdminHome({ session, superAdmin = false }) {
                     <td className="portal-table__role">{a.role}</td>
                     <td>{a.username}</td>
                     <td>{a.display_name}</td>
-                    <td>
-                      <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-                        <ResetPasswordButton
-                          account={a}
-                        />
-                      </div>
-                    </td>
                   </tr>
                 ))}
               </tbody>
