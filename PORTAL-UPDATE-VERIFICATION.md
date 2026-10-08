@@ -1,5 +1,15 @@
 # Portal update verification — 8 October 2026
 
+## Legacy PS cleanup
+
+PS1 Smart Campus and PS2 Smart School have been deleted from the live database
+after confirming there are no team selection/preference references. A private
+pre-deletion backup was saved. The four EL01–EL04 rows are unchanged, including
+capacities and visibility. `db/remove-legacy-ps.sql` aborts if team data references
+either obsolete statement; the configuration script also removes only unused
+legacy entries. Disposable PostgreSQL coverage checks reference protection,
+scoped deletion and idempotence.
+
 ## Latest: scheduled selection opening and fourth-choice fallback
 
 This update supersedes the earlier fourth-choice exclusion policy below.

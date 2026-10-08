@@ -111,6 +111,14 @@ try {
   assert.equal(balanced.filter(r=>r.allocated).length,32);
   const balancedCounts=await exec('psql',[...params,'-At','-c',"select ps_id,count(*) from team_ps_selection group by ps_id order by ps_id"]);
   assert.equal(balancedCounts.stdout.trim(),'1|8\n2|8\n3|8\n4|8');
+  const cleanup=await fs.readFile(new URL('../db/remove-legacy-ps.sql',import.meta.url),'utf8');
+  await run("alter table ps_list add column code text;update ps_list set code='EL0'||id;update ps_list set code='PS1' where id=1");
+  await assert.rejects(run(cleanup),/team selections or preferences still reference/);
+  await run("update ps_list set code='EL01' where id=1;insert into ps_list(id,code) values(5,'PS1'),(6,'PS2')");
+  await run(cleanup);await run(cleanup);
+  const remaining=await exec('psql',[...params,'-At','-c','select code from ps_list order by id']);
+  assert.equal(remaining.stdout.trim(),'EL01\nEL02\nEL03\nEL04');
+  console.log('PASS: legacy cleanup aborts on referenced statements, removes only unused PS1/PS2, and is idempotent.');
   console.log('PASS: ranked preferences under 32 concurrent submissions; first/second/third/fourth fallback caps 2/3/5/100, duplicate submissions keep locked allocation, hidden/zero capacity.');
   console.log('PASS: 32 simultaneous requests, parallel approvals/capacity, FIFO, approval/request race, revocation, hidden/withdrawn/zero capacity, idempotent queue.');
 } finally {

@@ -7,4 +7,8 @@ insert into ps_list(code,title,description,capacity,revealed,sort_order) values
  ('EL04','Obliq','NA',8,true,4)
 on conflict(code) do update set title=excluded.title,description=excluded.description,
  revealed=excluded.revealed,sort_order=excluded.sort_order;
-update ps_list set revealed=false where code in ('PS1','PS2');
+-- Retire legacy demos only when no team data references them.
+delete from ps_list p where p.code in ('PS1','PS2')
+  and not exists(select 1 from team_ps_selection s where s.ps_id=p.id)
+  and not exists(select 1 from team_ps_preferences f
+    where p.id in (f.preference1,f.preference2,f.preference3,f.preference4));

@@ -86,6 +86,10 @@ the database SQL editor to install EL01 Sports Analytics, EL02 AI Agents, EL03
 Elevate and EL04 Obliq. Initial capacities are 8 each; re-running that file
 preserves subsequently configured capacities.
 
+The obsolete PS1 Smart Campus and PS2 Smart School entries are removed rather
+than hidden. Existing databases can run `remove-legacy-ps.sql`; it aborts if
+either entry has team selections/preferences, preserving those records.
+
 Teams submit four distinct revealed PS IDs in ranked order. The database stores
 all four and allocates the first available choice in order 1, 2, 3, 4. A short READ COMMITTED
 transaction locks the PS/selection tables and the requesting team's row before
