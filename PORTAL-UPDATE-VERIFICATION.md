@@ -63,3 +63,24 @@ read checks. They are not authenticated production-browser tests or a
 123-session production load test. The JWT revocation and parallel login-limit
 findings in SECURITY-REVIEW.md remain open. Passing characterization tests for
 those findings does not mean the vulnerabilities are fixed.
+
+## Subsequent Teams table and roster update — 8 October 2026
+
+The Teams table now uses four individual member columns, a directly openable
+GitHub/project URL column, a separate uploaded-documents column and a persisted
+meal-claim count. Rename, roster editing, withdrawal and dietary controls are
+removed from this table. Visible Teams tabs refresh every five seconds.
+
+Organizer-supplied corrections were applied atomically to Momex and False9 after
+a private local backup. Existing member IDs, team accounts and QR tokens remain.
+The departing False9 member had no meal, registration or event scans; his roster
+slot now holds the replacement leader. The replacement's unspecified college,
+year/branch and food preference are not inherited from the departing participant.
+The other profiles retain their recorded meal preferences. Contact details and
+private backup data are not committed to Git.
+
+Post-update reads verified all supplied contact/profile values and the API's meal
+counts against persisted meal logs. There are still 32 teams and 119 participants.
+The build and changed-file lint passed. Browser fixtures at 1440/390/320px checked
+four member cells, absent controls, new-tab project links, displayed meal counts
+and contained table scrolling alongside the existing portal regression checks.

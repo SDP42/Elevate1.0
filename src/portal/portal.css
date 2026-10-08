@@ -2370,3 +2370,6 @@ pre.submission-viewer__document { white-space: pre-wrap; }
 .round2-savedFeedback > span { font-size: 11px; color: var(--gold); }
 .round2-savedFeedback p { margin: 7px 0 0; font-size: 13px; line-height: 1.6; color: var(--cream-dim); overflow-wrap: anywhere; white-space: pre-wrap; }
 @media (max-width: 480px) { .round2-teamCard { padding: 16px; } .round2-rubric { grid-template-columns: minmax(0,1fr); } }
+.portal-teamMember { min-width: 140px; }
+.portal-teamMember .portal-table__sub { display: block; margin-top: 5px; color: var(--gold); }
+.portal-projectLink { display: inline-block; max-width: 260px; overflow-wrap: anywhere; line-height: 1.5; color: var(--gold); }

@@ -27,11 +27,7 @@ import {
   adminRevokePs,
   adminSaveAnnouncement,
   adminSavePs,
-  adminSaveTeamMembers,
-  adminSaveTeamName,
-  adminSaveTeamNotes,
   adminSetShortlist,
-  adminSetWithdrawn,
   adminSettings,
   adminTeams,
   coreTeams,
@@ -106,25 +102,6 @@ function Overview() {
   );
 }
 
-function WithdrawToggle({ team, onChanged }) {
-  const [busy, setBusy] = useState(false);
-  async function toggle() {
-    if (!team.withdrawn && !window.confirm(`Mark ${team.teamCode} as withdrawn? Frees their PS seat and drops them from the leaderboard.`)) return;
-    setBusy(true);
-    try {
-      await adminSetWithdrawn(team.id, !team.withdrawn);
-      onChanged(team.id, !team.withdrawn);
-    } finally {
-      setBusy(false);
-    }
-  }
-  return (
-    <button type="button" className="portal-logout" onClick={toggle} disabled={busy}>
-      {team.withdrawn ? "Reinstate" : "Mark withdrawn"}
-    </button>
-  );
-}
-
 function FreezeResultsToggle() {
   const [frozen, setFrozen] = useState(null);
   const [busy, setBusy] = useState(false);
@@ -162,56 +139,6 @@ function FreezeResultsToggle() {
   );
 }
 
-function RosterEditor({ team, onSaved }) {
-  const [open, setOpen] = useState(false);
-  const [text, setText] = useState(team.members.map((m) => m.name).join("\n"));
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState("");
-
-  async function save() {
-    const names = text.split("\n").map((s) => s.trim()).filter(Boolean);
-    setBusy(true);
-    setError("");
-    try {
-      await adminSaveTeamMembers(team.id, names);
-      onSaved(team.id, names);
-      setOpen(false);
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  if (!open) {
-    return (
-      <button type="button" className="portal-logout" onClick={() => setOpen(true)}>
-        Edit roster
-      </button>
-    );
-  }
-
-  return (
-    <div className="portal-rosterEditor">
-      <textarea
-        rows={4}
-        value={text}
-        onChange={(e) => setText(e.target.value)}
-        placeholder="One name per line, 2 to 4 names"
-      />
-      {error && <p className="portal-auth__error">{error}</p>}
-      <div className="portal-scanResult__actions">
-        <button type="button" className="portal-auth__submit" onClick={save} disabled={busy}>
-          {busy ? "Saving…" : "Save"}
-        </button>
-        <button type="button" className="portal-logout" onClick={() => setOpen(false)}>
-          Cancel
-        </button>
-      </div>
-    </div>
-  );
-}
-
 function ShortlistToggle({ team, onChanged }) {
   const [busy, setBusy] = useState(false);
   async function toggle() {
@@ -227,94 +154,6 @@ function ShortlistToggle({ team, onChanged }) {
     <button type="button" className="portal-logout" onClick={toggle} disabled={busy}>
       {team.shortlisted ? "Round 2 ✓" : "Shortlist for R2"}
     </button>
-  );
-}
-
-function DietaryEditor({ team, onSaved }) {
-  const [open, setOpen] = useState(false);
-  const [value, setValue] = useState(team.dietary || "");
-  const [busy, setBusy] = useState(false);
-
-  async function save() {
-    setBusy(true);
-    try {
-      await adminSaveTeamNotes(team.id, value);
-      onSaved(team.id, value);
-      setOpen(false);
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  if (!open) {
-    return (
-      <button type="button" className="portal-logout" onClick={() => setOpen(true)}>
-        {team.dietary ? "Edit dietary" : "Add dietary"}
-      </button>
-    );
-  }
-
-  return (
-    <div className="portal-rosterEditor">
-      <input
-        value={value}
-        onChange={(e) => setValue(e.target.value)}
-        placeholder="e.g. Vegan, 1 member"
-        className="portal-feedbackInput"
-      />
-      <div className="portal-scanResult__actions">
-        <button type="button" className="portal-auth__submit" onClick={save} disabled={busy}>
-          {busy ? "Saving…" : "Save"}
-        </button>
-        <button type="button" className="portal-logout" onClick={() => setOpen(false)}>
-          Cancel
-        </button>
-      </div>
-    </div>
-  );
-}
-
-/* rename a team's display name (e.g. "Team 1" → their real chosen name)
-   without touching username, password, or QR token — the one thing
-   organisers need once teams are finalised closer to the event, so
-   already-issued logins and boarding passes never need reissuing */
-function TeamNameEditor({ team, onSaved }) {
-  const [open, setOpen] = useState(false);
-  const [value, setValue] = useState(team.displayName);
-  const [busy, setBusy] = useState(false);
-
-  async function save() {
-    if (!value.trim()) return;
-    setBusy(true);
-    try {
-      const res = await adminSaveTeamName(team.accountId, value.trim());
-      onSaved(team.id, value.trim(), res?.username);
-      setOpen(false);
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  if (!open) {
-    return (
-      <button type="button" className="portal-logout" onClick={() => setOpen(true)}>
-        Rename
-      </button>
-    );
-  }
-
-  return (
-    <div className="portal-rosterEditor">
-      <input value={value} onChange={(e) => setValue(e.target.value)} className="portal-feedbackInput" />
-      <div className="portal-scanResult__actions">
-        <button type="button" className="portal-auth__submit" onClick={save} disabled={busy || !value.trim()}>
-          {busy ? "Saving…" : "Save"}
-        </button>
-        <button type="button" className="portal-logout" onClick={() => setOpen(false)}>
-          Cancel
-        </button>
-      </div>
-    </div>
   );
 }
 
@@ -1086,12 +925,18 @@ export function AdminHome({ session, superAdmin = false }) {
   }
 
   useEffect(() => {
-    if (panel !== "marks") return;
+    if (panel !== "marks" && panel !== "teams") return;
     let stopped = false, timer, busy = false;
     async function refresh() {
       if (stopped || busy || document.hidden) return;
       busy = true;
-      try { const data = await coreTeams(); if (!stopped) setMarksTeams(data.teams); }
+      try {
+        const data = await (panel === "marks" ? coreTeams() : adminTeams());
+        if (!stopped) {
+          if (panel === "marks") setMarksTeams(data.teams);
+          else setTeams(data.teams);
+        }
+      }
       catch (err) { if (!stopped) setError(err.message); }
       finally { busy = false; if (!stopped) timer = setTimeout(refresh, 5000); }
     }
@@ -1159,36 +1004,8 @@ export function AdminHome({ session, superAdmin = false }) {
     }
   }
 
-  function onRosterSaved(teamId, names) {
-    setTeams((prev) =>
-      prev.map((t) =>
-        t.id === teamId
-          ? { ...t, members: names.map((name, i) => ({ id: `${teamId}-${i}`, name, isLead: i === 0 })) }
-          : t
-      )
-    );
-  }
-
   function onShortlistChanged(teamId, shortlisted) {
     setTeams((prev) => prev.map((t) => (t.id === teamId ? { ...t, shortlisted } : t)));
-  }
-
-  function onDietarySaved(teamId, dietary) {
-    setTeams((prev) => prev.map((t) => (t.id === teamId ? { ...t, dietary } : t)));
-  }
-
-  function onWithdrawnChanged(teamId, withdrawn) {
-    setTeams((prev) => prev.map((t) => (t.id === teamId ? { ...t, withdrawn } : t)));
-  }
-
-  function onTeamNameSaved(teamId, displayName, username) {
-    setTeams((prev) =>
-      prev.map((t) =>
-        t.id === teamId
-          ? { ...t, displayName, ...(username ? { username } : {}) }
-          : t
-      )
-    );
   }
 
   async function onLogout() {
@@ -1251,8 +1068,7 @@ export function AdminHome({ session, superAdmin = false }) {
           </div>
         </div>
         <p className="portal-card__hint">
-          This is the whole teams table, straight from the database — the login a team was given,
-          their seat, roster, shortlist status, dietary notes and submission.
+          Team details, individual members, submitted project links, uploaded documents and total meal coupons claimed.
         </p>
         {teams && (
           <div className="portal-tableWrap">
@@ -1263,13 +1079,12 @@ export function AdminHome({ session, superAdmin = false }) {
                   <th>Name</th>
                   <th>Seat</th>
                   <th>Username</th>
-                  <th>Members</th>
-                  <th>Submission</th>
+                  {[1, 2, 3, 4].map(position => <th key={position}>Member {position}</th>)}
+                  <th>GitHub / project link</th>
+                  <th>Uploaded documents</th>
+                  <th>Meals claimed</th>
                   <th>QR Pass</th>
                   <th>Round 2 Shortlist</th>
-                  <th>Dietary</th>
-                  <th>Roster</th>
-                  <th>Withdraw</th>
                 </tr>
               </thead>
               <tbody>
@@ -1279,25 +1094,13 @@ export function AdminHome({ session, superAdmin = false }) {
                       {t.teamCode}
                       {t.withdrawn && <div className="portal-table__sub">Withdrawn</div>}
                     </td>
-                    <td>
-                      {t.displayName}
-                      <div className="portal-table__sub">
-                        <TeamNameEditor team={t} onSaved={onTeamNameSaved} />
-                      </div>
-                    </td>
+                    <td>{t.displayName}</td>
                     <td>{t.seatNo ?? "—"}</td>
                     <td>{t.username}</td>
-                    <td>{t.members.map((m) => m.name).join(", ")}</td>
-                    <td className="portal-table__note">
-                      {t.submissionUrl ? (
-                        <a href={t.submissionUrl} target="_blank" rel="noopener noreferrer">
-                          link
-                        </a>
-                      ) : (
-                        null
-                      )}
-                      <details><summary>Uploaded documents</summary><SubmissionFiles teamId={t.id} /></details>
-                    </td>
+                    {[0, 1, 2, 3].map(index => <td key={index} className="portal-teamMember">{t.members[index]?.name || "—"}{t.members[index]?.isLead && <span className="portal-table__sub">Team leader</span>}</td>)}
+                    <td className="portal-table__note">{t.submissionUrl ? <a className="portal-projectLink" href={t.submissionUrl} target="_blank" rel="noopener noreferrer">{t.submissionUrl}<span aria-hidden="true"> ↗</span></a> : "—"}</td>
+                    <td><details><summary>Uploaded documents</summary><SubmissionFiles teamId={t.id} /></details></td>
+                    <td>{t.mealsClaimed ?? 0}</td>
                     <td>
                       {t.qrToken ? (
                         <button
@@ -1314,16 +1117,6 @@ export function AdminHome({ session, superAdmin = false }) {
                     </td>
                     <td>
                       <ShortlistToggle team={t} onChanged={onShortlistChanged} />
-                    </td>
-                    <td>
-                      <DietaryEditor team={t} onSaved={onDietarySaved} />
-                      {t.dietary && <div className="portal-table__note">{t.dietary}</div>}
-                    </td>
-                    <td>
-                      <RosterEditor team={t} onSaved={onRosterSaved} />
-                    </td>
-                    <td>
-                      <WithdrawToggle team={t} onChanged={onWithdrawnChanged} />
                     </td>
                   </tr>
                 ))}
