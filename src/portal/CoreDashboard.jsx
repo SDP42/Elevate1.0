@@ -1,10 +1,9 @@
 import { useCallback, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import RequireRole from "./RequireRole";
-import { CRITERIA, MAX_TOTAL } from "../../shared/criteria.js";
+import FinalMarksEditor from "./FinalMarksEditor";
 import {
   coreSaveRound1Note,
-  coreSubmitMark,
   coreTeams,
   coreToggleRecuse,
   logout,
@@ -34,135 +33,14 @@ function RecuseButton({ team, onRecused }) {
 }
 
 function MarksRow({ team, onSaved, onRecused }) {
-  const [values, setValues] = useState(() => {
-    const initial = {};
-    for (const c of CRITERIA) initial[c.key] = team.criteria?.[c.key] ?? "";
-    return initial;
-  });
-  const [feedback, setFeedback] = useState(team.feedback || "");
-  const [saving, setSaving] = useState(false);
-  const [saved, setSaved] = useState(false);
-  const [error, setError] = useState("");
-
-  const total = CRITERIA.reduce((sum, c) => {
-    const v = Number(values[c.key]);
-    return sum + (Number.isNaN(v) ? 0 : v);
-  }, 0);
-
-  const complete = CRITERIA.every((c) => values[c.key] !== "" && !Number.isNaN(Number(values[c.key])));
-
-  async function save() {
-    if (!complete) return;
-    setSaving(true);
-    setSaved(false);
-    setError("");
-    const criteria = {};
-    for (const c of CRITERIA) criteria[c.key] = Number(values[c.key]);
-    try {
-      await coreSubmitMark(team.id, criteria, feedback);
-      setSaved(true);
-      onSaved(team.id, { score: total, criteria, feedback });
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      setSaving(false);
-    }
-  }
-
-  function setField(key, raw) {
-    setValues((prev) => ({ ...prev, [key]: raw }));
-    setSaved(false);
-  }
-
-  return (
-    <tr>
-      <td>
-        {team.teamCode}
-        {team.psCode && (
-          <div className="portal-table__sub" title={team.psDescription || undefined}>
-            {team.psCode}
-            {team.psDescription && " · " + team.psDescription.slice(0, 40) + (team.psDescription.length > 40 ? "…" : "")}
-          </div>
-        )}
-        {team.slotTime && <div className="portal-table__sub">Slot: {team.slotTime}</div>}
-      </td>
-      <td>{team.seatNo ?? "—"}</td>
-      {CRITERIA.map((c) => (
-        <td key={c.key}>
-          <input
-            className="portal-marksInput"
-            type="number"
-            min={0}
-            max={c.max}
-            inputMode="decimal"
-            value={values[c.key]}
-            onChange={(e) => setField(c.key, e.target.value)}
-            aria-label={`${c.label} (out of ${c.max})`}
-          />
-        </td>
-      ))}
-      <td className="portal-marksTotal">{total}</td>
-      <td>
-        <input
-          className="portal-feedbackInput"
-          value={feedback}
-          onChange={(e) => {
-            setFeedback(e.target.value);
-            setSaved(false);
-          }}
-          placeholder="Feedback for the team"
-          aria-label={`Feedback for ${team.teamCode}`}
-        />
-      </td>
-      <td>
-        <button type="button" className="portal-logout" onClick={save} disabled={saving || !complete}>
-          {saving ? "Saving…" : saved ? "Saved ✓" : "Save"}
-        </button>
-        {error && <div className="portal-marksError">{error}</div>}
-      </td>
-      <td className="portal-no-print">
-        <RecuseButton team={team} onRecused={onRecused} />
-      </td>
-    </tr>
-  );
+  return <tr><td>{team.teamName}<div className="portal-table__sub">{team.teamCode}{team.psCode && ` · ${team.psCode}`}</div></td><td>{team.seatNo ?? '—'}</td>
+    <td><FinalMarksEditor team={team} onSaved={saved => onSaved(team.id, saved)} /></td>
+    <td className="portal-table__note"><strong>Mentoring 1 feedback</strong><p>{team.mentoring1Feedback || '—'}</p><strong>Mentoring 2 feedback</strong><p>{team.mentoring2Feedback || '—'}</p></td>
+    <td className="portal-no-print"><RecuseButton team={team} onRecused={onRecused} /></td></tr>;
 }
 
-/* A plain, read-only mirror of the same data — hidden on screen, shown
-   only by the print stylesheet. Printing the live table of number inputs
-   works in most browsers, but this gives a clean paper backup regardless
-   of how a given browser happens to render <input> on paper. */
 function PrintBackup({ teams, generatedAt }) {
-  return (
-    <table className="portal-print-table">
-      <caption>Elevate 1.0 — Round 2 marks, printed {generatedAt}</caption>
-      <thead>
-        <tr>
-          <th>Team</th>
-          <th>PS</th>
-          {CRITERIA.map((c) => (
-            <th key={c.key}>
-              {c.label} (/{c.max})
-            </th>
-          ))}
-          <th>Total (/{MAX_TOTAL})</th>
-          <th>Feedback</th>
-        </tr>
-      </thead>
-      <tbody>
-        {teams.map((t) => (
-          <tr key={t.id}>
-            <td>{t.teamCode}</td>
-            <td>{t.psCode || ""}</td>
-            {CRITERIA.map((c) => (
-              <td key={c.key}>{t.criteria?.[c.key] ?? ""}</td>
-            ))}
-            <td>{t.score ?? ""}</td>
-            <td>{t.feedback || ""}</td>
-          </tr>
-        ))}
-      </tbody>
-    </table>
-  );
+  return <table className="portal-print-table"><caption>Elevate 1.0 — Final marks, printed {generatedAt}</caption><thead><tr><th>Team</th><th>PS</th><th>Final score</th><th>Mentoring 1 feedback</th><th>Mentoring 2 feedback</th></tr></thead><tbody>{teams.map(t=><tr key={t.id}><td>{t.teamCode}</td><td>{t.psCode || ''}</td><td>{t.score ?? ''}</td><td>{t.mentoring1Feedback || ''}</td><td>{t.mentoring2Feedback || ''}</td></tr>)}</tbody></table>;
 }
 
 function Round1Notes({ teams, onSaved }) {
@@ -248,8 +126,8 @@ function CoreHome({ session }) {
     return () => clearInterval(timer);
   }, [loadTeams]);
 
-  function onSaved(teamId, { score, criteria, feedback }) {
-    setTeams((prev) => prev.map((t) => (t.id === teamId ? { ...t, score, criteria, feedback } : t)));
+  function onSaved(teamId, saved) {
+    setTeams((prev) => prev.map((t) => (t.id === teamId ? { ...t, ...saved } : t)));
   }
 
   function onRound1Saved(teamId, note) {
@@ -287,9 +165,7 @@ function CoreHome({ session }) {
           )}
         </div>
         <p className="portal-card__hint">
-          Round 1 doesn't carry marks, so there's nothing to enter for it — this is Round 2 only.
-          Each category is out of {CRITERIA[0].max}, {MAX_TOTAL} total. Saved scores and feedback show
-          up for the team immediately. Use "Print backup" any time for a paper copy of everything
+          Enter a single final score and two mentoring feedbacks. Feedback stays hidden from participants until an admin releases it. Use "Print backup" for a paper copy of everything
           entered so far. You're seeing {teams?.length ?? "…"} team{teams?.length === 1 ? "" : "s"} —
           every team, unless an admin has assigned you a specific subset.
         </p>
@@ -309,16 +185,7 @@ function CoreHome({ session }) {
                 <tr>
                   <th>Team</th>
                   <th>Seat</th>
-                  {CRITERIA.map((c) => (
-                    <th key={c.key}>
-                      {c.label}
-                      <br />
-                      <span className="portal-table__sub">/{c.max}</span>
-                    </th>
-                  ))}
-                  <th>Total</th>
-                  <th>Feedback</th>
-                  <th></th>
+                  <th>Final score</th><th>Mentoring feedback</th>
                   <th className="portal-no-print"></th>
                 </tr>
               </thead>

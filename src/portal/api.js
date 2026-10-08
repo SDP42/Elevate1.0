@@ -88,8 +88,8 @@ export const mealHistory = (slotCode) => request(`/meal?slotCode=${encodeURIComp
 
 export const coreTeams = () => request("/core");
 
-export const coreSubmitMark = (teamId, criteria, feedback) =>
-  request("/core", { method: "POST", body: JSON.stringify({ teamId, criteria, feedback }) });
+export const coreSubmitMark = (teamId, score, mentoring1Feedback, mentoring2Feedback) =>
+  request("/core", { method: "POST", body: JSON.stringify({ teamId, score, mentoring1Feedback, mentoring2Feedback }) });
 
 export const coreSaveRound1Note = (teamId, note) =>
   request("/core", { method: "POST", body: JSON.stringify({ action: "round1-note", teamId, note }) });

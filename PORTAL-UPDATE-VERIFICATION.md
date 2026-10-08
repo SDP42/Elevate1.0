@@ -107,3 +107,33 @@ contained animated file names at 1440/390/320px, multi-select uploads retaining
 both TXT files, and participant preview dismissal with Escape. Browser uploads
 used fixtures and did not alter event submissions. Production build and new
 viewer lint passed; the existing bundle-size warning remains.
+
+## Final score, mentoring feedback and announcement audiences — 8 October 2026
+
+Admin and core marks editors now accept one final score and separate Mentoring 1
+and Mentoring 2 feedback. Rubric inputs and denominator labels are removed from
+editors, the admin leaderboard, participant feedback and printed/exported marks.
+The server enforces a finite numeric score from 0 to 100. Existing scores remain
+unchanged; the former feedback field remains Mentoring 2 and Mentoring 1 starts
+empty. Saving resets the team's release flag. The top release/hide controls
+publish or withhold both feedbacks and the final score using the existing gate.
+
+Announcements have an audience selector defaulting to All, with code/name options
+for the teams. The database stores an optional team foreign key; the session API
+returns global announcements plus only those addressed to that participant's
+team. Pin/activation changes preserve the audience, including requests that omit
+an audience field. Invalid/nonexistent target teams are rejected.
+
+A private snapshot preceded the additive live migration. All 32 score/feedback
+rows and all four existing announcements were preserved. No feedback was
+released and no announcement was sent to event participants during verification.
+
+The 41 Node tests passed. Disposable PostgreSQL integration verified final-score
+bounds/type validation, both feedback persistence, save hiding, release/hide
+privacy, announcement audience isolation and audience preservation. Browser
+fixtures verified 1440/390/320px admin layouts, unsaved edits surviving polling,
+score/feedback saves, the release control and default All selector. Separate
+390/320px core and participant checks verified the single editor and released
+feedback with no rubric or page overflow. Build passed; existing bundle-size and
+unrelated effect warnings remain. These are fixture/local integration checks,
+not authenticated production browser evidence.

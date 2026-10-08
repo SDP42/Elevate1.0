@@ -1,9 +1,9 @@
-import { CRITERIA, MAX_TOTAL } from "../../shared/criteria";
+import FinalMarksEditor from "./FinalMarksEditor";
 import MealAnalysisPopup from "./MealAnalysisPopup";
 import { Glass, GlassSystemProvider } from "open-glass-ui";
 import "open-glass-ui/styles.css";
 import useLivePs from "./useLivePs";
-import { useCallback, useEffect, useId, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import QRCode from "qrcode";
 import JSZip from "jszip";
@@ -31,7 +31,6 @@ import {
   adminSettings,
   adminTeams,
   coreTeams,
-  coreSubmitMark,
   logout,
   psList,
 } from "./api";
@@ -706,7 +705,8 @@ function PsRequestsManager() {
   );
 }
 
-function AnnouncementsManager() {
+function AnnouncementsManager({ teams }) {
+  const [audience, setAudience] = useState("");
   const [items, setItems] = useState(null);
   const [message, setMessage] = useState("");
   const [pinned, setPinned] = useState(false);
@@ -730,7 +730,7 @@ function AnnouncementsManager() {
     setBusy(true);
     setError("");
     try {
-      await adminSaveAnnouncement({ message, active: true, pinned, sortOrder: items?.length ?? 0 });
+      await adminSaveAnnouncement({ message, teamId: audience ? Number(audience) : null, active: true, pinned, sortOrder: items?.length ?? 0 });
       setMessage("");
       setPinned(false);
       load();
@@ -742,12 +742,12 @@ function AnnouncementsManager() {
   }
 
   async function toggleActive(a) {
-    await adminSaveAnnouncement({ id: a.id, message: a.message, active: !a.active, pinned: a.pinned, sortOrder: a.sortOrder });
+    await adminSaveAnnouncement({ id: a.id, message: a.message, teamId: a.teamId ?? null, active: !a.active, pinned: a.pinned, sortOrder: a.sortOrder });
     load();
   }
 
   async function togglePinned(a) {
-    await adminSaveAnnouncement({ id: a.id, message: a.message, active: a.active, pinned: !a.pinned, sortOrder: a.sortOrder });
+    await adminSaveAnnouncement({ id: a.id, message: a.message, teamId: a.teamId ?? null, active: a.active, pinned: !a.pinned, sortOrder: a.sortOrder });
     load();
   }
 
@@ -755,8 +755,7 @@ function AnnouncementsManager() {
     <section className="portal-card">
       <h3>Announcements</h3>
       <p className="portal-card__hint">
-        Shown to every logged-in team at the top of their dashboard, while active. Pin the ones that
-        actually need attention (schedule change, fire alarm test) — they show first, marked urgent.
+        Choose All or one team. Active announcements appear on the selected audience’s dashboard. Pinned announcements appear first.
       </p>
 
       {error && <p className="portal-auth__error">{error}</p>}
@@ -767,7 +766,7 @@ function AnnouncementsManager() {
             <li key={a.id} className={a.active ? undefined : "is-inactive"}>
               <span>
                 {a.pinned && "🚨 "}
-                {a.message}
+                {a.message}<small className="portal-table__sub"> · {a.teamId ? teams?.find(t => t.id === a.teamId)?.teamCode || "Selected team" : "All"}</small>
               </span>
               <span className="portal-announceAdmin__actions">
                 <button type="button" className="portal-logout" onClick={() => togglePinned(a)}>
@@ -783,8 +782,9 @@ function AnnouncementsManager() {
       )}
 
       <form className="portal-auth__form portal-u-mt" onSubmit={add}>
+        <label className="portal-field"><span>Send to</span><select aria-label="Send to" value={audience} onChange={e => setAudience(e.target.value)}><option value="">All</option>{teams?.map(team => <option key={team.id} value={team.id}>{team.teamCode} · {team.displayName || team.teamName}</option>)}</select></label>
         <div className="portal-manualLookup__row">
-          <input value={message} onChange={(e) => setMessage(e.target.value)} placeholder="New announcement" />
+          <input aria-label="New announcement" value={message} onChange={(e) => setMessage(e.target.value)} placeholder="New announcement" />
           <button type="submit" className="portal-auth__submit" disabled={busy || !message.trim()}>
             Add
           </button>
@@ -839,39 +839,11 @@ function AuditLog() {
   );
 }
 
-function Round2ScoreEditor({ team, onSaved }) {
-  const feedbackLabel = useId();
-  const [editing, setEditing] = useState(false);
-  const [values, setValues] = useState({});
-  const [feedback, setFeedback] = useState("");
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState("");
-  const total = CRITERIA.reduce((sum, c) => sum + Number(values[c.key] || 0), 0);
-  async function save(e) {
-    e.preventDefault(); setBusy(true); setError("");
-    try {
-      const criteria = Object.fromEntries(CRITERIA.map(c => [c.key, Number(values[c.key])]));
-      const result = await coreSubmitMark(team.id, criteria, feedback.trim());
-      onSaved({ ...team, score: result.score, criteria, feedback: feedback.trim(), feedbackApproved: false });
-      setEditing(false);
-    } catch (err) { setError(err.message); } finally { setBusy(false); }
-  }
-  return <div className="round2-scoreEditor">
-    {!editing ? <><strong>{team.score ?? "Unscored"}{team.score != null && ` / ${MAX_TOTAL}`}</strong><button type="button" className="portal-logout" onClick={() => { setValues(Object.fromEntries(CRITERIA.map(c => [c.key, team.criteria?.[c.key] ?? 0]))); setFeedback(team.feedback || ""); setError(""); setEditing(true); }}>Edit scores &amp; feedback</button></> :
-      <form onSubmit={save}><div className="round2-rubric">{CRITERIA.map(c => <label className="portal-field" key={c.key}><span>{c.label} / {c.max}</span><input type="number" min="0" max={c.max} step="0.01" required value={values[c.key] ?? ""} onChange={e => setValues(previous => ({ ...previous, [c.key]: e.target.value }))} /></label>)}</div>
-        <p className="round2-total">Total score: <strong>{total} / {MAX_TOTAL}</strong></p>
-        <label className="portal-field"><span id={feedbackLabel}>Feedback</span><textarea aria-labelledby={feedbackLabel} rows={4} maxLength={10000} value={feedback} onChange={e => setFeedback(e.target.value)} /></label>
-        {error && <p role="alert" className="portal-auth__error">{error}</p>}
-        <div className="round2-editorActions"><button type="submit" className="portal-auth__submit" disabled={busy}>{busy ? "Saving…" : "Save scores & feedback"}</button><button type="button" className="portal-logout" disabled={busy} onClick={() => setEditing(false)}>Cancel</button></div>
-      </form>}
-  </div>;
-}
-
 function AdminRound2Leaderboard({ teams }) {
   const rows = (teams || []).filter(team => team.shortlisted && !team.withdrawn).sort((a,b) => (b.score ?? -1) - (a.score ?? -1) || a.teamCode.localeCompare(b.teamCode));
   return <section className="round2-leaderboard" aria-label="Round 2 leaderboard"><h3>Round 2 leaderboard</h3><p className="portal-card__hint">Current saved scores for active shortlisted teams. Equal scores share a rank. Unreleased results are visible here to admins.</p><ol>{rows.map(team => {
     const rank = team.score == null ? null : rows.findIndex(row => row.score === team.score) + 1;
-    return <li key={team.id}><span className="round2-rank">{team.score == null ? "—" : rank}</span><div><strong>{team.teamName}</strong><span>{team.teamCode}</span></div><strong>{team.score ?? "—"}<small> / {MAX_TOTAL}</small></strong></li>;
+    return <li key={team.id}><span className="round2-rank">{team.score == null ? "—" : rank}</span><div><strong>{team.teamName}</strong><span>{team.teamCode}</span></div><strong>{team.score ?? "—"}</strong></li>;
   })}</ol></section>;
 }
 
@@ -989,7 +961,7 @@ export function AdminHome({ session, superAdmin = false }) {
   }
 
   async function setAllResultsVisibility(approved) {
-    const actionName = approved ? "release all results to participants" : "hide all results from participants";
+    const actionName = approved ? "release mentoring feedbacks to participants" : "hide mentoring feedbacks from participants";
     if (!window.confirm(`Are you sure you want to ${actionName}?`)) return;
     setFeedbackBusy("all");
     try {
@@ -1132,7 +1104,7 @@ export function AdminHome({ session, superAdmin = false }) {
 
       <PsRequestsManager />
 
-      <AnnouncementsManager />
+      <AnnouncementsManager teams={teams} />
 
 
       </>}
@@ -1196,7 +1168,7 @@ export function AdminHome({ session, superAdmin = false }) {
               disabled={feedbackBusy === "all"}
               onClick={() => setAllResultsVisibility(true)}
             >
-              {feedbackBusy === "all" ? "Releasing…" : "📢 Release All Results to Participants"}
+              {feedbackBusy === "all" ? "Releasing…" : "Release feedbacks to participants"}
             </button>
             <button
               type="button"
@@ -1205,19 +1177,19 @@ export function AdminHome({ session, superAdmin = false }) {
               disabled={feedbackBusy === "all"}
               onClick={() => setAllResultsVisibility(false)}
             >
-              Hide All Results
+              Hide feedbacks
             </button>
             <ExportButton type="marks" />
           </div>
         </div>
         <p className="portal-card__hint">
-          Every team is listed, including teams that have not checked in. Edit the four rubric scores and feedback; totals are calculated by the server. Saving hides that team's updated result until it is released. This section refreshes every five seconds while visible.
+          Every team is listed, including teams that have not checked in. Enter one final score and separate Mentoring 1 and Mentoring 2 feedback. Saving hides that team's updated feedback until it is released. This section refreshes every five seconds while visible.
         </p>
         <div className="round2-teamGrid">
           {marksTeams?.map(team => <article className="round2-teamCard" key={team.id}>
             <header><h4>{team.teamName}</h4><span>{team.teamCode} · Team ID {team.id}{team.seatNo != null && ` · Seat ${team.seatNo}`}{team.withdrawn && " · Withdrawn"}</span></header>
-            <Round2ScoreEditor team={team} onSaved={saved => setMarksTeams(previous => previous.map(row => row.id === saved.id ? saved : row))} />
-            <div className="round2-savedFeedback"><span>Saved feedback</span><p>{team.feedback || "No feedback entered."}</p></div>
+            <FinalMarksEditor team={team} onSaved={saved => setMarksTeams(previous => previous.map(row => row.id === saved.id ? saved : row))} />
+            <div className="round2-savedFeedback"><span>Mentoring 1 feedback</span><p>{team.mentoring1Feedback || "No feedback entered."}</p><span>Mentoring 2 feedback</span><p>{team.mentoring2Feedback || "No feedback entered."}</p></div>
             <button type="button" className="portal-logout" disabled={feedbackBusy === team.id || team.score == null} onClick={() => toggleFeedbackApproval(team.id, team.feedbackApproved)}>
               {feedbackBusy === team.id ? "Updating…" : team.feedbackApproved ? "Visible to participants · Hide" : "Hidden from participants · Release"}
             </button>

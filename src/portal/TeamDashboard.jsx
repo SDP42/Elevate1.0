@@ -8,7 +8,6 @@ import SubmissionFiles from "./SubmissionFiles";
 import ParticipantMealNotice from "./MealCelebration";
 import RequireRole from "./RequireRole";
 import { EVENT, SUBMISSION_DEADLINE, SPONSORS, HELP_CONTACTS } from "../config";
-import { CRITERIA } from "../../shared/criteria.js";
 import useHeroCloud from "./useHeroCloud";
 import { logout, psList, selectPs, submitProject } from "./api";
 
@@ -479,22 +478,8 @@ function MentorFeedback({ team }) {
         <FeedbackIcon />
         Mentor feedback
       </h3>
-      <p className="portal-card__hint">Your Round 2 breakdown, straight from the judging rubric.</p>
-      <ul className="portal-criteriaBreakdown">
-        {CRITERIA.map((c) => (
-          <li key={c.key}>
-            <span>{c.label}</span>
-            <strong>
-              {team.criteria?.[c.key] ?? "—"}/{c.max}
-            </strong>
-          </li>
-        ))}
-        <li className="portal-criteriaBreakdown__total">
-          <span>Total</span>
-          <strong>{team.score}</strong>
-        </li>
-      </ul>
-      {team.feedback && <p className="portal-feedbackNote">“{team.feedback}”</p>}
+      <p className="round2-total">Final score: <strong>{team.score}</strong></p>
+      <div className="round2-savedFeedback"><span>Mentoring 1 feedback</span><p className="portal-feedbackNote">{team.mentoring1Feedback || "No feedback entered."}</p><span>Mentoring 2 feedback</span><p className="portal-feedbackNote">{team.mentoring2Feedback || "No feedback entered."}</p></div>
     </section>
   );
 }
