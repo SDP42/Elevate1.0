@@ -58,6 +58,10 @@ try {
   await sql`insert into team_members (id,team_id,name,is_lead,sort_order,food_preference) values
     (1,1,'Ada',true,1,'Veg'),(2,1,'Bea',false,2,'Jain'),(3,1,'Chen',false,3,'Veg'),(4,1,'Dev',false,4,'Veg'),
     (5,2,'Eli',true,1,'Veg'),(6,2,'Flo',false,2,'Veg'),(7,3,'Gio',true,1,'Veg'),(8,3,'Hari',false,2,'Veg'),(9,3,'Ira',false,3,'Veg')`;
+  await sql`insert into submission_files(team_id,kind,name,mime_type,size,content) values
+    (1,'pdf','first.pdf','application/pdf',5,decode('JVBERi0=','base64')),
+    (1,'pdf','second.pdf','application/pdf',5,decode('JVBERi0=','base64'))`;
+  assert.equal((await sql`select count(*)::int as n from submission_files where team_id=1 and kind='pdf'`)[0].n,2);
   await sql`insert into accounts(id,username,password_hash,role,display_name) values (7,'fixture_admin','unused','admin','Fixture Admin')`;
   const allTeams = await call(core,null,{role:'admin',accountId:7,method:'GET'});
   assert.equal(allTeams.body.teams.length,3); // No registrations yet; admin still sees everyone.

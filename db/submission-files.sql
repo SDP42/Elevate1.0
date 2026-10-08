@@ -7,6 +7,9 @@ create table if not exists submission_files (
   mime_type text not null,
   size integer not null check (size > 0 and size <= 3145728),
   content bytea not null,
-  uploaded_at timestamptz not null default now(),
-  unique (team_id, kind)
+  uploaded_at timestamptz not null default now()
 );
+
+-- Each upload is a separate document, including multiple files of one kind.
+alter table submission_files drop constraint if exists submission_files_team_id_kind_key;
+create index if not exists submission_files_team_uploaded_idx on submission_files(team_id, uploaded_at desc);

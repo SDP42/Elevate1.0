@@ -56,7 +56,6 @@ return async function submissionFiles(req, res) {
   const cleanName = name.replace(/[\x00-\x1f/\\]/g, '_').slice(0, 180);
   const [file] = await sql`insert into submission_files (team_id, kind, name, mime_type, size, content)
     values (${teamId}, ${kind}, ${cleanName}, ${TYPES[kind]}, ${bytes.length}, decode(${base64}, 'base64'))
-    on conflict (team_id, kind) do update set name = excluded.name, mime_type = excluded.mime_type, size = excluded.size, content = excluded.content, uploaded_at = now()
     returning id, kind, name, mime_type, size, uploaded_at`;
   await sql`update teams set submitted_at = now() where id = ${teamId}`;
   await logAction(session.accountId, 'submission.upload', { teamId, kind, size: bytes.length });

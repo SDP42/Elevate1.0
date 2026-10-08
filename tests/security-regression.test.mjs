@@ -129,3 +129,13 @@ test('documented finding: protected role wrapper trusts an unexpired token witho
  await wrapped({method:'GET',headers:{cookie:`elevate_session=${signSession({accountId:999999,role:'admin'})}`}},response);
  assert.equal(executed,true);assert.equal(response.statusCode,200);
 });
+
+ test('multiple uploads of the same type append distinct documents instead of overwriting',async()=>{
+ const {call,state}=fixture();
+ const first=await call(upload('first.pdf','%PDF-1.7\nfirst'));
+ const second=await call(upload('second.pdf','%PDF-1.7\nsecond'));
+ assert.equal(first.statusCode,200);assert.equal(second.statusCode,200);
+ assert.notEqual(first.body.file.id,second.body.file.id);
+ assert.equal(state.files.filter(f=>f.team_id===1&&f.kind==='pdf').length,2);
+ assert.ok(state.queries.filter(q=>q.query.startsWith('insert into submission_files')).every(q=>!q.query.includes('on conflict')));
+ });
