@@ -1,11 +1,12 @@
 import { createPsAllocation } from "./_lib/ps-allocation.js";
 import { sql as defaultSql } from "./_lib/db.js";
 import { requireRole } from "./_lib/auth.js";
+import { psSelectionSchedule } from "../shared/ps-schedule.js";
 
 /* Four ranked preferences are stored per team. The first available among
-   preferences 1–3 is allocated automatically in one serialized transaction.
-   Approved allocations remain locked; preference 4 is informational only. */
-export function createPsHandler({sql=defaultSql}={}) {
+   preferences 1–4 is allocated automatically in one serialized transaction.
+   Approved allocations remain locked. */
+export function createPsHandler({sql=defaultSql, now=Date.now}={}) {
 async function handler(req, res) {
   if (req.method === "GET") return list(req, res);
   if (req.method === "POST") return select(req, res);
@@ -14,6 +15,11 @@ async function handler(req, res) {
 
 async function list(req, res) {
   const canSeeAll = ["admin", "core", "superadmin"].includes(req.session.role);
+  const schedule = psSelectionSchedule(now());
+  if (!canSeeAll && !schedule.selectionOpen) {
+    return res.status(200).json({ ...schedule, preferences: [], selectedPsId: null,
+      selectionStatus: null, requestedAt: null, problemStatements: [], allocations: [] });
+  }
 
   const rows = canSeeAll
     ? await sql`
@@ -51,6 +57,7 @@ async function list(req, res) {
   `;
 
   res.status(200).json({
+    ...psSelectionSchedule(now()),
     preferences,
     selectedPsId: mine?.ps_id ?? null,
     selectionStatus: mine?.status ?? null,
@@ -76,6 +83,9 @@ async function select(req, res) {
   }
 
   const teamId = req.session.teamId;
+  const schedule = psSelectionSchedule(now());
+  if (!schedule.selectionOpen) return res.status(403).json({ ...schedule,
+    error: "Problem statement selection opens on 10 October 2026 at 9:30 AM IST." });
   const { preferences } = req.body || {};
   if (!teamId || !Array.isArray(preferences) || preferences.length !== 4 || new Set(preferences).size !== 4 || preferences.some(id => !Number.isSafeInteger(id) || id < 1)) {
     return res.status(400).json({ error: "Choose four distinct problem statements in preference order" });
@@ -83,7 +93,7 @@ async function select(req, res) {
   const result = await createPsAllocation(sql).allocatePreferences(teamId,preferences);
   if (!result.saved && !result.selection) return res.status(409).json({error:"Your team is withdrawn or one of these problem statements is unavailable. Refresh and try again."});
   res.status(200).json({ok:true,allocated:!!result.selection,selection:result.selection,
-    message:result.selection?"Your problem statement is allocated and locked.":"Preferences saved. Your top three choices are full; no problem statement was allocated. Try again when capacity becomes available."});
+    message:result.selection?"Your problem statement is allocated and locked.":"Preferences saved. All four choices are full; no problem statement was allocated. Try again when capacity becomes available."});
 }
 
 return handler;

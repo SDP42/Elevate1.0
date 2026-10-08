@@ -23,9 +23,9 @@ export function createPsAllocation(sql) {
           select t.id,p.id,'approved',clock_timestamp(),clock_timestamp()
           from teams t cross join lateral (
             select p.id from ps_list p
-            where p.id in (${p1},${p2},${p3}) and p.revealed
+            where p.id in (${p1},${p2},${p3},${p4}) and p.revealed
               and (p.capacity is null or (select count(*) from team_ps_selection a where a.ps_id=p.id and a.status='approved') < p.capacity)
-            order by case p.id when ${p1} then 1 when ${p2} then 2 else 3 end limit 1
+            order by case p.id when ${p1} then 1 when ${p2} then 2 when ${p3} then 3 else 4 end limit 1
           ) p where t.id=${teamId} and not t.withdrawn
             and (select count(*) from ps_list where id in (${p1},${p2},${p3},${p4}) and revealed)=4
           on conflict(team_id) do update set ps_id=excluded.ps_id,status='approved',requested_at=excluded.requested_at,

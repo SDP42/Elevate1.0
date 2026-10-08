@@ -383,7 +383,7 @@ alter table marks add column if not exists mentoring1_feedback text;
 alter table announcements add column if not exists team_id integer references teams(id) on delete cascade;
 create index if not exists announcements_team_active_idx on announcements(team_id) where active;
 
--- Ranked PS preferences: the fourth is stored but never allocated automatically.
+-- Ranked PS preferences: allocate the first available choice, including fourth fallback.
 create table if not exists team_ps_preferences (
  team_id integer primary key references teams(id) on delete cascade,
  preference1 integer not null references ps_list(id),
