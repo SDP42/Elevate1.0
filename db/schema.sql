@@ -376,3 +376,9 @@ alter table registration_checkins validate constraint registration_member_team_f
 -- Each upload is a separate document, including multiple files of one kind.
 alter table submission_files drop constraint if exists submission_files_team_id_kind_key;
 create index if not exists submission_files_team_uploaded_idx on submission_files(team_id, uploaded_at desc);
+
+-- Single final score and two independently entered mentoring feedback fields.
+-- Existing feedback remains Mentoring 2; existing scores are preserved.
+alter table marks add column if not exists mentoring1_feedback text;
+alter table announcements add column if not exists team_id integer references teams(id) on delete cascade;
+create index if not exists announcements_team_active_idx on announcements(team_id) where active;

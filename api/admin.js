@@ -4,14 +4,15 @@ import { createPsAllocation } from "./_lib/ps-allocation.js";
 import { saveRoster } from "./_lib/roster.js";
 import bcrypt from "bcryptjs";
 import crypto from "node:crypto";
-import { sql } from "./_lib/db.js";
+import { sql as defaultSql } from "./_lib/db.js";
 import { requireRole } from "./_lib/auth.js";
 import { searchParams } from "./_lib/http.js";
-import { logAction } from "./_lib/audit.js";
+import { logAction as defaultLogAction } from "./_lib/audit.js";
 
 /* Every admin-only read and write in one function (see api/auth.js for why
    — the Hobby plan's 12-function cap). GET ?resource=... picks the read;
    POST {action: ...} picks the write. */
+export function createAdminHandler({sql=defaultSql,logAction=defaultLogAction}={}) {
 async function handler(req, res) {
   res.setHeader("Cache-Control", "no-store");
   const isSuper = req.session.role === "superadmin";
@@ -352,12 +353,13 @@ async function getAuditFull(req, res) {
 
 async function getAnnouncements(req, res) {
   const rows = await sql`
-    select id, message, active, pinned, sort_order from announcements order by pinned desc, sort_order asc, id asc
+    select id, message, active, pinned, sort_order, team_id from announcements order by pinned desc, sort_order asc, id asc
   `;
   res.status(200).json({
     announcements: rows.map((r) => ({
       id: r.id,
       message: r.message,
+      teamId: r.team_id,
       active: r.active,
       pinned: r.pinned,
       sortOrder: r.sort_order,
@@ -468,14 +470,14 @@ async function exportCsv(req, res) {
 
   if (type === "marks") {
     const rows = await sql`
-      select t.team_code, m.score, m.criteria, m.feedback
+      select t.team_code, m.score, m.mentoring1_feedback, m.feedback
       from teams t
       left join marks m on m.team_id = t.id and m.round_id = (select id from mentoring_rounds where round_no = 2)
       order by t.id asc
     `;
     body = toCsv(
-      ["team", "score", "criteria", "feedback"],
-      rows.map((r) => [r.team_code, r.score, r.criteria ? JSON.stringify(r.criteria) : "", r.feedback])
+      ["team", "final_score", "mentoring_1_feedback", "mentoring_2_feedback"],
+      rows.map((r) => [r.team_code, r.score, r.mentoring1_feedback, r.feedback])
     );
     filename = "elevate-marks.csv";
   } else if (type === "meals") {
@@ -853,21 +855,24 @@ async function resetPassword(req, res) {
 }
 
 async function saveAnnouncement(req, res) {
-  const { id, message, active, pinned, sortOrder } = req.body || {};
-  if (!message || !message.trim()) {
+  const { id, message, active, pinned, sortOrder, teamId = null } = req.body || {};
+  if (typeof message !== "string" || !message.trim() || message.length > 10000) {
     res.status(400).json({ error: "message is required" });
     return;
+  }
+  if (teamId !== null && (!Number.isSafeInteger(teamId) || teamId < 1 || !(await sql`select id from teams where id = ${teamId}`).length)) {
+    return res.status(400).json({ error: "Select an existing team or All" });
   }
   if (id) {
     await sql`
       update announcements
-      set message = ${message.trim()}, active = ${Boolean(active)}, pinned = ${Boolean(pinned)}, sort_order = ${sortOrder ?? 0}
+      set message = ${message.trim()}, active = ${Boolean(active)}, pinned = ${Boolean(pinned)}, sort_order = ${sortOrder ?? 0}, team_id = case when ${Object.hasOwn(req.body || {}, 'teamId')} then ${teamId}::int else team_id end
       where id = ${id}
     `;
   } else {
     await sql`
-      insert into announcements (message, active, pinned, sort_order)
-      values (${message.trim()}, ${active === undefined ? true : Boolean(active)}, ${Boolean(pinned)}, ${sortOrder ?? 0})
+      insert into announcements (message, active, pinned, sort_order, team_id)
+      values (${message.trim()}, ${active === undefined ? true : Boolean(active)}, ${Boolean(pinned)}, ${sortOrder ?? 0}, ${teamId})
     `;
   }
   await logAction(req.session.accountId, "announcement.save", { id });
@@ -997,5 +1002,7 @@ async function approveFeedback(req, res) {
   res.status(200).json({ ok: true, approved: isApproved });
 }
 
-export default requireRole(handler, ["admin", "superadmin"]);
+return handler;
+}
+export default requireRole(createAdminHandler(), ["admin", "superadmin"]);
 

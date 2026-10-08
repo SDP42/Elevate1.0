@@ -10,6 +10,9 @@ import { validateFinalists, resetStatements } from '../db/replace-finalists.mjs'
 const exec = promisify(execFile);
 process.env.DATABASE_URL = "postgresql://fixture:fixture@localhost/elevate_fixture";
 process.env.SESSION_SECRET = crypto.randomBytes(48).toString("hex");
+const { createAdminHandler } = await import("../api/admin.js");
+const { createAuthHandler } = await import("../api/auth.js");
+const { signSession } = await import("../api/_lib/auth.js");
 const { createCoreHandler } = await import("../api/core.js");
 const { createMealHandler } = await import("../api/meal.js");
 const { createRegistrationHandler } = await import("../api/regidesk.js");
@@ -36,11 +39,13 @@ async function sql(strings,...values) {
   const query=strings.reduce((text,piece,index)=>text+piece+(index<values.length?literal(values[index]):""),"");
   const result=await exec("psql",[...params,"--csv","-c",query]);return csv(result.stdout);
 }
+const admin=createAdminHandler({sql,logAction:async()=>{}});
+const auth=createAuthHandler({sql,logAction:async()=>{}});
 const core=createCoreHandler({sql,logAction:async()=>{}});
 const meal=createMealHandler({sql,logAction:async()=>{},createIncident:async()=>{}});
 const registration=createRegistrationHandler({sql,logAction:async()=>{},createIncident:async()=>{}});
 async function call(handler,body,{role="meal",accountId=3,teamId,url="/api/meal",method="POST"}={}) {
-  const res={code:200,status(code){this.code=code;return this;},json(body){this.body=body;return this;}};
+  const res={setHeader(){},code:200,status(code){this.code=code;return this;},json(body){this.body=body;return this;}};
   await handler({body,method,url,session:{role,accountId,teamId}},res);return res;
 }
 let started=false;
@@ -66,18 +71,36 @@ try {
   const allTeams = await call(core,null,{role:'admin',accountId:7,method:'GET'});
   assert.equal(allTeams.body.teams.length,3); // No registrations yet; admin still sees everyone.
   assert.equal((await call(core,null,{role:'core',accountId:7,method:'GET'})).body.teams.length,0);
-  const criteria={innovation:20,technical:21,presentation:22,impact:23};
-  const mark = await call(core,{teamId:1,criteria,feedback:'Fixture feedback'},{role:'admin',accountId:7});
+  const mark = await call(core,{teamId:1,score:86,mentoring1Feedback:'First mentoring',mentoring2Feedback:'Second mentoring'},{role:'admin',accountId:7});
   assert.equal(mark.body.score,86);
-  const savedMark=(await sql`select score::int as score,criteria,feedback,feedback_approved from marks where team_id=1`)[0];
-  assert.deepEqual(savedMark,{score:86,criteria,feedback:'Fixture feedback',feedback_approved:false});
+  const savedMark=(await sql`select score::int as score,criteria,mentoring1_feedback,feedback,feedback_approved from marks where team_id=1`)[0];
+  assert.deepEqual(savedMark,{score:86,criteria:null,mentoring1_feedback:'First mentoring',feedback:'Second mentoring',feedback_approved:false});
+  for(const score of [-1,101,Infinity,null,'90']) assert.equal((await call(core,{teamId:1,score},{role:'admin',accountId:7})).code,400);
+  assert.equal((await call(core,{teamId:1,score:100,mentoring1Feedback:{}},{role:'admin',accountId:7})).code,400);
+  assert.equal((await call(core,{teamId:1,score:100,mentoring2Feedback:'x'.repeat(10001)},{role:'admin',accountId:7})).code,400);
   await sql`update marks set feedback_approved=true where team_id=1`;
-  assert.equal((await call(core,{teamId:1,criteria:{...criteria,innovation:19},feedback:'Revised'},{role:'admin',accountId:7})).body.score,85);
+  assert.equal((await call(core,{teamId:1,score:85,mentoring1Feedback:'Revised 1',mentoring2Feedback:'Revised 2'},{role:'admin',accountId:7})).body.score,85);
   assert.equal((await sql`select feedback_approved from marks where team_id=1`)[0].feedback_approved,false);
-  assert.equal((await call(core,{teamId:1,criteria:{...criteria,impact:26}},{role:'admin',accountId:7})).code,400);
-  assert.equal((await call(core,{teamId:1,criteria:[]},{role:'admin',accountId:7})).code,400);
-  assert.equal((await call(core,{teamId:1,criteria,feedback:{}},{role:'admin',accountId:7})).code,400);
-  assert.equal((await call(core,{teamId:1,criteria:{...criteria,impact:Infinity}},{role:'admin',accountId:7})).code,400);
+  const audienceCall=body=>call(admin,body,{role:'admin',accountId:7,url:'/api/admin'});
+  assert.equal((await audienceCall({action:'save-announcement',message:'For all',active:true})).code,200);
+  assert.equal((await audienceCall({action:'save-announcement',message:'Only A',teamId:1,active:true})).code,200);
+  assert.equal((await audienceCall({action:'save-announcement',message:'Invalid target',teamId:999})).code,400);
+  async function sessionRead(teamId,accountId){
+    const token=signSession({role:'team',teamId,accountId,displayName:'Fixture'});
+    const res={setHeader(){},code:200,status(code){this.code=code;return this;},json(body){this.body=body;return this;}};
+    await auth({method:'GET',url:'/api/auth',headers:{cookie:`elevate_session=${token}`}},res);return res;
+  }
+  assert.equal((await sessionRead(1,1)).body.team.mentoring1Feedback,null);
+  const release=await audienceCall({action:'approve-feedback',all:true,approved:true});assert.equal(release.code,200);
+  const a=await sessionRead(1,1),otherTeam=await sessionRead(2,2);
+  assert.equal(a.body.team.mentoring1Feedback,'Revised 1');assert.equal(a.body.team.mentoring2Feedback,'Revised 2');assert.equal(a.body.team.score,85);
+  assert.deepEqual(a.body.announcements.map(a=>a.message),['For all','Only A']);
+  assert.deepEqual(otherTeam.body.announcements.map(a=>a.message),['For all']);
+  const targeted=(await call(admin,null,{role:'admin',accountId:7,url:'/api/admin?resource=announcements',method:'GET'})).body.announcements.find(a=>a.teamId===1);
+  const {teamId:targetTeamId,...withoutAudience}=targeted;assert.equal(targetTeamId,1);
+  await audienceCall({action:'save-announcement',...withoutAudience,pinned:true});
+  assert.equal((await sql`select team_id from announcements where id=${targeted.id}`)[0].team_id,1);
+  await audienceCall({action:'approve-feedback',all:true,approved:false});assert.equal((await sessionRead(1,1)).body.team.mentoring2Feedback,null);
   assert.equal((await call(meal,{qrPayload:'ELEVATE1:'+ 'a'.repeat(32),mealSlotCode:'d1_breakfast'})).code,403);
   for(const [teamId,token,ids] of [[1,'a',[1,2,3,4]],[2,'b',[5,6]],[3,'c',[7,8,9]]]) {
     for(let index=0;index<ids.length;index++) {
@@ -192,7 +215,7 @@ try {
       assert.equal(list.body.teams.some(t=>t.id===teamId),member===total-1);
     }
   }
-  console.log('PASS: meal analysis includes partial/complete/waiting teams, preferences, timestamps/counters, revision refresh, privacy and withdrawal totals; admin sees all teams and rubric score/feedback writes validate and reset release status.');
+  console.log('PASS: meal analysis includes partial/complete/waiting teams, preferences, timestamps/counters, revision refresh, privacy and withdrawal totals; admin sees all teams and final score/two feedback writes, release privacy and targeted announcement isolation validate and reset release status.');
   console.log('PASS: finalist replacement transaction; 35→32 accounts; leader/seat/QR/profile mapping; passwords preserved; old scans cleared; imported 2/3/4-person team QR registration and meal completion lists.');
   console.log('PASS: 2/3/4-person repeated team QR registration; single-use proofs; atomic meal writes; concurrent counters; immediate database reads; food preferences; slot history; private participant receipts; invalid QR/ownership/slot/withdrawal checks.');
 } finally {

@@ -203,27 +203,27 @@ async function me(req, res) {
         order by sort_order asc, id asc
       `;
       const markRows = await sql`
-        select score, criteria, feedback, feedback_approved
+        select score, mentoring1_feedback, feedback, feedback_approved
         from marks
         where team_id = ${team.id}
           and round_id = (select id from mentoring_rounds where round_no = 2)
       `;
       const mark = markRows[0];
-      // Only reveal feedback and marks breakdown to the team once admin approves it
+      // Only reveal the final score and both mentoring feedbacks to the team once admin approves it
       if (mark && mark.feedback_approved) {
         team.score = Number(mark.score);
-        team.criteria = mark.criteria || null;
-        team.feedback = mark.feedback || null;
+        team.mentoring1Feedback = mark.mentoring1_feedback || null;
+        team.mentoring2Feedback = mark.feedback || null;
       } else {
         team.score = null;
-        team.criteria = null;
-        team.feedback = null;
+        team.mentoring1Feedback = null;
+        team.mentoring2Feedback = null;
       }
     }
   }
 
   const announcementRows = await sql`
-    select message, pinned from announcements where active = true order by pinned desc, sort_order asc, id asc
+    select message, pinned from announcements where active = true and (team_id is null or team_id = ${session.role === "team" ? session.teamId : null}) order by pinned desc, sort_order asc, id asc
   `;
 
   res.status(200).json({

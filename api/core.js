@@ -1,7 +1,7 @@
 import { sql as defaultSql } from "./_lib/db.js";
 import { requireRole } from "./_lib/auth.js";
 import { logAction as defaultLogAction } from "./_lib/audit.js";
-import { CRITERIA } from "../shared/criteria.js";
+
 
 const QR_PREFIX = "ELEVATE1:";
 
@@ -49,7 +49,7 @@ async function listTeams(req, res) {
     select
       t.id, t.team_code, t.seat_no, t.shortlisted, t.withdrawn,
       a.display_name, a.username,
-      m.score, m.criteria, m.feedback, m.feedback_approved,
+      m.score, m.feedback, m.mentoring1_feedback, m.feedback_approved,
       p.code as ps_code, p.title as ps_title, p.description as ps_description,
       rn.note as round1_note
     from teams t
@@ -72,7 +72,7 @@ async function listTeams(req, res) {
     .filter((t) => !recusedIds.has(t.id));
 
   res.status(200).json({
-    criteria: CRITERIA,
+    maxScore: 100,
     teams: filtered.map((t) => ({
       id: t.id,
       teamCode: t.team_code,
@@ -83,8 +83,8 @@ async function listTeams(req, res) {
       shortlisted: t.shortlisted,
       withdrawn: t.withdrawn,
       score: t.score === null ? null : Number(t.score),
-      criteria: t.criteria || null,
-      feedback: t.feedback || "",
+      mentoring1Feedback: t.mentoring1_feedback || "",
+      mentoring2Feedback: t.feedback || "",
       feedbackApproved: Boolean(t.feedback_approved),
       psCode: t.ps_code,
       psTitle: t.ps_title,
@@ -121,43 +121,26 @@ async function toggleRecuse(req, res) {
   res.status(200).json({ ok: true, recused: !existing[0] });
 }
 
-/* Expects { teamId, criteria: { <key>: number, ... }, feedback? }. The
-   total (score) is computed here, server-side, rather than trusted from
-   the client, so it can never drift from the sum of what was entered. */
+/* A single final score; mentoring feedback stays private until released. */
 async function submitMark(req, res) {
-  const { teamId, criteria, feedback } = req.body || {};
-  if (!Number.isSafeInteger(Number(teamId)) || Number(teamId) < 1 || !criteria || typeof criteria !== "object" || Array.isArray(criteria) || (feedback != null && (typeof feedback !== "string" || feedback.length > 10000))) {
-    res.status(400).json({ error: "teamId and a criteria score for each category are required" });
-    return;
+  const { teamId, score, mentoring1Feedback = "", mentoring2Feedback = "" } = req.body || {};
+  if (!Number.isSafeInteger(Number(teamId)) || Number(teamId) < 1 || typeof score !== "number" || !Number.isFinite(score) || score < 0 || score > 100 ||
+      [mentoring1Feedback, mentoring2Feedback].some(value => typeof value !== "string" || value.length > 10000)) {
+    return res.status(400).json({ error: "A final score between 0 and 100 and valid mentoring feedback are required" });
   }
-
-  let total = 0;
-  const clean = {};
-  for (const c of CRITERIA) {
-    const value = Number(criteria[c.key]);
-    if (Number.isNaN(value) || value < 0 || value > c.max) {
-      res.status(400).json({ error: `${c.label} must be a number between 0 and ${c.max}` });
-      return;
-    }
-    clean[c.key] = value;
-    total += value;
-  }
-
-  await sql`
-    insert into marks (team_id, round_id, score, criteria, feedback, entered_by)
-    select ${teamId}, id, ${total}, ${JSON.stringify(clean)}::jsonb, ${feedback || null}, ${req.session.accountId}
+  const rows = await sql`
+    insert into marks (team_id, round_id, score, criteria, mentoring1_feedback, feedback, entered_by)
+    select ${teamId}, id, ${score}, null, ${mentoring1Feedback.trim() || null}, ${mentoring2Feedback.trim() || null}, ${req.session.accountId}
     from mentoring_rounds where round_no = 2
     on conflict (team_id, round_id) do update set
-      score = excluded.score,
-      criteria = excluded.criteria,
-      feedback = excluded.feedback,
-      feedback_approved = false,
-      entered_by = excluded.entered_by,
-      entered_at = now()
+      score = excluded.score, criteria = null,
+      mentoring1_feedback = excluded.mentoring1_feedback, feedback = excluded.feedback,
+      feedback_approved = false, entered_by = excluded.entered_by, entered_at = now()
+    returning score
   `;
-
-  await logAction(req.session.accountId, "mark.submit", { teamId, score: total });
-  res.status(200).json({ ok: true, score: total });
+  if (!rows.length) return res.status(409).json({ error: "The marking round is not configured" });
+  await logAction(req.session.accountId, "mark.submit", { teamId, score });
+  res.status(200).json({ ok: true, score });
 }
 
 async function saveRound1Note(req, res) {
