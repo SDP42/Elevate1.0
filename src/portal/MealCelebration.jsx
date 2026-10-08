@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { JetPhoto } from "../intro/JetArt";
+import WelcomePopup from "./WelcomePopup";
 import { mealReceipts } from "./api";
 
 const FOOD = ["🍜", "🥗", "🥐", "🍱", "🍎", "🥪", "☕", "🍽️"];
@@ -48,8 +49,11 @@ export function MealCelebration({ meal, onDone }) {
 // receipts come only from this team's authenticated database records.
 export default function ParticipantMealNotice() {
   const [queue, setQueue] = useState([]);
+  const [welcome,setWelcome]=useState([]);
+  const [registration,setRegistration]=useState(null);
   useEffect(() => {
-    let live = true, cursor = null, busy = false, timer, activeUntil=0;
+    let live = true, cursor = null, busy = false, timer, activeUntil=0, registrationPending=true;
+    const seenRegistration=new Set();
     async function refresh() {
       if (busy || document.hidden) return;
       busy = true;
@@ -57,6 +61,17 @@ export default function ParticipantMealNotice() {
         const response = await mealReceipts(cursor);
         if (!live) return;
         cursor = Math.max(cursor || 0, response.latestId);
+        const registration=response.registration;
+        if(registration){
+          setRegistration(registration);
+          const newlyRegistered=registration.members.filter(member=>{
+            const key=`elevate_welcome_${registration.teamId}_${member.id}`;
+            try {if(sessionStorage.getItem(key))return false;sessionStorage.setItem(key,'1');}catch{/* denied browser storage still uses in-memory dedupe below */}
+            if(seenRegistration.has(member.id))return false;seenRegistration.add(member.id);return true;
+          });
+          if(newlyRegistered.length)setWelcome(previous=>[...previous,...newlyRegistered]);
+          registrationPending=registration.members.length<registration.total;
+        }
         const groups = new Map();
         for (const entry of response.meals) {
           // One confirmation may insert several members. Group the new rows
@@ -66,12 +81,13 @@ export default function ParticipantMealNotice() {
         }
         if (groups.size) { activeUntil=Date.now()+30000; setQueue(previous => [...previous, ...groups.values()]); }
       } catch { /* transient polling failures retry on the next refresh */ }
-      finally { busy = false; if(live)timer=setTimeout(refresh,Date.now()<activeUntil?3000:10000); }
+      finally { busy = false; if(live)timer=setTimeout(refresh,registrationPending || Date.now()<activeUntil?3000:10000); }
     }
     const visible=()=>{if(!document.hidden){clearTimeout(timer);refresh();}};
     refresh();
     document.addEventListener("visibilitychange", visible);
     return () => { live = false; clearTimeout(timer); document.removeEventListener("visibilitychange", visible); };
   }, []);
-  return queue.length ? <MealCelebration key={queue[0].key} meal={queue[0]} onDone={() => setQueue(previous => previous.slice(1))} /> : null;
+  return <>{registration?.members.length>0 && <p role="status" className="portal-status">Registration: {registration.members.length} of {registration.total} participants checked in.</p>}
+    {welcome.length ? <WelcomePopup key={welcome[0].id} member={welcome[0]} onClose={()=>setWelcome(previous=>previous.slice(1))} /> : queue.length ? <MealCelebration key={queue[0].key} meal={queue[0]} onDone={() => setQueue(previous => previous.slice(1))} /> : null}</>;
 }

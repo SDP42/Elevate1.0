@@ -5,7 +5,6 @@ import { useNavigate } from "react-router-dom";
 import RequireRole from "./RequireRole";
 import QrScanner from "./QrScanner";
 import MealHistory from "./MealHistory";
-import { MealCelebration } from "./MealCelebration";
 import { MEAL_SLOTS } from "./mealSlots";
 import { logout, mealLog, mealLogGuest, mealLookup, mealLookupByCode, mealUndo } from "./api";
 
@@ -72,7 +71,6 @@ function MealHome({ session }) {
   const staff = useStaffSnapshot("meal", slotCode);
   const [undoing, setUndoing] = useState(null);
   const [confirmBusy, setConfirmBusy] = useState(false);
-  const [celebration, setCelebration] = useState(null);
   const busyRef = useRef(false);
 
   const onDecode = useCallback(
@@ -123,13 +121,7 @@ function MealHome({ session }) {
         ? `Recorded ${result.slot.label} for ${result.team.teamCode} (${receipt.logged} participants).`
         : "These participants have already been served for this meal.");
       if(receipt.logged > 0) notifyStaffWrite();
-      const names = result.members.filter(member => receipt.memberIds.includes(member.id)).map(member => member.name);
-      const slotLabel = result.slot.label;
       reset();
-      if (receipt.logged > 0) {
-        setScanning(false);
-        setCelebration({ slotLabel, names });
-      }
     } catch (err) { setError(err.message); }
     finally { busyRef.current = false; setConfirmBusy(false); }
   }
@@ -269,7 +261,6 @@ function MealHome({ session }) {
       </section>
 
       <MealHistory snapshot={staff} slotCode={slotCode} onSelectSlot={code=>{setSlotCode(code);reset();}} />
-      {celebration && <MealCelebration meal={celebration} onDone={() => { setCelebration(null); reset(); }} />}
     </div>
   );
 }

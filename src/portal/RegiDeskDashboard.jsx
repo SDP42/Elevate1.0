@@ -8,18 +8,15 @@ import QrScanner from "./QrScanner";
 import { logout, regideskLookup, regideskLookupByCode, regideskSave } from "./api";
 
 function MemberRow({ member, teamId, scanProof, onSaved }) {
-  const [githubId, setGithubId] = useState(member.githubId);
   const [govtIdChecked, setGovtIdChecked] = useState(member.govtIdChecked);
   const [bagChecked, setBagChecked] = useState(member.bagChecked);
   const [kitChecked, setKitChecked] = useState(member.kitChecked);
-  const [medicalNote, setMedicalNote] = useState(member.medicalNote);
   const [lateArrival, setLateArrival] = useState(member.lateArrival);
-  const [notes, setNotes] = useState(member.notes);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState("");
 
-  const fields = { githubId, govtIdChecked, bagChecked, kitChecked, medicalNote, lateArrival, notes };
+  const fields = { govtIdChecked, bagChecked, kitChecked, lateArrival };
 
   async function save() {
     setSaving(true);
@@ -27,7 +24,7 @@ function MemberRow({ member, teamId, scanProof, onSaved }) {
     try {
       const receipt = await regideskSave(member.id, teamId, { ...fields, scanProof });
       setSaved(true);
-      onSaved(receipt);
+      onSaved({...receipt,memberId:member.id});
     } catch (error) { setError(error.message); } finally {
       setSaving(false);
     }
@@ -36,13 +33,6 @@ function MemberRow({ member, teamId, scanProof, onSaved }) {
   function check(setter) {
     return (e) => {
       setter(e.target.checked);
-      setSaved(false);
-    };
-  }
-
-  function text(setter) {
-    return (e) => {
-      setter(e.target.value);
       setSaved(false);
     };
   }
@@ -71,21 +61,6 @@ function MemberRow({ member, teamId, scanProof, onSaved }) {
         <label className="portal-regiRow__check portal-regiRow__check--warn">
           <input type="checkbox" checked={lateArrival} onChange={check(setLateArrival)} />
           Late arrival
-        </label>
-      </div>
-
-      <div className="portal-regiRow__fields">
-        <label className="portal-regiRow__field">
-          <span>GitHub ID</span>
-          <input value={githubId} onChange={text(setGithubId)} placeholder="username" />
-        </label>
-        <label className="portal-regiRow__field">
-          <span>Medical note</span>
-          <input value={medicalNote} onChange={text(setMedicalNote)} placeholder="Allergies, conditions, emergency contact…" />
-        </label>
-        <label className="portal-regiRow__field">
-          <span>Notes</span>
-          <input value={notes} onChange={text(setNotes)} placeholder="Optional" />
         </label>
       </div>
 
@@ -149,7 +124,8 @@ function RegiDeskHome({ session }) {
     notifyStaffWrite();
     const { registered, total } = receipt.progress;
     setStatus(`${result.team.teamCode}: ${registered} of ${total} registered. ${registered === total ? "Whole team registered." : "Scan the same team QR for the next participant."}`);
-    reset();
+    setResult(previous=>({...previous,scanProof:null,progress:receipt.progress,members:previous.members.map(member=>member.id===receipt.memberId?{...member,registered:true}:member)}));
+    setSelectedMember(null);
   }
 
   function reset() {
@@ -202,17 +178,16 @@ function RegiDeskHome({ session }) {
                 </div>
               </div>
               <p className="portal-status">{result.progress.registered} of {result.progress.total} registered</p>
-              {result.progress.registered < result.progress.total ? <>
-                <label className="portal-field portal-u-mt"><span>Participant for this scan</span>
-                  <select value={selectedMember || ""} onChange={event => setSelectedMember(Number(event.target.value))}>
-                    {result.members.filter(member => !member.registered).map(member => <option key={member.id} value={member.id}>{member.name}{member.foodPreference ? ` · ${member.foodPreference}` : ""}</option>)}
-                  </select>
-                </label>
+              <div className="regi-memberButtons" role="group" aria-label="Participants for this scan">{result.members.map(member=><button type="button" key={member.id} aria-pressed={selectedMember===member.id} disabled={member.registered || !result.scanProof} className={member.registered?'is-registered':''} onClick={()=>setSelectedMember(member.id)}>
+                {(member.registered || selectedMember===member.id) && <svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M21 16v-2l-8-5V3.5a1.5 1.5 0 0 0-3 0V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5l8 2.5Z" /></svg>}
+                <span>{member.name}<small>{member.registered?'Registered':selectedMember===member.id?'Selected for check-in':'Select participant'}</small></span>
+              </button>)}</div>
+              {result.progress.registered < result.progress.total && result.scanProof ? <>
                 <ul className="portal-regiList portal-u-mt">
                   {result.members.filter(member => member.id === selectedMember).map(member =>
                     <MemberRow key={member.id} member={member} teamId={result.team.id} scanProof={result.scanProof} onSaved={onMemberSaved} />)}
                 </ul>
-              </> : <p className="portal-card__hint">Whole team registered. No more registration scans are needed.</p>}
+              </> : <p className="portal-card__hint">{result.progress.registered===result.progress.total?"Whole team registered.":"Scan the team QR again for the next participant."}</p>}
               <button type="button" className="portal-logout portal-u-mt" onClick={reset}>
                 Scan next participant / team
               </button>
