@@ -9,13 +9,11 @@ import "./login.css";
 
 const ROLES = [
   { key: "team", label: "Team" },
-  { key: "core", label: "Core" },
   { key: "meal", label: "Meal" },
   { key: "regidesk", label: "Regi desk" },
   { key: "admin", label: "Admin" },
-  { key: "superadmin", label: "Super admin" },
 ];
-const DASHBOARD_PATH = Object.fromEntries(ROLES.map(({ key }) => [key, `/portal/${key}`]));
+const DASHBOARD_PATH = { ...Object.fromEntries(ROLES.map(({ key }) => [key, `/portal/${key}`])), core: "/portal/core", superadmin: "/portal/superadmin" };
 
 // Role buttons guide the form; the authenticated account determines access.
 export default function Login() {
@@ -80,7 +78,7 @@ export default function Login() {
                 name="username"
                 value={username}
                 onChange={(event) => setUsername(event.target.value)}
-                placeholder={role === "superadmin" ? "superadmin" : `e.g. ${role}01`}
+                placeholder={role === "team" ? "e.g. ELEV01" : `e.g. ${role}01`}
                 autoComplete="username"
                 autoCapitalize="none"
                 spellCheck={false}

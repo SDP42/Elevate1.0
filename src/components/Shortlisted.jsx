@@ -1,11 +1,10 @@
 import { useLayoutEffect, useRef } from "react";
 import { gsap, ScrollTrigger } from "../intro/motion";
-import { SHORTLISTED, WAITLISTED } from "../config";
+import { SHORTLISTED } from "../config";
 import "./shortlisted.css";
 
 const BOARD_SIZE = 10;
 const GOLD = "201, 168, 106";
-const AMBER = "240, 150, 84";
 
 function chunk(items, size) {
   const out = [];
@@ -15,7 +14,7 @@ function chunk(items, size) {
 
 const pad = (n) => String(n).padStart(2, "0");
 
-/* One board per ten shortlisted teams, then one for the waitlist — each
+/* One board per ten shortlisted teams — each
    becomes a glass card that stacks over the last as you scroll. */
 const BOARDS = [
   ...chunk(SHORTLISTED, BOARD_SIZE).map((teams, i) => ({
@@ -26,14 +25,7 @@ const BOARDS = [
     label: (n) => pad(i * BOARD_SIZE + n),
     rgb: GOLD,
   })),
-  {
-    key: "waitlisted",
-    title: "Waitlisted",
-    sub: `${WAITLISTED.length} teams on the waitlist`,
-    teams: WAITLISTED,
-    label: (n) => `W${n}`,
-    rgb: AMBER,
-  },
+
 ];
 
 const PlaneIcon = ({ flip }) => (
@@ -179,7 +171,6 @@ export default function Shortlisted() {
         </p>
         <div className="sl__chips">
           <span>{SHORTLISTED.length} shortlisted</span>
-          <span>{WAITLISTED.length} waitlisted</span>
         </div>
       </div>
 
