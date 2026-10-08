@@ -88,8 +88,8 @@ export const mealHistory = (slotCode) => request(`/meal?slotCode=${encodeURIComp
 
 export const coreTeams = () => request("/core");
 
-export const coreSubmitMark = (teamId, score, mentoring1Feedback, mentoring2Feedback) =>
-  request("/core", { method: "POST", body: JSON.stringify({ teamId, score, mentoring1Feedback, mentoring2Feedback }) });
+export const coreSubmitMark = (teamId, score, mentoring1Feedback, mentoring2Feedback, stage = "mentoring1") =>
+  request("/core", { method: "POST", body: JSON.stringify({ teamId, score, mentoring1Feedback, mentoring2Feedback, stage }) });
 
 export const coreSaveRound1Note = (teamId, note) =>
   request("/core", { method: "POST", body: JSON.stringify({ action: "round1-note", teamId, note }) });
@@ -104,7 +104,7 @@ export const leaderboard = () => request("/leaderboard");
 
 export const psList = () => request("/ps");
 
-export const selectPs = (psId) => request("/ps", { method: "POST", body: JSON.stringify({ psId }) });
+export const selectPs = (preferences) => request("/ps", { method: "POST", body: JSON.stringify({ preferences }) });
 
 export const adminSavePs = (ps) =>
   request("/admin", { method: "POST", body: JSON.stringify({ action: "save-ps", ...ps }) });
@@ -199,3 +199,5 @@ export const submissionFile = (id, teamId) => request(`/auth?resource=submission
 export const uploadSubmission = (name, base64) => request("/auth", { method: "POST", body: JSON.stringify({ action: "upload", name, base64 }) });
 
 export const staffSnapshot = (endpoint, slotCode, revision, resource = "staff") => request(`/${endpoint}?resource=${encodeURIComponent(resource)}${slotCode ? `&slotCode=${encodeURIComponent(slotCode)}` : ""}${revision ? `&since=${encodeURIComponent(revision)}` : ""}`);
+
+export const adminFinalShortlist = (teamId, shortlisted) => request("/admin", {method:"POST",body:JSON.stringify({action:"final-shortlist",teamId,shortlisted})});

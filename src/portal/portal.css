@@ -2390,3 +2390,33 @@ pre.submission-viewer__document { white-space: pre-wrap; }
 .submission-fileRow__name { white-space: normal; }
 @media (prefers-reduced-motion: reduce) { .submission-documentGlass a:hover .submission-documentTrack, .submission-documentGlass a:focus-visible .submission-documentTrack { animation: none; } }
 @media (max-width:480px) { .submission-documentSurface { padding: 16px; } .submission-documentSurface h1 { font-size: 18px; } }
+/* Portal menus, ranked choices and touch-friendly registration controls. */
+.portal-glassSelect { position:relative; min-width:0; display:grid; gap:8px; }
+.portal-glassSelect > span { font-size:12px; color:var(--cream-dim); }
+.portal-glassSelect__trigger { display:flex; align-items:center; justify-content:space-between; gap:12px; min-height:48px; width:100%; padding:12px 16px; border:1px solid #c9a86a66; border-radius:14px; background:linear-gradient(120deg,#ffffff14,#ffffff05); color:var(--cream); font:inherit; text-align:left; backdrop-filter:blur(20px); }
+.portal-glassSelect__trigger:focus-visible { outline:2px solid var(--gold); }
+.portal-glassSelect__menu { position:absolute!important; top:100%; left:0; right:0; z-index:30; border-radius:16px; background:#111827df!important; box-shadow:0 20px 50px #0009; }
+.portal-glassSelect__menu [role=listbox] { max-height:300px; overflow:auto; padding:8px; }
+.portal-glassSelect__menu button { display:flex; justify-content:space-between; gap:12px; width:100%; min-height:46px; padding:12px; border:0; border-radius:9px; background:transparent; color:var(--cream); font:inherit; text-align:left; overflow-wrap:anywhere; }
+.portal-glassSelect__menu button:hover,.portal-glassSelect__menu button:focus-visible,.portal-glassSelect__menu button[aria-selected=true] { color:var(--gold); background:#c9a86a20; outline:1px solid #c9a86a60; }
+.ps-preferenceForm { display:grid; gap:20px; }
+.ps-preferenceGrid { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:14px; }
+.ps-preferenceGrid select { min-width:0; width:100%; min-height:48px; }
+.regi-memberButtons { display:grid; grid-template-columns:repeat(auto-fit,minmax(min(100%,160px),1fr)); gap:10px; margin-top:18px; }
+.regi-memberButtons button { display:flex; align-items:center; gap:10px; min-height:72px; padding:14px; color:var(--cream); background:#ffffff08; border:1px solid #ffffff24; border-radius:14px; font:inherit; text-align:left; }
+.regi-memberButtons button[aria-pressed=true],.regi-memberButtons .is-registered { border-color:var(--gold); background:#c9a86a15; }
+.regi-memberButtons .is-registered { opacity:1; color:var(--gold); }
+.regi-memberButtons svg { width:26px; height:26px; flex:none; }
+.regi-memberButtons span { min-width:0; overflow-wrap:anywhere; }
+.regi-memberButtons small { display:block; margin-top:6px; font-size:11px; color:var(--cream-dim); }
+@media(max-width:900px) { .ps-preferenceGrid { grid-template-columns:repeat(2,minmax(0,1fr)); } }
+@media(max-width:480px) { .ps-preferenceGrid { grid-template-columns:minmax(0,1fr); } .regi-memberButtons button { min-height:76px; } }
+.welcome-dialog { width:min(920px,calc(100vw - 24px)); max-width:none; max-height:90dvh; padding:0; border:0; color:var(--cream); background:transparent; overflow:visible; }
+.welcome-dialog::backdrop { background:#000b; backdrop-filter:blur(8px); }
+.welcome-glass { position:relative; padding:12px; border-radius:22px; max-height:90dvh; overflow:auto; }
+.welcome-glass > img { display:block; width:100%; height:auto; border-radius:14px; }
+.welcome-close { position:absolute; z-index:2; right:20px; top:20px; width:44px; height:44px; border:1px solid var(--gold); border-radius:50%; background:#071124e8; color:white; font-size:28px; cursor:pointer; }
+.welcome-message { padding:20px 12px 12px; text-align:center; }
+.welcome-message h2 { font:600 clamp(20px,4vw,30px)/1.4 var(--font-body); margin:0 0 10px; color:var(--gold); }
+.welcome-message p { margin:0; line-height:1.6; }
+.round2-teamCard .round2-scoreEditor + .round2-scoreEditor { border-top:1px solid var(--line); padding-top:18px; }

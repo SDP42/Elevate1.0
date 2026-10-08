@@ -34,13 +34,13 @@ function RecuseButton({ team, onRecused }) {
 
 function MarksRow({ team, onSaved, onRecused }) {
   return <tr><td>{team.teamName}<div className="portal-table__sub">{team.teamCode}{team.psCode && ` · ${team.psCode}`}</div></td><td>{team.seatNo ?? '—'}</td>
-    <td><FinalMarksEditor team={team} onSaved={saved => onSaved(team.id, saved)} /></td>
+    <td><FinalMarksEditor team={team} onSaved={saved => onSaved(team.id, saved)} /><FinalMarksEditor team={team} stage="judging1" onSaved={saved=>onSaved(team.id,saved)} />{team.finalRoundShortlisted && <FinalMarksEditor team={team} stage="final" onSaved={saved=>onSaved(team.id,saved)} />}</td>
     <td className="portal-table__note"><strong>Mentoring 1 feedback</strong><p>{team.mentoring1Feedback || '—'}</p><strong>Mentoring 2 feedback</strong><p>{team.mentoring2Feedback || '—'}</p></td>
     <td className="portal-no-print"><RecuseButton team={team} onRecused={onRecused} /></td></tr>;
 }
 
 function PrintBackup({ teams, generatedAt }) {
-  return <table className="portal-print-table"><caption>Elevate 1.0 — Final marks, printed {generatedAt}</caption><thead><tr><th>Team</th><th>PS</th><th>Final score</th><th>Mentoring 1 feedback</th><th>Mentoring 2 feedback</th></tr></thead><tbody>{teams.map(t=><tr key={t.id}><td>{t.teamCode}</td><td>{t.psCode || ''}</td><td>{t.score ?? ''}</td><td>{t.mentoring1Feedback || ''}</td><td>{t.mentoring2Feedback || ''}</td></tr>)}</tbody></table>;
+  return <table className="portal-print-table"><caption>Elevate 1.0 — Final marks, printed {generatedAt}</caption><thead><tr><th>Team</th><th>PS</th><th>Mentoring 1 score</th><th>Judging Round 1 score</th><th>Final round score</th><th>Mentoring 1 feedback</th><th>Mentoring 2 feedback</th></tr></thead><tbody>{teams.map(t=><tr key={t.id}><td>{t.teamCode}</td><td>{t.psCode || ''}</td><td>{t.mentoring1Score ?? ''}</td><td>{t.judgingRound1Score ?? ''}</td><td>{t.finalRoundShortlisted ? t.finalRoundScore ?? '' : ''}</td><td>{t.mentoring1Feedback || ''}</td><td>{t.mentoring2Feedback || ''}</td></tr>)}</tbody></table>;
 }
 
 function Round1Notes({ teams, onSaved }) {
@@ -165,7 +165,7 @@ function CoreHome({ session }) {
           )}
         </div>
         <p className="portal-card__hint">
-          Enter a single final score and two mentoring feedbacks. Feedback stays hidden from participants until an admin releases it. Use "Print backup" for a paper copy of everything
+          Enter Mentoring 1 and Judging Round 1 scores, with two mentoring feedbacks. Only shortlisted teams have final-round scoring. Feedback stays hidden from participants until an admin releases it. Use "Print backup" for a paper copy of everything
           entered so far. You're seeing {teams?.length ?? "…"} team{teams?.length === 1 ? "" : "s"} —
           every team, unless an admin has assigned you a specific subset.
         </p>
@@ -185,7 +185,7 @@ function CoreHome({ session }) {
                 <tr>
                   <th>Team</th>
                   <th>Seat</th>
-                  <th>Final score</th><th>Mentoring feedback</th>
+                  <th>Scoring rounds</th><th>Mentoring feedback</th>
                   <th className="portal-no-print"></th>
                 </tr>
               </thead>

@@ -325,7 +325,7 @@ function ApprovalBanner({ data, teamCode }) {
   if (!show) return null;
   return (
     <div className="portal-approvalBanner">
-      🎉 Your problem statement request has been approved — you're locked in!
+      🎉 Your problem statement is allocated — you're locked in!
       <button type="button" onClick={() => setShow(false)} aria-label="Dismiss">
         ×
       </button>
@@ -343,75 +343,28 @@ function ShortlistBanner({ team }) {
 }
 
 function ProblemStatement({ data, error, picking, onPick }) {
-  const locked = data?.selectionStatus === "approved";
-
-  return (
-    <section className="portal-card">
-      <h3>
-        <LightbulbIcon />
-        Problem statement
-      </h3>
-      <p className="portal-card__hint">
-        First come, first served — requesting one puts you in the queue, but it's only official once
-        admin approves it. You can switch your request freely until then; once approved, it's locked
-        in.
-      </p>
-
-      {error && <p className="portal-auth__error">{error}</p>}
-
-      {data && data.problemStatements.length === 0 && (
-        <p>Problem statements will be revealed soon. Come back here to pick yours once they're live.</p>
-      )}
-
-      {data && data.problemStatements.length > 0 && (
-        <ul className="portal-psList">
-          {data.problemStatements.map((ps) => {
-            const isMine = data.selectedPsId === ps.id;
-            const disabled = locked || picking !== null;
-            let label = picking === ps.id ? "Requesting…" : "Request";
-            if (isMine && locked) label = "Approved ✓";
-            else if (isMine) label = "Requested — pending";
-
-            return (
-              <li key={ps.id} className={isMine ? (locked ? "is-approved" : "is-selected") : undefined}>
-                <div className="portal-psList__head">
-                  <strong>{ps.code} · {ps.title}</strong>
-                  {ps.capacity !== null && (
-                    <span className="portal-psList__seats">
-                      {ps.taken}/{ps.capacity} approved
-                    </span>
-                  )}
-                </div>
-
-                <button
-                  type="button"
-                  className="portal-auth__submit"
-                  disabled={disabled || (isMine && !locked)}
-                  onClick={() => onPick(ps.id)}
-                >
-                  {label}
-                </button>
-              </li>
-            );
-          })}
-        </ul>
-      )}
-
-      {data && data.allocations.length > 0 && (
-        <div className="portal-allocBoard">
-          <span className="portal-allocBoard__label">Confirmed allocations, so far</span>
-          <ul>
-            {data.allocations.map((a) => (
-              <li key={a.teamCode}>
-                <strong>{a.teamCode}</strong> → {a.psCode ? `${a.psCode} · ` : ""}
-                {a.psTitle}
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
-    </section>
-  );
+  const [preferences,setPreferences]=useState(null);
+  const [message,setMessage]=useState('');
+  const locked=data?.selectionStatus==='approved';
+  const statements=data?.problemStatements || [];
+  const choices=preferences ?? (data?.preferences?.length===4 ? data.preferences.map(String) : ['','','','']);
+  const complete=choices.length===4 && choices.every(Boolean) && new Set(choices).size===4;
+  const selected=statements.find(ps=>ps.id===data?.selectedPsId);
+  async function submit(e){e.preventDefault();if(!complete)return;setMessage('');const result=await onPick(choices.map(Number));if(result)setMessage(result.message);}
+  return <section className="portal-card"><h3><LightbulbIcon />Problem statement preferences</h3>
+    <p className="portal-card__hint">Rank four different problem statements. On submit, your first available choice among preferences 1–3 is allocated immediately and locked. Preference 4 is recorded only.</p>
+    {error && <p role="alert" className="portal-auth__error">{error}</p>}
+    {locked ? <p className="portal-status" role="status">Allocated: {selected?`${selected.code} · ${selected.title}`:'Your confirmed problem statement'}</p> : statements.length<4 ? <p>Four problem statements need to be revealed before preferences can be submitted.</p> :
+      <form onSubmit={submit} className="ps-preferenceForm"><div className="ps-preferenceGrid">{[0,1,2,3].map(index=><label className="portal-field" key={index}><span>Preference {index+1}</span><select aria-label={`Preference ${index+1}`} required value={choices[index] || ''} disabled={picking!==null} onChange={e=>{
+      const value=e.target.value,next=[...choices],previous=next[index];
+      const other=next.findIndex((choice,i)=>i!==index && value && choice===value);
+      if(other>=0)next[other]=previous;next[index]=value;setPreferences(next);
+    }}><option value="">Choose a problem statement</option>{statements.map(ps=><option key={ps.id} value={ps.id}>{ps.code} · {ps.title}{ps.full?' · Full':''}</option>)}</select></label>)}</div>
+        <button className="portal-auth__submit" type="submit" disabled={!complete || picking!==null}>{picking!==null?'Allocating…':'Submit preferences'}</button>
+      </form>}
+    {message && <p role="status" className="portal-status">{message}</p>}
+    {!!data?.allocations?.length && <div className="portal-allocBoard"><span className="portal-allocBoard__label">Confirmed allocations</span><ul>{data.allocations.map(a=><li key={a.teamCode}><strong>{a.teamCode}</strong> → {a.psCode} · {a.psTitle}</li>)}</ul></div>}
+  </section>;
 }
 
 const SubmitIcon = () => (
@@ -471,14 +424,14 @@ function ProjectSubmission({ team }) {
 }
 
 function MentorFeedback({ team }) {
-  if (!team || team.score === null || team.score === undefined) return null;
+  if (!team || team.mentoring1Score == null) return null;
   return (
     <section className="portal-card">
       <h3>
         <FeedbackIcon />
         Mentor feedback
       </h3>
-      <p className="round2-total">Final score: <strong>{team.score}</strong></p>
+      <p className="round2-total">Mentoring 1 score: <strong>{team.mentoring1Score}</strong></p>{team.judgingRound1Score != null && <p className="round2-total">Judging Round 1 score: <strong>{team.judgingRound1Score}</strong></p>}{team.final_round_shortlisted && team.finalRoundScore != null && <p className="round2-total">Final round score: <strong>{team.finalRoundScore}</strong></p>}
       <div className="round2-savedFeedback"><span>Mentoring 1 feedback</span><p className="portal-feedbackNote">{team.mentoring1Feedback || "No feedback entered."}</p><span>Mentoring 2 feedback</span><p className="portal-feedbackNote">{team.mentoring2Feedback || "No feedback entered."}</p></div>
     </section>
   );
@@ -498,12 +451,13 @@ function TeamHome({ session }) {
 
   useLivePs(loadPs);
 
-  async function onPick(psId) {
+  async function onPick(preferences) {
     setPsError("");
-    setPicking(psId);
+    setPicking(true);
     try {
-      await selectPs(psId);
+      const result=await selectPs(preferences);
       await loadPs();
+      return result;
     } catch (err) {
       await loadPs();
       setPsError(err.message);

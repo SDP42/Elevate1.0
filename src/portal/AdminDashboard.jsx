@@ -1,8 +1,9 @@
+import { adminFinalShortlist } from "./api";
+import GlassSelect from "./GlassSelect";
 import FinalMarksEditor from "./FinalMarksEditor";
 import MealAnalysisPopup from "./MealAnalysisPopup";
 import { Glass, GlassSystemProvider } from "open-glass-ui";
 import "open-glass-ui/styles.css";
-import useLivePs from "./useLivePs";
 import { useCallback, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import QRCode from "qrcode";
@@ -15,7 +16,6 @@ import {
   adminAnnouncements,
   adminApproveAllFeedback,
   adminApproveFeedback,
-  adminApprovePs,
   adminAudit,
   adminCreateStaff,
   adminCreateTeam,
@@ -23,8 +23,6 @@ import {
   adminFreezeResults,
   adminMeals,
   adminOverview,
-  adminPsRequests,
-  adminRevokePs,
   adminSaveAnnouncement,
   adminSavePs,
   adminSetShortlist,
@@ -606,105 +604,6 @@ function PsManager({ problemStatements, onSaved }) {
   );
 }
 
-function PsRequestsManager() {
-  const [requests, setRequests] = useState(null);
-  const [error, setError] = useState("");
-  const [busy, setBusy] = useState(null);
-
-  function load() {
-    return adminPsRequests()
-      .then((d) => {
-        setRequests(d.requests);
-        setError("");
-      })
-      .catch((err) => setError(err.message));
-  }
-
-  useLivePs(load);
-
-  async function approve(teamId) {
-    setBusy(teamId);
-    setError("");
-    try {
-      await adminApprovePs(teamId);
-      await load();
-    } catch (err) {
-      await load();
-      setError(err.message);
-    } finally {
-      setBusy(null);
-    }
-  }
-
-  async function revoke(teamId) {
-    setBusy(teamId);
-    try {
-      await adminRevokePs(teamId);
-      await load();
-    } catch (err) {
-      await load();
-      setError(err.message);
-    } finally {
-      setBusy(null);
-    }
-  }
-
-  return (
-    <section className="portal-card">
-      <h3>PS requests</h3>
-      <p className="portal-card__hint">
-        First-come-first-served order within each problem statement. Approving locks that team in and
-        shows the allocation to every team; revoking frees it back up.
-      </p>
-      {error && <p className="portal-auth__error">{error}</p>}
-      {requests && requests.length === 0 && <p>No requests yet.</p>}
-      {requests && requests.length > 0 && (
-        <div className="portal-tableWrap">
-          <table className="portal-table">
-            <thead>
-              <tr>
-                <th>Team</th>
-                <th>Problem statement</th>
-                <th>Requested</th>
-                <th>Status</th>
-                <th></th>
-              </tr>
-            </thead>
-            <tbody>
-              {requests.map((r) => (
-                <tr key={r.teamId}>
-                  <td>{r.teamCode}</td>
-                  <td>
-                    {r.psCode} · {r.psTitle}
-                    {r.capacity !== null && (
-                      <div className="portal-table__sub">
-                        {r.taken}/{r.capacity} approved
-                      </div>
-                    )}
-                  </td>
-                  <td>{new Date(r.requestedAt).toLocaleString()}</td>
-                  <td className="portal-table__role">{r.status}</td>
-                  <td>
-                    {r.status === "approved" ? (
-                      <button type="button" className="portal-logout" onClick={() => revoke(r.teamId)} disabled={busy === r.teamId}>
-                        {busy === r.teamId ? "…" : "Revoke"}
-                      </button>
-                    ) : (
-                      <button type="button" className="portal-auth__submit" onClick={() => approve(r.teamId)} disabled={busy === r.teamId}>
-                        {busy === r.teamId ? "…" : "Approve"}
-                      </button>
-                    )}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
-    </section>
-  );
-}
-
 function AnnouncementsManager({ teams }) {
   const [audience, setAudience] = useState("");
   const [items, setItems] = useState(null);
@@ -782,7 +681,7 @@ function AnnouncementsManager({ teams }) {
       )}
 
       <form className="portal-auth__form portal-u-mt" onSubmit={add}>
-        <label className="portal-field"><span>Send to</span><select aria-label="Send to" value={audience} onChange={e => setAudience(e.target.value)}><option value="">All</option>{teams?.map(team => <option key={team.id} value={team.id}>{team.teamCode} · {team.displayName || team.teamName}</option>)}</select></label>
+        <GlassSelect label="Send to" value={audience} onChange={setAudience} options={[{value:'',label:'All'},...(teams||[]).map(team=>({value:String(team.id),label:`${team.teamCode} · ${team.displayName || team.teamName}`}))]} />
         <div className="portal-manualLookup__row">
           <input aria-label="New announcement" value={message} onChange={(e) => setMessage(e.target.value)} placeholder="New announcement" />
           <button type="submit" className="portal-auth__submit" disabled={busy || !message.trim()}>
@@ -839,9 +738,10 @@ function AuditLog() {
   );
 }
 
-function AdminRound2Leaderboard({ teams }) {
-  const rows = (teams || []).filter(team => team.shortlisted && !team.withdrawn).sort((a,b) => (b.score ?? -1) - (a.score ?? -1) || a.teamCode.localeCompare(b.teamCode));
-  return <section className="round2-leaderboard" aria-label="Round 2 leaderboard"><h3>Round 2 leaderboard</h3><p className="portal-card__hint">Current saved scores for active shortlisted teams. Equal scores share a rank. Unreleased results are visible here to admins.</p><ol>{rows.map(team => {
+function AdminRound2Leaderboard({ teams, final = false }) {
+  const scoreField = final ? "finalRoundScore" : "judgingRound1Score";
+  const rows = (teams || []).filter(team => team.shortlisted && !team.withdrawn && (!final || team.finalRoundShortlisted)).map(team=>({...team,score:team[scoreField]})).sort((a,b) => (b.score ?? -1) - (a.score ?? -1) || a.teamCode.localeCompare(b.teamCode));
+  return <section className="round2-leaderboard" aria-label="Round 2 leaderboard"><h3>{final ? "Final round leaderboard" : "Judging Round 1 leaderboard"}</h3><p className="portal-card__hint">Current saved scores for active shortlisted teams. Equal scores share a rank. Unreleased results are visible here to admins.</p><ol>{rows.map(team => {
     const rank = team.score == null ? null : rows.findIndex(row => row.score === team.score) + 1;
     return <li key={team.id}><span className="round2-rank">{team.score == null ? "—" : rank}</span><div><strong>{team.teamName}</strong><span>{team.teamCode}</span></div><strong>{team.score ?? "—"}</strong></li>;
   })}</ol></section>;
@@ -897,15 +797,16 @@ export function AdminHome({ session, superAdmin = false }) {
   }
 
   useEffect(() => {
-    if (panel !== "marks" && panel !== "teams") return;
+    if (panel !== "marks" && panel !== "teams" && panel !== "overview") return;
     let stopped = false, timer, busy = false;
     async function refresh() {
       if (stopped || busy || document.hidden) return;
       busy = true;
       try {
-        const data = await (panel === "marks" ? coreTeams() : adminTeams());
+        const data = await (panel === "marks" ? coreTeams() : panel === "overview" ? psList() : adminTeams());
         if (!stopped) {
           if (panel === "marks") setMarksTeams(data.teams);
+          else if (panel === "overview") setProblemStatements(data.problemStatements);
           else setTeams(data.teams);
         }
       }
@@ -944,6 +845,13 @@ export function AdminHome({ session, superAdmin = false }) {
     } finally {
       setZipBusy(false);
     }
+  }
+
+  function saveStage(saved) {setMarksTeams(previous=>previous.map(row=>row.id===saved.id?saved:row));}
+  async function toggleFinal(team) {
+    setFeedbackBusy(team.id);
+    try {await adminFinalShortlist(team.id,!team.finalRoundShortlisted);setMarksTeams(previous=>previous.map(row=>row.id===team.id?{...row,finalRoundShortlisted:!team.finalRoundShortlisted}:row));}
+    catch(err){setError(err.message);}finally{setFeedbackBusy(null);}
   }
 
   async function toggleFeedbackApproval(teamId, currentStatus) {
@@ -1102,7 +1010,7 @@ export function AdminHome({ session, superAdmin = false }) {
       {panel === "overview" && <>
       <PsManager problemStatements={problemStatements} onSaved={loadPs} />
 
-      <PsRequestsManager />
+
 
       <AnnouncementsManager teams={teams} />
 
@@ -1151,7 +1059,7 @@ export function AdminHome({ session, superAdmin = false }) {
       {panel === "marks" && (
       <section className="portal-card">
         <div className="portal-card__headRow">
-          <h3>Round 2 marks &amp; feedback</h3>
+          <h3>Team marks &amp; feedback</h3>
           <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", flexWrap: "wrap" }}>
             <button
               type="button"
@@ -1183,19 +1091,22 @@ export function AdminHome({ session, superAdmin = false }) {
           </div>
         </div>
         <p className="portal-card__hint">
-          Every team is listed, including teams that have not checked in. Enter one final score and separate Mentoring 1 and Mentoring 2 feedback. Saving hides that team's updated feedback until it is released. This section refreshes every five seconds while visible.
+          Every team is listed, including teams that have not checked in. Enter Mentoring 1 and Judging Round 1 scores, with two mentoring feedbacks. Final-round scoring appears only for teams shortlisted here. Saving mentoring feedback hides that team's updated feedback until it is released. This section refreshes every five seconds while visible.
         </p>
         <div className="round2-teamGrid">
           {marksTeams?.map(team => <article className="round2-teamCard" key={team.id}>
             <header><h4>{team.teamName}</h4><span>{team.teamCode} · Team ID {team.id}{team.seatNo != null && ` · Seat ${team.seatNo}`}{team.withdrawn && " · Withdrawn"}</span></header>
-            <FinalMarksEditor team={team} onSaved={saved => setMarksTeams(previous => previous.map(row => row.id === saved.id ? saved : row))} />
+            <FinalMarksEditor team={team} onSaved={saveStage} />
+            <FinalMarksEditor team={team} stage="judging1" onSaved={saveStage} />
+            <button type="button" className="portal-logout" aria-pressed={team.finalRoundShortlisted} disabled={feedbackBusy===team.id} onClick={()=>toggleFinal(team)}>{team.finalRoundShortlisted ? 'Shortlisted for final round · Remove' : 'Shortlist for final round'}</button>
+            {team.finalRoundShortlisted && <FinalMarksEditor team={team} stage="final" onSaved={saveStage} />}
             <div className="round2-savedFeedback"><span>Mentoring 1 feedback</span><p>{team.mentoring1Feedback || "No feedback entered."}</p><span>Mentoring 2 feedback</span><p>{team.mentoring2Feedback || "No feedback entered."}</p></div>
             <button type="button" className="portal-logout" disabled={feedbackBusy === team.id || team.score == null} onClick={() => toggleFeedbackApproval(team.id, team.feedbackApproved)}>
               {feedbackBusy === team.id ? "Updating…" : team.feedbackApproved ? "Visible to participants · Hide" : "Hidden from participants · Release"}
             </button>
           </article>)}
         </div>
-        <AdminRound2Leaderboard teams={marksTeams} />
+        <AdminRound2Leaderboard teams={marksTeams} /><AdminRound2Leaderboard teams={marksTeams} final />
       </section>
       )}
 
@@ -1234,7 +1145,7 @@ export function AdminHome({ session, superAdmin = false }) {
       <GlassSystemProvider design="liquid" renderer="auto" theme={{ appearance: "dark" }} toasts={false}>
       <Glass as="nav" material="regular" className="portal-adminNav" aria-label="Admin sections"
         look={{ blur: .55, opacity: .65, tint: "#101827", saturation: 1.35, brightness: .88, rim: 1.6, highlight: 1.4, lensing: 1.7, lightAngle: 315, shadow: 1.3 }}>
-        {[["overview", "Overview", "home"], ["teams", "Teams", "teams"], ["staff", "Staff accounts", "staff"], ["marks", "Round 2 marks", "marks"], ["audit", "Audit log", "audit"]].map(([key, label, icon]) => (
+        {[["overview", "Overview", "home"], ["teams", "Teams", "teams"], ["staff", "Staff accounts", "staff"], ["marks", "Team marks", "marks"], ["audit", "Audit log", "audit"]].map(([key, label, icon]) => (
           <button key={key} type="button" aria-current={panel === key ? "page" : undefined} onClick={() => { setPanel(key); window.scrollTo({ top: 0, behavior: "smooth" }); }}>
             <AdminNavIcon name={icon} /><span>{label}</span>
           </button>
