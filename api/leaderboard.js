@@ -1,29 +1,27 @@
-import { sql } from "./_lib/db.js";
+import { sql as defaultSql } from "./_lib/db.js";
 import { requireRole } from "./_lib/auth.js";
 
-/* Any logged-in account can see this — teams checking their standing,
-   staff double-checking it matches what they entered. Round 1 never
-   appears here since it doesn't carry marks; teams without a Round 2
-   score yet are listed last, unscored. A withdrawn team drops off
-   entirely rather than cluttering the board. `frozen` just tells the
-   frontend to show this as the final result rather than a live one —
-   admin flips it once, from the settings table, at the end of the event. */
+/* Live standings use Judging Round 1. Frozen standings use final marks,
+   restricted to teams shortlisted for the final round. Participant visibility
+   continues to use the team's mentoring-feedback release gate. */
+export function createLeaderboardHandler({sql=defaultSql}={}) {
 async function handler(req, res) {
   const canSeeUnreleased = ["admin", "superadmin", "core"].includes(req.session.role);
+  const settingRows = await sql`select value from settings where key = 'results_frozen'`;
+  const frozen = settingRows[0]?.value === true;
   const rows = await sql`
     select t.team_code, t.seat_no, a.display_name, m.score
     from teams t
     join accounts a on a.id = t.account_id
     left join marks m
       on m.team_id = t.id
-      and m.round_id = (select id from mentoring_rounds where round_no = 2)
-      and (${canSeeUnreleased} or m.feedback_approved = true)
-    where t.withdrawn = false and t.shortlisted = true
+      and m.round_id = (select id from mentoring_rounds where round_no = ${frozen ? 4 : 3})
+      and (${canSeeUnreleased} or exists (select 1 from marks published where published.team_id=t.id and published.round_id=(select id from mentoring_rounds where round_no=2) and published.feedback_approved=true))
+    where t.withdrawn = false and t.shortlisted = true and (not ${frozen} or t.final_round_shortlisted)
     order by m.score desc nulls last, t.team_code asc
   `;
 
-  const settingRows = await sql`select value from settings where key = 'results_frozen'`;
-  const frozen = settingRows[0]?.value === true;
+
 
   let currentRank = 0;
   let lastScore = null;
@@ -53,4 +51,6 @@ async function handler(req, res) {
   });
 }
 
-export default requireRole(handler);
+return handler;
+}
+export default requireRole(createLeaderboardHandler());

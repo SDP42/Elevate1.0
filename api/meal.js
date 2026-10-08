@@ -63,16 +63,22 @@ async function receipt(req, res) {
   if (after !== null && (!Number.isSafeInteger(after) || after < 0)) {
     return res.status(400).json({ error: "Invalid receipt cursor" });
   }
-  const [latest] = await sql`select coalesce(max(id),0) as latest_id from meal_logs where team_id=${req.session.teamId}`;
+  const [latest] = await sql`select coalesce(max(id),0) as latest_id,
+    (select coalesce(jsonb_agg(jsonb_build_object('id',tm.id,'name',tm.name) order by tm.sort_order,tm.id),'[]'::jsonb)
+      from registration_checkins rc join team_members tm on tm.id=rc.member_id and tm.team_id=rc.team_id
+      where rc.team_id=${req.session.teamId}) as registrations,
+    (select count(*)::int from team_members where team_id=${req.session.teamId}) as total_members
+    from meal_logs where team_id=${req.session.teamId}`;
   const latestId=Number(latest.latest_id);
-  if (after === null || after >= latestId) return res.status(200).json({latestId,meals:[]});
+  const registration={teamId:req.session.teamId,members:latest.registrations || [],total:Number(latest.total_members || 0)};
+  if (after === null || after >= latestId) return res.status(200).json({latestId,meals:[],registration});
   const rows = await sql`
     select ml.id, ms.label, ms.code, tm.name, ml.given_at
     from meal_logs ml join meal_slots ms on ms.id = ml.meal_slot_id
     join team_members tm on tm.id = ml.member_id
     where ml.team_id = ${req.session.teamId} and ml.id > ${after} order by ml.id desc limit 28
   `;
-  res.status(200).json({ latestId: Math.max(latestId,Number(rows[0]?.id || 0)),
+  res.status(200).json({ registration, latestId: Math.max(latestId,Number(rows[0]?.id || 0)),
     meals: after === null ? [] : rows.filter(row => row.id > after).reverse().map(row => ({
       id: row.id, slotCode: row.code, slotLabel: row.label, name: row.name, givenAt: row.given_at
     })) });

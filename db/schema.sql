@@ -382,3 +382,17 @@ create index if not exists submission_files_team_uploaded_idx on submission_file
 alter table marks add column if not exists mentoring1_feedback text;
 alter table announcements add column if not exists team_id integer references teams(id) on delete cascade;
 create index if not exists announcements_team_active_idx on announcements(team_id) where active;
+
+-- Ranked PS preferences: the fourth is stored but never allocated automatically.
+create table if not exists team_ps_preferences (
+ team_id integer primary key references teams(id) on delete cascade,
+ preference1 integer not null references ps_list(id),
+ preference2 integer not null references ps_list(id),
+ preference3 integer not null references ps_list(id),
+ preference4 integer not null references ps_list(id),
+ submitted_at timestamptz not null default clock_timestamp(),
+ check (preference1 <> preference2 and preference1 <> preference3 and preference1 <> preference4 and preference2 <> preference3 and preference2 <> preference4 and preference3 <> preference4)
+);
+alter table teams add column if not exists final_round_shortlisted boolean not null default false;
+insert into mentoring_rounds(round_no,label,carries_marks) values
+ (3,'Judging Round 1',true),(4,'Final Round',true) on conflict(round_no) do nothing;

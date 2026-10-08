@@ -81,6 +81,34 @@ try {
   await allocation.request(1,2);
   const after=await exec('psql',[...params,'-At','-c','select requested_at from team_ps_selection where team_id=1']);
   assert.equal(before.stdout,after.stdout);
+  await run(`truncate team_ps_selection;update teams set withdrawn=false;
+    update ps_list set revealed=true,capacity=case id when 1 then 2 when 2 then 3 when 3 then 5 else 100 end;
+    create table team_ps_preferences(team_id int primary key references teams,preference1 int references ps_list,preference2 int references ps_list,preference3 int references ps_list,preference4 int references ps_list,submitted_at timestamptz default clock_timestamp());`);
+  const ranked=await Promise.all(Array.from({length:32},(_,i)=>allocation.allocatePreferences(i+1,[1,2,3,4])));
+  assert.equal(ranked.filter(r=>r.saved).length,32);assert.equal(ranked.filter(r=>r.allocated).length,10);
+  const counts=await exec('psql',[...params,'-At','-c',"select ps_id,count(*) from team_ps_selection where status='approved' group by ps_id order by ps_id"]);
+  assert.equal(counts.stdout.trim(),'1|2\n2|3\n3|5');
+  const winner=ranked.findIndex(r=>r.allocated)+1,oldPs=ranked[winner-1].selection.ps_id;
+  const duplicate=await allocation.allocatePreferences(winner,[4,3,2,1]);assert.equal(duplicate.saved,false);assert.equal(duplicate.selection.ps_id,oldPs);
+  await run('update ps_list set revealed=false where id=4');
+  const unavailable=ranked.findIndex(r=>!r.allocated)+1;
+  assert.equal((await allocation.allocatePreferences(unavailable,[4,3,2,1])).allocated,false);
+  await run(`truncate team_ps_selection;update ps_list set revealed=true;update ps_list set capacity=0 where id<4`);
+  assert.equal((await allocation.allocatePreferences(1,[1,2,3,4])).saved,true);
+  assert.equal((await allocation.allocatePreferences(1,[1,2,3,4])).selection,null);
+  process.env.DATABASE_URL='postgresql://fixture:fixture@localhost/elevate_fixture';
+  process.env.SESSION_SECRET=(await import('node:crypto')).randomBytes(48).toString('hex');
+  const {createPsHandler}=await import('../api/ps.js');const handler=createPsHandler({sql});
+  for(const preferences of [[1,1,2,3],[1,2,3],[1,2,3,'4'],null]){
+    const res={status(code){this.code=code;return this;},json(body){this.body=body;return this;}};
+    await handler({method:'POST',session:{role:'team',teamId:1},body:{preferences}},res);assert.equal(res.code,400);
+  }
+  await run('truncate team_ps_selection;update ps_list set revealed=true,capacity=8');
+  const balanced=await Promise.all(Array.from({length:32},(_,i)=>allocation.allocatePreferences(i+1,Array.from({length:4},(_,j)=>(i+j)%4+1))));
+  assert.equal(balanced.filter(r=>r.allocated).length,32);
+  const balancedCounts=await exec('psql',[...params,'-At','-c',"select ps_id,count(*) from team_ps_selection group by ps_id order by ps_id"]);
+  assert.equal(balancedCounts.stdout.trim(),'1|8\n2|8\n3|8\n4|8');
+  console.log('PASS: ranked preferences under 32 concurrent submissions; first/second/third fallback caps 2/3/5, fourth recorded but never allocated, duplicate submissions keep locked allocation, hidden/zero capacity.');
   console.log('PASS: 32 simultaneous requests, parallel approvals/capacity, FIFO, approval/request race, revocation, hidden/withdrawn/zero capacity, idempotent queue.');
 } finally {
   if(started) await exec('pg_ctl',['-D',data,'-m','immediate','stop']);

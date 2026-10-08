@@ -1,20 +1,11 @@
 import { createPsAllocation } from "./_lib/ps-allocation.js";
-import { sql } from "./_lib/db.js";
+import { sql as defaultSql } from "./_lib/db.js";
 import { requireRole } from "./_lib/auth.js";
 
-/* Problem statements: listing and a team's request share this file — see
-   api/auth.js for why. GET is open to any logged-in account (teams only
-   ever see revealed ones; admin/core see everything, hidden included, plus
-   the raw request queue). POST is team-only, checked inline rather than at
-   the wrapper, since the wrapper here just requires *a* session, not a
-   specific role.
-
-   PS allocation is first-come, first-served, but not automatic: a team's
-   pick lands as a 'pending' request; only admin ticking it approved makes
-   it official. "Taken"/capacity below counts approved requests only — a
-   queue of pending requests doesn't consume a seat, so teams can freely
-   request while admin works through the queue in order. Once a team's
-   request is approved, it's locked — they can no longer change it. */
+/* Four ranked preferences are stored per team. The first available among
+   preferences 1–3 is allocated automatically in one serialized transaction.
+   Approved allocations remain locked; preference 4 is informational only. */
+export function createPsHandler({sql=defaultSql}={}) {
 async function handler(req, res) {
   if (req.method === "GET") return list(req, res);
   if (req.method === "POST") return select(req, res);
@@ -39,16 +30,17 @@ async function list(req, res) {
         order by p.sort_order asc, p.id asc
       `;
 
-  let mine = null;
+  let mine = null, preferences = [];
   if (req.session.role === "team" && req.session.teamId) {
     const sel = await sql`
       select ps_id, status, requested_at from team_ps_selection where team_id = ${req.session.teamId}
     `;
     mine = sel[0] || null;
+    const pref=await sql`select preference1,preference2,preference3,preference4 from team_ps_preferences where team_id=${req.session.teamId}`;
+    if(pref[0])preferences=[pref[0].preference1,pref[0].preference2,pref[0].preference3,pref[0].preference4];
   }
 
-  // visible to everyone logged in — "which team got which PS", once admin
-  // has actually approved it, not just requested
+  // Confirmed allocations are visible to logged-in teams and staff.
   const allocations = await sql`
     select t.team_code, p.code as ps_code, p.title as ps_title
     from team_ps_selection s
@@ -59,6 +51,7 @@ async function list(req, res) {
   `;
 
   res.status(200).json({
+    preferences,
     selectedPsId: mine?.ps_id ?? null,
     selectionStatus: mine?.status ?? null,
     requestedAt: mine?.requested_at ?? null,
@@ -76,10 +69,6 @@ async function list(req, res) {
   });
 }
 
-/* request (or change) a problem statement — can't request a hidden one,
-   and can't touch it at all once admin has approved the team's current
-   pick. Not capacity-checked here: that's enforced when admin approves,
-   first-come-first-served by requested_at. Writes are serialized with approvals. */
 async function select(req, res) {
   if (req.session.role !== "team") {
     res.status(403).json({ error: "Only a team account can select a problem statement" });
@@ -87,21 +76,16 @@ async function select(req, res) {
   }
 
   const teamId = req.session.teamId;
-  const { psId } = req.body || {};
-  if (!teamId || !psId) {
-    res.status(400).json({ error: "psId is required" });
-    return;
+  const { preferences } = req.body || {};
+  if (!teamId || !Array.isArray(preferences) || preferences.length !== 4 || new Set(preferences).size !== 4 || preferences.some(id => !Number.isSafeInteger(id) || id < 1)) {
+    return res.status(400).json({ error: "Choose four distinct problem statements in preference order" });
   }
-
-  if (!Number.isSafeInteger(Number(psId)) || Number(psId) < 1) {
-    res.status(400).json({ error: "A valid PS ID is required" }); return;
-  }
-  const selection = await createPsAllocation(sql).request(teamId, Number(psId));
-  if (!selection) {
-    res.status(409).json({ error: "Request unavailable: your allocation is locked, your team is withdrawn, or this PS is hidden. Refresh and try again." }); return;
-  }
-
-  res.status(200).json({ ok: true });
+  const result = await createPsAllocation(sql).allocatePreferences(teamId,preferences);
+  if (!result.saved && !result.selection) return res.status(409).json({error:"Your team is withdrawn or one of these problem statements is unavailable. Refresh and try again."});
+  res.status(200).json({ok:true,allocated:!!result.selection,selection:result.selection,
+    message:result.selection?"Your problem statement is allocated and locked.":"Preferences saved. Your top three choices are full; no problem statement was allocated. Try again when capacity becomes available."});
 }
 
-export default requireRole(handler);
+return handler;
+}
+export default requireRole(createPsHandler());

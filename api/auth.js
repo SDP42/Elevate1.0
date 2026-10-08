@@ -187,7 +187,7 @@ async function me(req, res) {
   let team = null;
   if (session.role === "team" && session.teamId) {
     const teamRows = await sql`
-      select id, team_code, seat_no, qr_token, shortlisted,
+      select id, team_code, seat_no, qr_token, shortlisted, final_round_shortlisted,
         submission_url, submission_note, submitted_at
       from teams
       where id = ${session.teamId}
@@ -211,11 +211,16 @@ async function me(req, res) {
       const mark = markRows[0];
       // Only reveal the final score and both mentoring feedbacks to the team once admin approves it
       if (mark && mark.feedback_approved) {
-        team.score = Number(mark.score);
+        team.mentoring1Score = Number(mark.score);
+        const judging=await sql`select r.round_no,m.score from marks m join mentoring_rounds r on r.id=m.round_id where m.team_id=${team.id} and r.round_no in (3,4)`;
+        team.judgingRound1Score=judging.find(row=>row.round_no===3)?.score ?? null;
+        team.finalRoundScore=team.final_round_shortlisted ? judging.find(row=>row.round_no===4)?.score ?? null : null;
         team.mentoring1Feedback = mark.mentoring1_feedback || null;
         team.mentoring2Feedback = mark.feedback || null;
       } else {
-        team.score = null;
+        team.mentoring1Score = null;
+        team.judgingRound1Score = null;
+        team.finalRoundScore = null;
         team.mentoring1Feedback = null;
         team.mentoring2Feedback = null;
       }

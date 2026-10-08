@@ -47,9 +47,11 @@ async function listTeams(req, res) {
 
   const teams = await sql`
     select
-      t.id, t.team_code, t.seat_no, t.shortlisted, t.withdrawn,
+      t.id, t.team_code, t.seat_no, t.shortlisted, t.withdrawn, t.final_round_shortlisted,
       a.display_name, a.username,
       m.score, m.feedback, m.mentoring1_feedback, m.feedback_approved,
+      (select score from marks where team_id=t.id and round_id=(select id from mentoring_rounds where round_no=3)) as judging_score,
+      (select score from marks where team_id=t.id and round_id=(select id from mentoring_rounds where round_no=4)) as final_score,
       p.code as ps_code, p.title as ps_title, p.description as ps_description,
       rn.note as round1_note
     from teams t
@@ -83,6 +85,10 @@ async function listTeams(req, res) {
       shortlisted: t.shortlisted,
       withdrawn: t.withdrawn,
       score: t.score === null ? null : Number(t.score),
+      mentoring1Score: t.score == null ? null : Number(t.score),
+      judgingRound1Score: t.judging_score == null ? null : Number(t.judging_score),
+      finalRoundScore: t.final_round_shortlisted && t.final_score != null ? Number(t.final_score) : null,
+      finalRoundShortlisted: Boolean(t.final_round_shortlisted),
       mentoring1Feedback: t.mentoring1_feedback || "",
       mentoring2Feedback: t.feedback || "",
       feedbackApproved: Boolean(t.feedback_approved),
@@ -121,26 +127,30 @@ async function toggleRecuse(req, res) {
   res.status(200).json({ ok: true, recused: !existing[0] });
 }
 
-/* A single final score; mentoring feedback stays private until released. */
+/* One score per stage; only final-shortlisted teams can receive final marks. */
 async function submitMark(req, res) {
-  const { teamId, score, mentoring1Feedback = "", mentoring2Feedback = "" } = req.body || {};
-  if (!Number.isSafeInteger(Number(teamId)) || Number(teamId) < 1 || typeof score !== "number" || !Number.isFinite(score) || score < 0 || score > 100 ||
+  const { teamId, score, stage = "mentoring1", mentoring1Feedback = "", mentoring2Feedback = "" } = req.body || {};
+  const rounds = {mentoring1:2,judging1:3,final:4};
+  const roundNo = Object.hasOwn(rounds,stage) ? rounds[stage] : null;
+  if (!roundNo || !Number.isSafeInteger(Number(teamId)) || Number(teamId) < 1 || typeof score !== "number" || !Number.isFinite(score) || score < 0 || score > 100 ||
       [mentoring1Feedback, mentoring2Feedback].some(value => typeof value !== "string" || value.length > 10000)) {
-    return res.status(400).json({ error: "A final score between 0 and 100 and valid mentoring feedback are required" });
+    return res.status(400).json({ error: "A score between 0 and 100 and valid mentoring feedback are required" });
   }
   const rows = await sql`
+    with eligible as (select id from teams where id=${teamId} and not withdrawn
+      and (${roundNo} <> 4 or final_round_shortlisted) for update)
     insert into marks (team_id, round_id, score, criteria, mentoring1_feedback, feedback, entered_by)
-    select ${teamId}, id, ${score}, null, ${mentoring1Feedback.trim() || null}, ${mentoring2Feedback.trim() || null}, ${req.session.accountId}
-    from mentoring_rounds where round_no = 2
+    select t.id, r.id, ${score}, null, ${stage === 'mentoring1' ? mentoring1Feedback.trim() || null : null}, ${stage === 'mentoring1' ? mentoring2Feedback.trim() || null : null}, ${req.session.accountId}
+    from eligible t cross join mentoring_rounds r where r.round_no=${roundNo}
     on conflict (team_id, round_id) do update set
       score = excluded.score, criteria = null,
       mentoring1_feedback = excluded.mentoring1_feedback, feedback = excluded.feedback,
       feedback_approved = false, entered_by = excluded.entered_by, entered_at = now()
     returning score
   `;
-  if (!rows.length) return res.status(409).json({ error: "The marking round is not configured" });
-  await logAction(req.session.accountId, "mark.submit", { teamId, score });
-  res.status(200).json({ ok: true, score });
+  if (!rows.length) return res.status(409).json({ error: "This team is not eligible for this scoring round" });
+  await logAction(req.session.accountId, "mark.submit", { teamId, score, stage });
+  res.status(200).json({ ok: true, score, stage });
 }
 
 async function saveRound1Note(req, res) {

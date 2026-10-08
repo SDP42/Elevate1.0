@@ -13,6 +13,7 @@ process.env.SESSION_SECRET = crypto.randomBytes(48).toString("hex");
 const { createAdminHandler } = await import("../api/admin.js");
 const { createAuthHandler } = await import("../api/auth.js");
 const { signSession } = await import("../api/_lib/auth.js");
+const {createLeaderboardHandler}=await import("../api/leaderboard.js");
 const { createCoreHandler } = await import("../api/core.js");
 const { createMealHandler } = await import("../api/meal.js");
 const { createRegistrationHandler } = await import("../api/regidesk.js");
@@ -32,7 +33,7 @@ function csv(text) {
   if(field||row.length){row.push(field);rows.push(row);}
   const headers=rows.shift()||[];
   return rows.filter(r=>r.length===headers.length).map(values=>Object.fromEntries(headers.map((key,i)=> {
-    const v=values[i]; return [key, v==="" ? null : v==="t" ? true : v==="f" ? false : /^\d+$/.test(v) ? Number(v) : /^[[{]/.test(v) ? JSON.parse(v) : v];
+    const v=values[i]; return [key, v==="" ? null : v==="t" ? true : v==="f" ? false : key==="value" && v==="true" ? true : key==="value" && v==="false" ? false : /^\d+$/.test(v) ? Number(v) : /^[[{]/.test(v) ? JSON.parse(v) : v];
   })));
 }
 async function sql(strings,...values) {
@@ -41,6 +42,7 @@ async function sql(strings,...values) {
 }
 const admin=createAdminHandler({sql,logAction:async()=>{}});
 const auth=createAuthHandler({sql,logAction:async()=>{}});
+const leaderboard=createLeaderboardHandler({sql});
 const core=createCoreHandler({sql,logAction:async()=>{}});
 const meal=createMealHandler({sql,logAction:async()=>{},createIncident:async()=>{}});
 const registration=createRegistrationHandler({sql,logAction:async()=>{},createIncident:async()=>{}});
@@ -81,6 +83,23 @@ try {
   await sql`update marks set feedback_approved=true where team_id=1`;
   assert.equal((await call(core,{teamId:1,score:85,mentoring1Feedback:'Revised 1',mentoring2Feedback:'Revised 2'},{role:'admin',accountId:7})).body.score,85);
   assert.equal((await sql`select feedback_approved from marks where team_id=1`)[0].feedback_approved,false);
+  assert.equal((await call(core,{teamId:1,score:90,stage:'judging1'},{role:'admin',accountId:7})).code,200);
+  assert.equal((await call(core,{teamId:1,score:95,stage:'final'},{role:'admin',accountId:7})).code,409);
+  assert.equal((await call(admin,{action:'final-shortlist',teamId:1,shortlisted:true},{role:'admin',accountId:7,url:'/api/admin'})).code,200);
+  assert.equal((await call(core,{teamId:1,score:95,stage:'final'},{role:'admin',accountId:7})).code,200);
+  let scored=(await call(core,null,{role:'admin',accountId:7,method:'GET'})).body.teams.find(t=>t.id===1);
+  assert.equal(scored.mentoring1Score,85);assert.equal(scored.judgingRound1Score,90);assert.equal(scored.finalRoundScore,95);
+  assert.equal((await call(core,{teamId:1,score:95,stage:'unknown'},{role:'admin',accountId:7})).code,400);
+  await call(admin,{action:'final-shortlist',teamId:1,shortlisted:false},{role:'admin',accountId:7,url:'/api/admin'});
+  assert.equal((await call(core,{teamId:1,score:96,stage:'final'},{role:'admin',accountId:7})).code,409);
+  scored=(await call(core,null,{role:'admin',accountId:7,method:'GET'})).body.teams.find(t=>t.id===1);assert.equal(scored.finalRoundScore,null);
+  let standings=await call(leaderboard,null,{role:'admin',accountId:7,url:'/api/leaderboard',method:'GET'});assert.equal(standings.body.leaderboard[0].score,90);
+  await call(admin,{action:'freeze-results',frozen:true},{role:'admin',accountId:7,url:'/api/admin'});
+  standings=await call(leaderboard,null,{role:'admin',accountId:7,url:'/api/leaderboard',method:'GET'});assert.equal(standings.body.leaderboard.length,0);
+  await call(admin,{action:'final-shortlist',teamId:1,shortlisted:true},{role:'admin',accountId:7,url:'/api/admin'});
+  standings=await call(leaderboard,null,{role:'admin',accountId:7,url:'/api/leaderboard',method:'GET'});assert.equal(standings.body.leaderboard.length,1);assert.equal(standings.body.leaderboard[0].score,95);
+  await call(admin,{action:'final-shortlist',teamId:1,shortlisted:false},{role:'admin',accountId:7,url:'/api/admin'});
+  await call(admin,{action:'freeze-results',frozen:false},{role:'admin',accountId:7,url:'/api/admin'});
   const audienceCall=body=>call(admin,body,{role:'admin',accountId:7,url:'/api/admin'});
   assert.equal((await audienceCall({action:'save-announcement',message:'For all',active:true})).code,200);
   assert.equal((await audienceCall({action:'save-announcement',message:'Only A',teamId:1,active:true})).code,200);
@@ -93,7 +112,7 @@ try {
   assert.equal((await sessionRead(1,1)).body.team.mentoring1Feedback,null);
   const release=await audienceCall({action:'approve-feedback',all:true,approved:true});assert.equal(release.code,200);
   const a=await sessionRead(1,1),otherTeam=await sessionRead(2,2);
-  assert.equal(a.body.team.mentoring1Feedback,'Revised 1');assert.equal(a.body.team.mentoring2Feedback,'Revised 2');assert.equal(a.body.team.score,85);
+  assert.equal(a.body.team.mentoring1Feedback,'Revised 1');assert.equal(a.body.team.mentoring2Feedback,'Revised 2');assert.equal(a.body.team.mentoring1Score,85);assert.equal(Number(a.body.team.judgingRound1Score),90);assert.equal(a.body.team.finalRoundScore,null);
   assert.deepEqual(a.body.announcements.map(a=>a.message),['For all','Only A']);
   assert.deepEqual(otherTeam.body.announcements.map(a=>a.message),['For all']);
   const targeted=(await call(admin,null,{role:'admin',accountId:7,url:'/api/admin?resource=announcements',method:'GET'})).body.announcements.find(a=>a.teamId===1);
@@ -146,10 +165,10 @@ try {
   const concurrent=await Promise.all([call(meal,{...body,memberIds:[3],scanProof:scanA.scanProof},{accountId:3}),call(meal,{...body,memberIds:[3],scanProof:scanB.scanProof},{accountId:4})]);
   assert.equal(concurrent.reduce((total,r)=>total+r.body.logged,0),1);
   assert.equal((await sql`select count(*)::int as n from meal_logs where member_id=3`)[0].n,1);
-  const receipt=await call(meal,null,{role:'team',teamId:1,method:'GET',url:'/api/meal?receipt=1'});assert.equal(receipt.body.meals.length,0);
+  const receipt=await call(meal,null,{role:'team',teamId:1,method:'GET',url:'/api/meal?receipt=1'});assert.equal(receipt.body.meals.length,0);assert.deepEqual(receipt.body.registration.members.map(m=>m.id),[1,2,3,4]);assert.equal(receipt.body.registration.total,4);
   scan=await lookup();assert.equal((await call(meal,{...body,memberIds:[4],scanProof:scan.scanProof})).body.logged,1);
   const incoming=await call(meal,null,{role:'team',teamId:1,method:'GET',url:`/api/meal?receipt=1&after=${receipt.body.latestId}`});assert.equal(incoming.body.meals.length,1);assert.equal(incoming.body.meals[0].name,'Dev');
-  const other=await call(meal,null,{role:'team',teamId:2,method:'GET',url:'/api/meal?receipt=1&after=0'});assert.equal(other.body.meals.length,0);
+  const other=await call(meal,null,{role:'team',teamId:2,method:'GET',url:'/api/meal?receipt=1&after=0'});assert.equal(other.body.meals.length,0);assert.deepEqual(other.body.registration.members.map(m=>m.id),[5,6]);assert.equal(other.body.registration.total,2);
   assert.equal((await call(meal,null,{role:'team',teamId:1,method:'GET',url:'/api/meal?slotCode=d1_breakfast'})).code,403);
   assert.equal((await call(meal,body,{role:'team',teamId:1})).code,403);
   const breakfast=await call(meal,null,{method:'GET',url:'/api/meal?slotCode=d1_breakfast'});assert.equal(breakfast.body.served,4);assert.equal(breakfast.body.teams[0].members.length,4);

@@ -64,6 +64,7 @@ async function handler(req, res) {
     if (action === "revoke-ps") return revokePs(req, res);
     if (action === "create-team") return createTeam(req, res);
     if (action === "create-staff") return createStaff(req, res);
+    if (action === "final-shortlist") return finalShortlist(req,res);
     if (action === "approve-feedback") return approveFeedback(req, res);
     if (action === "set-withdrawn") return setWithdrawn(req, res);
     if (action === "freeze-results") return freezeResults(req, res);
@@ -470,14 +471,16 @@ async function exportCsv(req, res) {
 
   if (type === "marks") {
     const rows = await sql`
-      select t.team_code, m.score, m.mentoring1_feedback, m.feedback
+      select t.team_code, m.score, m.mentoring1_feedback, m.feedback,
+        (select score from marks where team_id=t.id and round_id=(select id from mentoring_rounds where round_no=3)) as judging_score,
+        (select score from marks where team_id=t.id and round_id=(select id from mentoring_rounds where round_no=4) and t.final_round_shortlisted) as final_score
       from teams t
       left join marks m on m.team_id = t.id and m.round_id = (select id from mentoring_rounds where round_no = 2)
       order by t.id asc
     `;
     body = toCsv(
-      ["team", "final_score", "mentoring_1_feedback", "mentoring_2_feedback"],
-      rows.map((r) => [r.team_code, r.score, r.mentoring1_feedback, r.feedback])
+      ["team", "mentoring_1_score", "judging_round_1_score", "final_round_score", "mentoring_1_feedback", "mentoring_2_feedback"],
+      rows.map((r) => [r.team_code, r.score, r.judging_score, r.final_score, r.mentoring1_feedback, r.feedback])
     );
     filename = "elevate-marks.csv";
   } else if (type === "meals") {
@@ -966,6 +969,15 @@ async function createStaff(req, res) {
 /* approve or withhold mentor feedback from being shown to teams.
    Supports releasing all results at once with { all: true, approved: true/false },
    or targeting a single team with { teamId, approved }. */
+async function finalShortlist(req,res) {
+  const {teamId,shortlisted}=req.body || {};
+  if(!Number.isSafeInteger(teamId)||teamId<1||typeof shortlisted!=='boolean')return res.status(400).json({error:'A valid team and shortlist status are required'});
+  const rows=await sql`update teams set final_round_shortlisted=${shortlisted} where id=${teamId} and not withdrawn returning id`;
+  if(!rows.length)return res.status(404).json({error:'Active team not found'});
+  await logAction(req.session.accountId,'team.final_shortlist',{teamId,shortlisted});
+  return res.status(200).json({ok:true});
+}
+
 async function approveFeedback(req, res) {
   const { teamId, approved, all } = req.body || {};
   const isApproved = approved === undefined ? true : Boolean(approved);
