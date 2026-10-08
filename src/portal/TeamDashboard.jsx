@@ -352,9 +352,9 @@ function ProblemStatement({ data, error, picking, onPick }) {
   const selected=statements.find(ps=>ps.id===data?.selectedPsId);
   async function submit(e){e.preventDefault();if(!complete)return;setMessage('');const result=await onPick(choices.map(Number));if(result)setMessage(result.message);}
   return <section className="portal-card"><h3><LightbulbIcon />Problem statement preferences</h3>
-    <p className="portal-card__hint">Rank four different problem statements. On submit, your first available choice among preferences 1–3 is allocated immediately and locked. Preference 4 is recorded only.</p>
+    <p className="portal-card__hint">Rank four different problem statements. Your first available preference is allocated immediately and locked. If your first three choices are full, your fourth choice is allocated automatically.</p>
     {error && <p role="alert" className="portal-auth__error">{error}</p>}
-    {locked ? <p className="portal-status" role="status">Allocated: {selected?`${selected.code} · ${selected.title}`:'Your confirmed problem statement'}</p> : statements.length<4 ? <p>Four problem statements need to be revealed before preferences can be submitted.</p> :
+    {data?.selectionOpen !== true ? <p className="portal-status" role="status">{data ? 'Selection opens on Saturday, 10 October at 9:30 AM IST. The form will appear here automatically.' : 'Loading selection availability…'}</p> : locked ? <p className="portal-status" role="status">Allocated: {selected?`${selected.code} · ${selected.title}`:'Your confirmed problem statement'}</p> : statements.length<4 ? <p>Four problem statements need to be revealed before preferences can be submitted.</p> :
       <form onSubmit={submit} className="ps-preferenceForm"><div className="ps-preferenceGrid">{[0,1,2,3].map(index=><label className="portal-field" key={index}><span>Preference {index+1}</span><select aria-label={`Preference ${index+1}`} required value={choices[index] || ''} disabled={picking!==null} onChange={e=>{
       const value=e.target.value,next=[...choices],previous=next[index];
       const other=next.findIndex((choice,i)=>i!==index && value && choice===value);
@@ -445,7 +445,7 @@ function TeamHome({ session }) {
 
   function loadPs() {
     return psList()
-      .then(data => { setPsData(data); setPsError(""); })
+      .then(data => { setPsData(data); setPsError(""); return data; })
       .catch((err) => setPsError(err.message));
   }
 

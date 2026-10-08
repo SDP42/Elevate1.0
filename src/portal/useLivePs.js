@@ -10,9 +10,20 @@ export default function useLivePs(load) {
       if (stopped || busy) return;
       if (document.hidden) return;
       busy = true;
-      try { await loader.current(); } finally {
+      let delay = 5000;
+      const started = performance.now();
+      try {
+        const data = await loader.current();
+        if (data?.selectionOpen === false && data.opensAt && data.serverNow) {
+          // Schedule against server time, independent of the device's wall clock.
+          // The next request lands at the opening boundary, even between polls.
+          const remaining = Date.parse(data.opensAt) - Date.parse(data.serverNow)
+            - (performance.now() - started) / 2;
+          delay = Math.max(50, Math.min(delay, remaining));
+        }
+      } finally {
         busy = false;
-        if (!stopped) timer = setTimeout(refresh, 5000);
+        if (!stopped) timer = setTimeout(refresh, delay);
       }
     }
     const visible = () => { clearTimeout(timer); if (!document.hidden) refresh(); };
