@@ -2420,3 +2420,120 @@ pre.submission-viewer__document { white-space: pre-wrap; }
 .welcome-message h2 { font:600 clamp(20px,4vw,30px)/1.4 var(--font-body); margin:0 0 10px; color:var(--gold); }
 .welcome-message p { margin:0; line-height:1.6; }
 .round2-teamCard .round2-scoreEditor + .round2-scoreEditor { border-top:1px solid var(--line); padding-top:18px; }
+
+/* Participant dashboard: shared website clouds and OpenGlass liquid surfaces. */
+.team-portal { position: relative; isolation: isolate; min-height: 100vh; }
+.team-portal__background { position: fixed; inset: 0; z-index: -1; pointer-events: none; background: linear-gradient(180deg,#91b5d5 0%,#3b78ad 55%,#b7d1e5 100%); }
+.team-portal .team-portal__page { background: transparent; max-width: 64rem; }
+.team-portal .portal-page__head { padding: clamp(1rem,3vw,1.5rem); border: 1px solid #ffffff24; border-radius: 22px; align-items: center; margin-bottom: 1.6rem; }
+.team-portal .portal-page__head > div { min-width: 0; }
+.team-portal .portal-page__head h1 { overflow-wrap: anywhere; }
+.team-portal .portal-card, .team-portal .portal-page__head, .team-portal .submission-clock, .team-portal .portal-announce {
+  background: linear-gradient(135deg,#ffffff0a,transparent 55%),var(--ogui-lg-surface);
+  border: 1px solid #ffffff24; border-radius: 22px;
+  box-shadow: inset 0 1px 0 #ffffff28, inset 0 -1px 0 #ffffff08, 0 16px 44px #02102326;
+}
+.team-portal .portal-card { padding: clamp(1.1rem,3vw,2rem); border-left: 1px solid #ffffff24; }
+.team-portal .portal-card__hint, .team-portal .portal-field > span { color: #d1dfeb; }
+.team-portal .submission-clock { padding: 1.6rem 1rem; margin-bottom: 1.6rem; }
+.team-portal .submission-clock__heading, .team-portal .submission-clock__unit-label { color: #edf3f8; }
+.team-portal .portal-auth__submit, .team-portal .portal-logout, .team-portal .submission-fileRow__preview { min-height: 44px; border-radius: 999px; border: 1px solid #e1bc7690; background: linear-gradient(140deg,#e7c58626,#c9a86a13); color: #ffe1a3; backdrop-filter: blur(16px); box-shadow: inset 0 1px 0 #fff3; }
+.team-portal .portal-auth__submit:hover, .team-portal .portal-logout:hover, .team-portal .submission-fileRow__preview:hover { background: #c9a86a30; }
+.team-portal .portal-field input, .team-portal .portal-field select, .team-portal .portal-field textarea { background: #06152970; color: #f1f5fa; border-color: #ffffff35; border-radius: 14px; }
+.team-portal .portal-field select option { background: #0b2035; color: #f1f5fa; }
+.team-portal .portal-field input::placeholder, .team-portal .portal-field textarea::placeholder { color: #bcc8d7; opacity: 1; }
+.team-portal .portal-field input:focus, .team-portal .portal-field select:focus, .team-portal .portal-field textarea:focus { border-color: var(--gold); outline-color: var(--gold); }
+.team-portal .submission-fileRow { background: #0a203e66; border-color: #ffffff2b; backdrop-filter: blur(18px); border-radius: 16px; }
+.team-portal .submission-fileRow__size { color: #cfdeeb; }
+.team-portal .portal-approvalBanner { background: #092943c7; border-color: #c9a86a70; color: #edf5fb; backdrop-filter: blur(20px); }
+.team-portal .portal-announce { padding: .8rem 1.2rem; }
+.team-portal .portal-announce p { background: transparent; border: 0; color: #edf5fb; }
+@media(max-width:640px) {
+  .team-portal .team-portal__page { padding: 1rem .75rem 2rem; }
+  .team-portal .portal-page__head { gap: .65rem; }
+  .team-portal .portal-logout { padding: .6rem .85rem; font-size: .75rem; }
+  .team-portal .portal-card { border-radius: 18px; }
+}
+@media(prefers-reduced-transparency:reduce) {
+  .team-portal .portal-card, .team-portal .portal-page__head, .team-portal .submission-clock { background: #0b2035; }
+}
+/* Keep the fixed cloud backdrop behind scrolling content. */
+.team-portal__background { z-index: 0; }
+.team-portal__content { position: relative; z-index: 1; }
+.team-portal [data-ogui-glass] > * { position: relative; z-index: 2; }
+
+.team-portal__cloud { display: block; width: 100%; height: 100%; object-fit: cover; object-position: center; }
+.team-portal__background::after { content: ""; position: absolute; inset: 0; background: linear-gradient(180deg,#03060c70,#03060c48 55%,#03060c60); }
+
+/* The boarding pass floats individually over the page clouds. */
+.ticket-stage--standalone { padding: 0; background: transparent; overflow: visible; border-radius: 0; }
+
+/* Contrast: light ticket uses dark ink; dark glass uses bright foregrounds. */
+.team-portal .portal-page__eyebrow, .team-portal .portal-card h3 { color: #f4dba6; }
+.team-portal .portal-card, .team-portal .portal-page__head { color: #f5f8fc; }
+.team-portal .portal-card__hint, .team-portal .portal-field > span, .team-portal .submission-upload__saved, .team-portal .submission-fileRow__size { color: #e0e9f2; }
+.team-portal .portal-status { color: #f5f8fc; background: #09233ee6; border: 1px solid #a5bed24d; }
+.team-portal .portal-auth__submit, .team-portal .portal-logout, .team-portal .submission-fileRow__preview { color: #fff0cb; background: linear-gradient(140deg,#e7c58614,#c9a86a08),#0b223ce6; }
+.team-portal .portal-auth__submit:hover, .team-portal .portal-logout:hover, .team-portal .submission-fileRow__preview:hover { background: #163653; }
+.team-portal button:disabled { opacity: 1; color: #bdcad7; background: #152b41; border-color: #788fa655; cursor: not-allowed; }
+.team-portal .portal-field input, .team-portal .portal-field select, .team-portal .portal-field textarea { background: #061529c9; color: #f5f8fc; }
+.team-portal .portal-field input::placeholder, .team-portal .portal-field textarea::placeholder { color: #cbd7e3; }
+.team-portal .submission-fileRow, .team-portal .submission-upload input[type="file"] { background: #0a203ee0; }
+.team-portal .ticket__body { color: #0b1b3a; }
+.team-portal .ticket__city, .team-portal .ticket__code, .team-portal .ticket__rows dd, .team-portal .ticket__passengers li { color: #0b1b3a; }
+.team-portal .ticket__when, .team-portal .ticket__rows dt, .team-portal .ticket__qrLabel, .team-portal .ticket__passengersLabel, .team-portal .ticket__teamName, .team-portal .ticket__sponsorsCount, .team-portal .ticket__sponsorRole { color: #4a5b72; }
+.team-portal .ticket__sponsorsLabel { color: #55411e; }
+.team-portal .ticket__passengers em, .team-portal .ticket__rosterLock { color: #614920; background: #f1e4ca; }
+
+/* Black optical glass over a softly darkened cloud scene. */
+.team-portal .portal-auth__submit, .team-portal .portal-logout, .team-portal .submission-fileRow__preview { background: linear-gradient(140deg,#ffffff0b,#ffffff02),#08090be6; }
+.team-portal .portal-auth__submit:hover, .team-portal .portal-logout:hover, .team-portal .submission-fileRow__preview:hover { background: #1c1d20; }
+.team-portal .portal-field input, .team-portal .portal-field select, .team-portal .portal-field textarea, .team-portal .submission-fileRow, .team-portal .submission-upload input[type="file"] { background: #07080bdb; }
+.team-portal .portal-status, .team-portal .portal-approvalBanner { background: #08090bdb; }
+.team-portal button:disabled { background: #151619; color: #bec3cc; }
+
+/* Private Wi-Fi access and partner resources, scoped to the team dashboard. */
+.team-wifi-access { display:flex; flex-wrap:wrap; align-items:center; gap:.45rem 1rem; margin-top:.8rem; color:#ebe6db; font-size:.82rem; }
+.team-wifi-access__label { color:#f4dba6; font-weight:700; }
+.team-wifi-access strong { margin-left:.35rem; color:#fff; font-variant-numeric:tabular-nums; }
+.team-wifi-access button { color:#f4dba6; background:transparent; border:1px solid #ccb07460; border-radius:999px; padding:.25rem .65rem; cursor:pointer; }
+.partner-access-admin { display:grid; gap:.25rem; white-space:nowrap; }
+.team-partner-pills { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:.75rem; margin:1rem 0; }
+.team-partner-pill { display:flex; align-items:center; justify-content:center; gap:.65rem; min-width:0; min-height:58px; padding:.65rem 1rem; border-radius:999px; border:1px solid #d8bb784d; background:#05080cc9; backdrop-filter:blur(18px); color:#f6f0e5; font-weight:600; cursor:pointer; }
+.team-partner-pill__logo { width:72px; height:30px; padding:4px 7px; border-radius:8px; background:#f6f7fa; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+.team-partner-pill img,.team-partner-dialog__brand img { width:100%; height:100%; object-fit:contain; }
+.team-partner-dialog { width:min(600px,calc(100vw - 24px)); max-width:none; max-height:calc(100dvh - 32px); padding:0; border:0; border-radius:24px; background:transparent; color:#f6f0e5; overflow:auto; }
+.team-partner-dialog::backdrop { background:#02040acc; backdrop-filter:blur(8px); }
+.team-partner-dialog__panel { padding:clamp(20px,4vw,32px); border:1px solid #d8bb7860; border-radius:24px; }
+.team-partner-dialog header { display:flex; align-items:flex-start; justify-content:space-between; gap:1rem; margin-bottom:1.25rem; }
+.team-partner-dialog__brand { display:block; width:120px; height:40px; padding:6px 10px; border-radius:8px; background:#f6f7fa; }
+.team-partner-dialog h2 { color:#f4dba6; font-size:1.4rem; margin:.8rem 0 0; }
+.team-partner-dialog p,.team-partner-dialog li { color:#ebe6db; line-height:1.65; font-size:.95rem; }
+.team-partner-dialog p { margin:.85rem 0; }
+.team-partner-dialog ol,.team-partner-dialog ul { padding-left:1.25rem; }
+.team-partner-dialog li { margin:.55rem 0; }
+.team-partner-dialog a { color:#f4dba6; text-decoration:underline; text-underline-offset:3px; overflow-wrap:anywhere; }
+.team-partner-dialog__close { display:grid; place-items:center; width:44px; height:44px; border-radius:50%; color:#fff; border:1px solid #ffffff30; background:#ffffff12; font-size:1.7rem; cursor:pointer; flex-shrink:0; }
+.team-partner-callout,.team-partner-code { padding:1rem; border-radius:14px; border:1px solid #d8bb7838; background:#0007; margin:1.1rem 0; }
+.team-partner-callout strong { color:#f4dba6; }
+.team-partner-code span { display:block; color:#c5bdad; font-size:.78rem; margin-bottom:.4rem; }
+.team-partner-code code { color:#f4dba6; font-size:.95rem; user-select:all; overflow-wrap:anywhere; }
+.team-partner-team-code { display:block; font-size:.82rem; color:#bcb7ac; margin-top:.3rem; }
+.team-partner-links { display:grid; grid-template-columns:1fr 1fr; gap:.15rem .8rem; }
+.team-partner-done { margin-top:.75rem; min-height:44px; width:100%; }
+@media(max-width:600px) {
+  .team-partner-pills { gap:.4rem; }
+  .team-partner-pill { flex-direction:column; gap:.35rem; padding:.6rem .3rem; font-size:.8rem; }
+  .team-partner-pill__logo { width:64px; height:27px; }
+  .team-wifi-access { align-items:flex-start; gap:.5rem .8rem; }
+  .team-wifi-access__label { flex-basis:100%; }
+  .team-partner-links { grid-template-columns:1fr; }
+}
+.team-partner-pill .ogui-button__label { display:flex; align-items:center; justify-content:center; gap:.65rem; }
+.team-portal .team-partner-pill { background:rgba(3,5,8,.82); color:#f6f0e5; }
+@media(max-width:600px) { .team-partner-pill .ogui-button__label { flex-direction:column; gap:.35rem; } }
+
+/* Logo-only resource capsules retain accessible labels on their buttons. */
+.team-partner-pill .ogui-button__label { width:100%; }
+.team-partner-pill__logo { width:112px; max-width:100%; height:36px; }
+@media(max-width:600px) { .team-partner-pill { min-height:60px; padding:.65rem; } .team-partner-pill__logo { height:30px; padding:4px 6px; } }

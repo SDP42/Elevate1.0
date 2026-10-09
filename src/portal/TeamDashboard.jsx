@@ -1,15 +1,23 @@
+import PartnerResources, { PartnerCredential } from "./PartnerResources";
 import useLivePs from "./useLivePs";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import QRCode from "qrcode";
-import { Glass, GlassSystemProvider } from "open-glass-ui";
+import { Button, GlassSystemProvider } from "open-glass-ui";
 import "open-glass-ui/styles.css";
 import SubmissionFiles from "./SubmissionFiles";
 import ParticipantMealNotice from "./MealCelebration";
 import RequireRole from "./RequireRole";
 import { EVENT, SUBMISSION_DEADLINE, SPONSORS, HELP_CONTACTS } from "../config";
-import useHeroCloud from "./useHeroCloud";
+
 import { logout, psList, selectPs, submitProject } from "./api";
+import useHeroCloud from "./useHeroCloud";
+import TeamLiquidGlass from "./TeamLiquidGlass";
+
+const teamGlassLook = { blur: 1, rim: 1.3, lensing: 1.4, tint: '#020304', opacity: 2 };
+function TeamCard({ children, className = '', ...props }) {
+  return <TeamLiquidGlass as="section" material="regular" look={teamGlassLook} className={`portal-card ${className}`} {...props}>{children}</TeamLiquidGlass>;
+}
 
 /* Days/hours/minutes/seconds to a target — the same mechanic as the
    marketing site's own "Gates open in" timer (src/components/BoardingPass),
@@ -58,25 +66,25 @@ function FlipNumber({ value, label }) {
 function SubmissionCountdown() {
   const countdown = useCountdown(SUBMISSION_DEADLINE);
   return (
-    <section className="submission-clock" aria-label="Submission deadline countdown">
+    <TeamLiquidGlass as="section" material="regular" look={teamGlassLook} className="submission-clock" aria-label="Submission deadline countdown">
       <span className="submission-clock__heading">{countdown.done ? "Submissions closed" : "Submission closes in"}</span>
       <div className="submission-clock__parts">
         {countdown.parts.map(([label, value]) => <FlipNumber key={label} label={label} value={value} />)}
       </div>
-    </section>
+    </TeamLiquidGlass>
   );
 }
 
 function Announcements({ messages }) {
   if (!messages || messages.length === 0) return null;
   return (
-    <div className="portal-announce">
+    <TeamLiquidGlass as="section" material="regular" look={teamGlassLook} className="portal-announce">
       {messages.map((m, i) => (
         <p key={i} className={m.pinned ? "is-pinned" : undefined}>
           {m.pinned ? "🚨" : "📣"} {m.message}
         </p>
       ))}
-    </div>
+    </TeamLiquidGlass>
   );
 }
 
@@ -94,7 +102,7 @@ const HelpIcon = () => (
 
 /* Participant initiated WhatsApp chat: the organiser gets team/seat context
    in a prefilled message, which the participant sends inside WhatsApp. */
-function HelpRequest({ team }) {
+function HelpRequest({ team, teamName }) {
   const [open, setOpen] = useState(false);
   const [message, setMessage] = useState("");
   const [recipient, setRecipient] = useState(HELP_CONTACTS[0]?.phone || "");
@@ -104,27 +112,25 @@ function HelpRequest({ team }) {
   function send(e) {
     e.preventDefault();
     if (!message.trim() || !contact) return;
-    const text = `Elevate 1.0 · ${team?.team_code || "Team"} · Seat ${team?.seat_no ?? "unassigned"}\n${message.trim()}`;
+    const text = `Elevate 1.0 · ${teamName || "Team"} · ${team?.team_code || "Code unassigned"} · Seat ${team?.seat_no ?? "unassigned"}\n${message.trim()}`;
     window.open(`https://wa.me/${contact.phone.replace(/\D/g, "")}?text=${encodeURIComponent(text)}`, "_blank", "noopener,noreferrer");
     setOpened(true);
   }
 
   return (
-    <GlassSystemProvider renderer="auto" theme={{ appearance: "dark" }} toasts={false}>
-      <Glass material="frosted" className="portal-card portal-card--help portal-helpGlass" look={{ rim: 1.2, blur: .85 }}>
+      <TeamCard className="portal-card--help portal-helpGlass">
         <h3><HelpIcon />Need help?</h3>
         <p className="portal-card__hint">Write your message and open a WhatsApp chat with an organiser.</p>
-        {!open ? <button type="button" className="portal-auth__submit portal-helpButton" onClick={() => setOpen(true)}>Request help</button> : (
+        {!open ? <Button variant="primary" type="button" className="portal-auth__submit portal-helpButton" onClick={() => setOpen(true)}>Request help</Button> : (
           <form className="portal-auth__form" onSubmit={send}>
             <label className="portal-field"><span>What's going on?</span><textarea value={message} maxLength={2000} onChange={e => { setMessage(e.target.value); setOpened(false); }} placeholder="e.g. WiFi is down at our table" required rows={3} /></label>
             {HELP_CONTACTS.length > 1 && <label className="portal-field"><span>Send to</span><select value={recipient} onChange={e => setRecipient(e.target.value)}>{HELP_CONTACTS.map(c => <option key={c.phone} value={c.phone}>{c.name}</option>)}</select></label>}
             {!contact && <p className="portal-card__hint">WhatsApp contact will be available once the organiser adds their number.</p>}
             {opened && <p className="portal-status">Chat opened. Tap Send in WhatsApp to deliver your message.</p>}
-            <div className="portal-scanResult__actions"><button className="portal-auth__submit" type="submit" disabled={!message.trim() || !contact}>Open WhatsApp chat</button><button type="button" className="portal-logout" onClick={() => setOpen(false)}>Cancel</button></div>
+            <div className="portal-scanResult__actions"><Button variant="primary" className="portal-auth__submit" type="submit" disabled={!message.trim() || !contact}>Open WhatsApp chat</Button><button type="button" className="portal-logout" onClick={() => setOpen(false)}>Cancel</button></div>
           </form>
         )}
-      </Glass>
-    </GlassSystemProvider>
+      </TeamCard>
   );
 }
 
@@ -147,7 +153,6 @@ const LightbulbIcon = () => (
    not just a flat dark page, with the same sponsor strip for every team. */
 function Ticket({ team, teamName, rosterLocked }) {
   const [qrUrl, setQrUrl] = useState("");
-  const cloudUrl = useHeroCloud();
 
   useEffect(() => {
     let cancelled = false;
@@ -164,8 +169,7 @@ function Ticket({ team, teamName, rosterLocked }) {
   }, [team.qr_token]);
 
   return (
-    <div className="ticket-stage">
-      {cloudUrl && <img className="ticket-stage__cloud" src={cloudUrl} alt="" aria-hidden="true" />}
+    <div className="ticket-stage ticket-stage--standalone">
       <div className="ticket">
         <div className="ticket__body">
           <div className="ticket__qr">
@@ -351,7 +355,7 @@ function ProblemStatement({ data, error, picking, onPick }) {
   const complete=choices.length===4 && choices.every(Boolean) && new Set(choices).size===4;
   const selected=statements.find(ps=>ps.id===data?.selectedPsId);
   async function submit(e){e.preventDefault();if(!complete)return;setMessage('');const result=await onPick(choices.map(Number));if(result)setMessage(result.message);}
-  return <section className="portal-card"><h3><LightbulbIcon />Problem statement preferences</h3>
+  return <TeamCard><h3><LightbulbIcon />Problem statement preferences</h3>
     <p className="portal-card__hint">Rank four different problem statements. Your first available preference is allocated immediately and locked. If your first three choices are full, your fourth choice is allocated automatically.</p>
     {error && <p role="alert" className="portal-auth__error">{error}</p>}
     {data?.selectionOpen !== true ? <p className="portal-status" role="status">{data ? 'Selection opens on Saturday, 10 October at 9:30 AM IST. The form will appear here automatically.' : 'Loading selection availability…'}</p> : locked ? <p className="portal-status" role="status">Allocated: {selected?`${selected.code} · ${selected.title}`:'Your confirmed problem statement'}</p> : statements.length<4 ? <p>Four problem statements need to be revealed before preferences can be submitted.</p> :
@@ -360,11 +364,11 @@ function ProblemStatement({ data, error, picking, onPick }) {
       const other=next.findIndex((choice,i)=>i!==index && value && choice===value);
       if(other>=0)next[other]=previous;next[index]=value;setPreferences(next);
     }}><option value="">Choose a problem statement</option>{statements.map(ps=><option key={ps.id} value={ps.id}>{ps.code} · {ps.title}{ps.full?' · Full':''}</option>)}</select></label>)}</div>
-        <button className="portal-auth__submit" type="submit" disabled={!complete || picking!==null}>{picking!==null?'Allocating…':'Submit preferences'}</button>
+        <Button variant="primary" className="portal-auth__submit" type="submit" disabled={!complete || picking!==null}>{picking!==null?'Allocating…':'Submit preferences'}</Button>
       </form>}
     {message && <p role="status" className="portal-status">{message}</p>}
     {!!data?.allocations?.length && <div className="portal-allocBoard"><span className="portal-allocBoard__label">Confirmed allocations</span><ul>{data.allocations.map(a=><li key={a.teamCode}><strong>{a.teamCode}</strong> → {a.psCode} · {a.psTitle}</li>)}</ul></div>}
-  </section>;
+  </TeamCard>;
 }
 
 const SubmitIcon = () => (
@@ -409,7 +413,7 @@ function ProjectSubmission({ team }) {
   }
 
   return (
-    <section className="portal-card portal-submission">
+    <TeamCard className="portal-submission">
       <h3><SubmitIcon />Submission</h3>
       <SubmissionFiles editable />
       <form className="portal-auth__form" onSubmit={save}>
@@ -417,28 +421,29 @@ function ProjectSubmission({ team }) {
         <label className="portal-field"><span>Comments</span><textarea className="portal-submission__comments" value={comments} rows={4} maxLength={10000} placeholder="Anything the judges should know" onChange={e => { setComments(e.target.value); setSaved(false); }} /></label>
         {error && <p role="alert" className="portal-auth__error">{error}</p>}
         {saved && <p role="status" className="portal-submission__saved">Link and comments saved.</p>}
-        <button type="submit" className="portal-auth__submit" disabled={busy}>{busy ? "Saving…" : "Save submission"}</button>
+        <Button variant="primary" type="submit" className="portal-auth__submit" disabled={busy}>{busy ? "Saving…" : "Save submission"}</Button>
       </form>
-    </section>
+    </TeamCard>
   );
 }
 
 function MentorFeedback({ team }) {
   if (!team || team.mentoring1Score == null) return null;
   return (
-    <section className="portal-card">
+    <TeamCard>
       <h3>
         <FeedbackIcon />
         Mentor feedback
       </h3>
       <p className="round2-total">Mentoring 1 score: <strong>{team.mentoring1Score}</strong></p>{team.judgingRound1Score != null && <p className="round2-total">Judging Round 1 score: <strong>{team.judgingRound1Score}</strong></p>}{team.final_round_shortlisted && team.finalRoundScore != null && <p className="round2-total">Final round score: <strong>{team.finalRoundScore}</strong></p>}
       <div className="round2-savedFeedback"><span>Mentoring 1 feedback</span><p className="portal-feedbackNote">{team.mentoring1Feedback || "No feedback entered."}</p><span>Mentoring 2 feedback</span><p className="portal-feedbackNote">{team.mentoring2Feedback || "No feedback entered."}</p></div>
-    </section>
+    </TeamCard>
   );
 }
 
 function TeamHome({ session }) {
   const navigate = useNavigate();
+  const cloudUrl = useHeroCloud();
   const [psData, setPsData] = useState(null);
   const [psError, setPsError] = useState("");
   const [picking, setPicking] = useState(null);
@@ -472,18 +477,23 @@ function TeamHome({ session }) {
   }
 
   return (
-    <div className="portal-page">
-      <div className="portal-page__head">
+    <div className="team-portal">
+      <div className="team-portal__background" aria-hidden="true">{cloudUrl && <img className="team-portal__cloud" src={cloudUrl} alt="" />}</div>
+      <GlassSystemProvider design="liquid" renderer="auto" theme={{appearance:"dark",className:"team-portal__content"}} toasts={false}>
+      <div className="portal-page team-portal__page">
+      <TeamLiquidGlass material="regular" look={teamGlassLook} className="portal-page__head">
         <div>
           <span className="portal-page__eyebrow">Elevate 1.0 · Team Portal</span>
           <h1>{session.displayName}</h1>
+          <PartnerCredential access={session.team?.partnerAccess} />
         </div>
-        <button type="button" className="portal-logout" onClick={onLogout}>
+        <Button variant="secondary" type="button" className="portal-logout" onClick={onLogout}>
           Log out
-        </button>
-      </div>
+        </Button>
+      </TeamLiquidGlass>
 
-      <ParticipantMealNotice />
+      <PartnerResources team={session.team} teamName={session.displayName} />
+      <ParticipantMealNotice teamName={session.displayName} />
       <Announcements messages={session.announcements} />
       <ShortlistBanner team={session.team} />
       {session.team && <ApprovalBanner data={psData} teamCode={session.team.team_code} />}
@@ -504,7 +514,9 @@ function TeamHome({ session }) {
       <MentorFeedback team={session.team} />
 
 
-      <HelpRequest team={session.team} />
+      <HelpRequest team={session.team} teamName={session.displayName} />
+      </div>
+      </GlassSystemProvider>
     </div>
   );
 }

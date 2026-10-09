@@ -965,6 +965,7 @@ export function AdminHome({ session, superAdmin = false }) {
                   <th>Meals claimed</th>
                   <th>QR Pass</th>
                   <th>Round 2 Shortlist</th>
+                  <th>Wi-Fi access</th>
                 </tr>
               </thead>
               <tbody>
@@ -998,6 +999,7 @@ export function AdminHome({ session, superAdmin = false }) {
                     <td>
                       <ShortlistToggle team={t} onChanged={onShortlistChanged} />
                     </td>
+                    <td>{t.partnerAccess ? <div className="partner-access-admin"><strong>{t.partnerAccess.label}</strong><span>{t.partnerAccess.username}</span><span>{t.partnerAccess.password}</span></div> : "—"}</td>
                   </tr>
                 ))}
               </tbody>

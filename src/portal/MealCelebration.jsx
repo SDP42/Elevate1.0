@@ -47,13 +47,13 @@ export function MealCelebration({ meal, onDone }) {
 
 // Establish a baseline on mount so previous meals do not replay. Subsequent
 // receipts come only from this team's authenticated database records.
-export default function ParticipantMealNotice() {
+export default function ParticipantMealNotice({ teamName }) {
   const [queue, setQueue] = useState([]);
-  const [welcome,setWelcome]=useState([]);
+  const [welcome,setWelcome]=useState(false);
   const [registration,setRegistration]=useState(null);
   useEffect(() => {
     let live = true, cursor = null, busy = false, timer, activeUntil=0, registrationPending=true;
-    const seenRegistration=new Set();
+    let welcomeSeen = false;
     async function refresh() {
       if (busy || document.hidden) return;
       busy = true;
@@ -64,12 +64,13 @@ export default function ParticipantMealNotice() {
         const registration=response.registration;
         if(registration){
           setRegistration(registration);
-          const newlyRegistered=registration.members.filter(member=>{
-            const key=`elevate_welcome_${registration.teamId}_${member.id}`;
-            try {if(sessionStorage.getItem(key))return false;sessionStorage.setItem(key,'1');}catch{/* denied browser storage still uses in-memory dedupe below */}
-            if(seenRegistration.has(member.id))return false;seenRegistration.add(member.id);return true;
-          });
-          if(newlyRegistered.length)setWelcome(previous=>[...previous,...newlyRegistered]);
+          if (registration.members.length && !welcomeSeen) {
+            const key = `elevate_welcome_team_${registration.teamId}`;
+            let alreadyShown = false;
+            try { alreadyShown = sessionStorage.getItem(key) === '1'; sessionStorage.setItem(key, '1'); } catch { /* In-memory dedupe still prevents repeated banners. */ }
+            welcomeSeen = true;
+            if (!alreadyShown) setWelcome(true);
+          }
           registrationPending=registration.members.length<registration.total;
         }
         const groups = new Map();
@@ -89,5 +90,5 @@ export default function ParticipantMealNotice() {
     return () => { live = false; clearTimeout(timer); document.removeEventListener("visibilitychange", visible); };
   }, []);
   return <>{registration?.members.length>0 && <p role="status" className="portal-status">Registration: {registration.members.length} of {registration.total} participants checked in.</p>}
-    {welcome.length ? <WelcomePopup key={welcome[0].id} member={welcome[0]} onClose={()=>setWelcome(previous=>previous.slice(1))} /> : queue.length ? <MealCelebration key={queue[0].key} meal={queue[0]} onDone={() => setQueue(previous => previous.slice(1))} /> : null}</>;
+    {welcome ? <WelcomePopup teamName={teamName} onClose={()=>setWelcome(false)} /> : queue.length ? <MealCelebration key={queue[0].key} meal={queue[0]} onDone={() => setQueue(previous => previous.slice(1))} /> : null}</>;
 }

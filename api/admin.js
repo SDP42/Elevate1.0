@@ -1,3 +1,4 @@
+import { partnerAccess } from "./_lib/partner-access.js";
 import { mealAnalysis } from "./_lib/meal-analysis.js";
 import { staffRevision } from "./_lib/staff-sync.js";
 import { createPsAllocation } from "./_lib/ps-allocation.js";
@@ -175,6 +176,7 @@ async function getTeams(req, res) {
       displayName: t.display_name,
       username: t.username,
       mealsClaimed: Number(t.meals_claimed),
+      partnerAccess: partnerAccess(t.team_code),
       members: byTeam.get(t.id) || [],
     })),
   });

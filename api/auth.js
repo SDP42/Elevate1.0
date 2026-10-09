@@ -1,3 +1,4 @@
+import { partnerAccess } from "./_lib/partner-access.js";
 import { secureHandler } from "./_lib/http.js";
 import { submissionFiles as defaultSubmissionFiles } from "./_lib/submission-files.js";
 import bcrypt from "bcryptjs";
@@ -194,6 +195,7 @@ async function me(req, res) {
     `;
     team = teamRows[0] || null;
     if (team) {
+      team.partnerAccess = partnerAccess(team.team_code);
       team.members = await sql`
         select tm.id, tm.name, tm.is_lead,
           to_jsonb(tm)->>'food_preference' as food_preference,
