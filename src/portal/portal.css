@@ -2537,3 +2537,14 @@ pre.submission-viewer__document { white-space: pre-wrap; }
 .team-partner-pill .ogui-button__label { width:100%; }
 .team-partner-pill__logo { width:112px; max-width:100%; height:36px; }
 @media(max-width:600px) { .team-partner-pill { min-height:60px; padding:.65rem; } .team-partner-pill__logo { height:30px; padding:4px 6px; } }
+
+.ps-domainCards { list-style:none; padding:0; margin:22px 0; display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:14px; }
+.ps-domainCards li { min-width:0; padding:18px; border:1px solid rgba(201,169,104,.27); border-radius:18px; background:rgba(3,6,9,.46); backdrop-filter:blur(18px); }
+.ps-domainCards__head { display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:12px; }
+.ps-domainCards__code { color:#e1c38c; font-weight:700; letter-spacing:.08em; font-size:.85rem; }
+.ps-domainCards__availability { color:#cbd8d0; font-size:.75rem; padding:4px 9px; border-radius:999px; background:rgba(127,169,141,.12); border:1px solid rgba(127,169,141,.25); }
+.ps-domainCards__availability.is-full { color:#e3b4ac; background:rgba(181,98,80,.1); border-color:rgba(181,98,80,.3); }
+.ps-domainCards h4 { font-size:1.08rem; color:#f4f0e7; line-height:1.4; margin:0 0 12px; }
+.ps-domainCards p { color:#d0d3d7; font-size:.88rem; line-height:1.65; margin:0; overflow-wrap:anywhere; }
+.ps-domainCards__label { display:block; color:#aeb5bf; font-size:.7rem; text-transform:uppercase; letter-spacing:.1em; margin-bottom:4px; }
+@media(max-width:600px) { .ps-domainCards { grid-template-columns:minmax(0,1fr); } .ps-domainCards li { padding:16px; } }

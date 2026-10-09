@@ -1,10 +1,10 @@
 -- Organizer-approved problem statements. Run explicitly when configuring the
 -- event; re-running preserves capacities subsequently adjusted in the backend.
 insert into ps_list(code,title,description,capacity,revealed,sort_order) values
- ('EL01','Sports Analytics','NA',8,true,1),
- ('EL02','AI Agents','NA',8,true,2),
- ('EL03','Elevate','NA',8,true,3),
- ('EL04','Obliq','NA',8,true,4)
+ ('EL01','Racket Sports Intelligence','Computer Vision, Sports Analytics, Player Performance, Community Platforms',8,true,1),
+ ('EL02','Agentic ML Research','Multi-Agent Systems, Machine Learning, Research Automation, Experimentation',8,true,2),
+ ('EL03','Intelligent Aviation Experience','Aviation, Travel Planning, Mobile UX, Multilingual AI, Offline AI',8,true,3),
+ ('EL04','AI Revenue Auditing','Revenue Auditing, Accounting, Fraud Detection, MCP, Explainable AI',8,true,4)
 on conflict(code) do update set title=excluded.title,description=excluded.description,
  revealed=excluded.revealed,sort_order=excluded.sort_order;
 -- Retire legacy demos only when no team data references them.

@@ -355,8 +355,12 @@ function ProblemStatement({ data, error, picking, onPick }) {
   const complete=choices.length===4 && choices.every(Boolean) && new Set(choices).size===4;
   const selected=statements.find(ps=>ps.id===data?.selectedPsId);
   async function submit(e){e.preventDefault();if(!complete)return;setMessage('');const result=await onPick(choices.map(Number));if(result)setMessage(result.message);}
-  return <TeamCard><h3><LightbulbIcon />Problem statement preferences</h3>
+  return <TeamCard className="portal-problemStatements"><h3><LightbulbIcon />Problem statement preferences</h3>
     <p className="portal-card__hint">Rank four different problem statements. Your first available preference is allocated immediately and locked. If your first three choices are full, your fourth choice is allocated automatically.</p>
+    {statements.length>0 && <ul className="ps-domainCards" aria-label="Available problem statements">{statements.map(ps=><li key={ps.id}>
+      <div className="ps-domainCards__head"><span className="ps-domainCards__code">{ps.code}</span><span className={`ps-domainCards__availability${ps.full?' is-full':''}`}>{ps.full?'Full':'Available'}</span></div>
+      <h4>{ps.title}</h4><p><span className="ps-domainCards__label">Domains</span>{ps.description}</p>
+    </li>)}</ul>}
     {error && <p role="alert" className="portal-auth__error">{error}</p>}
     {data?.selectionOpen !== true ? <p className="portal-status" role="status">{data ? 'Selection opens on Saturday, 10 October at 9:30 AM IST. The form will appear here automatically.' : 'Loading selection availability…'}</p> : locked ? <p className="portal-status" role="status">Allocated: {selected?`${selected.code} · ${selected.title}`:'Your confirmed problem statement'}</p> : statements.length<4 ? <p>Four problem statements need to be revealed before preferences can be submitted.</p> :
       <form onSubmit={submit} className="ps-preferenceForm"><div className="ps-preferenceGrid">{[0,1,2,3].map(index=><label className="portal-field" key={index}><span>Preference {index+1}</span><select aria-label={`Preference ${index+1}`} required value={choices[index] || ''} disabled={picking!==null} onChange={e=>{
