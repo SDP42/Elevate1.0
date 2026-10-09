@@ -7,13 +7,9 @@ import { createIncident as defaultCreateIncident } from "./_lib/incidents.js";
 import { issueScanProof, verifyScanProof } from "./_lib/scan-proof.js";
 import { parseQrToken } from "../shared/meal.js";
 
-/* Registration desk (and admin) only: scan a team's boarding pass on
-   arrival, then record per-member details — GitHub handle, government ID
-   checked, bag checked, ideation kit (notebook, pen, folder) handed over,
-   any note — one row per member, updatable (a team that shows up
-   incomplete can be finished later without starting over).
-   POST {action: "save", ...} saves one member's details; anything else
-   (the default) is the lookup. */
+/* Registration desk and admin: look up a team using its shared QR or code,
+   then check in the selected members together after their individual checks.
+   The legacy single-member action uses the same atomic save path. */
 export function createRegistrationHandler({ sql = defaultSql, logAction = defaultLogAction, createIncident = defaultCreateIncident } = {}) {
 async function handler(req, res) {
   if (req.method === "GET") {
@@ -26,7 +22,7 @@ async function handler(req, res) {
     return;
   }
   const { action } = req.body || {};
-  if (action === "save") return save(req, res);
+  if (action === "save" || action === "save-members") return save(req, res);
   if (action === "lookup-by-code") return lookupByCode(req, res);
   return lookup(req, res);
 }
@@ -127,59 +123,46 @@ async function lookupByCode(req, res) {
   respond(req, res, team, await membersFor(team));
 }
 
-/* one member's registration-desk details, upserted */
+/* A selection is committed atomically. Lock the team so two counters cannot
+   partially register overlapping selections. A proof may be consumed once. */
 async function save(req, res) {
-  const { memberId, teamId, githubId, govtIdChecked, bagChecked, kitChecked, medicalNote, lateArrival, notes } =
-    req.body || {};
-  if (!Number.isInteger(memberId) || memberId < 1 || !Number.isInteger(teamId) || teamId < 1) {
-    res.status(400).json({ error: "memberId and teamId are required" });
-    return;
+  const { teamId } = req.body || {};
+  const members = req.body.members || [{ ...req.body, id: req.body.memberId }];
+  if (!Number.isInteger(teamId) || teamId < 1 || !Array.isArray(members) || !members.length || members.length > 4 ||
+      members.some(m => !m || !Number.isInteger(m.id) || m.id < 1 ||
+        ['govtIdChecked','bagChecked','kitChecked','lateArrival'].some(key => m[key] !== undefined && typeof m[key] !== 'boolean')) ||
+      new Set(members.map(m => m.id)).size !== members.length) {
+    return res.status(400).json({ error: "Select valid participants from this team." });
   }
-
   const scanId = verifyScanProof(req.body.scanProof, "registration", teamId, req.session.accountId);
   if (!scanId) return res.status(409).json({ error: "Scan the team QR again; this scan is missing or expired." });
-
-  // the member must actually belong to the stated team — a tampered
-  // request can't write against someone else's roster
-  const memberRows = await sql`select id from team_members where id = ${memberId} and team_id = ${teamId}`;
-  if (!memberRows[0]) {
-    res.status(400).json({ error: "That member doesn't belong to that team" });
-    return;
+  const payload = JSON.stringify(members.map(m => ({id:m.id,govtIdChecked:!!m.govtIdChecked,bagChecked:!!m.bagChecked,kitChecked:!!m.kitChecked,lateArrival:!!m.lateArrival})));
+  const results = await sql.transaction(tx => [
+    tx`select id from teams where id=${teamId} for update`,
+    tx`with selected as (
+      select *, row_number() over (order by id) as position from jsonb_to_recordset(${payload}::jsonb)
+      as m(id int, "govtIdChecked" boolean, "bagChecked" boolean, "kitChecked" boolean, "lateArrival" boolean)
+    ), eligible as (
+      select s.* from selected s join team_members tm on tm.id=s.id and tm.team_id=${teamId}
+      join teams t on t.id=tm.team_id and t.withdrawn=false
+    )
+    insert into registration_checkins(member_id,team_id,govt_id_checked,bag_checked,kit_checked,late_arrival,checked_in_by,scan_id)
+    select id,${teamId},"govtIdChecked","bagChecked","kitChecked","lateArrival",${req.session.accountId},
+      case when position=1 then ${scanId} else ${scanId} || ':' || id::text end
+    from eligible where (select count(*) from eligible)=${members.length}
+      and not exists(select 1 from registration_checkins where scan_id=${scanId})
+      and not exists(select 1 from registration_checkins rc join selected s on rc.member_id=s.id)
+    returning member_id`,
+    tx`select (select count(*)::int from registration_checkins where team_id=${teamId}) registered,
+      (select count(*)::int from team_members where team_id=${teamId}) total`
+  ], {isolationLevel:'ReadCommitted'});
+  const registered = results[1];
+  if (!registered.length) return res.status(409).json({ error: "Selection was not saved: a participant is already registered, the team has withdrawn, or this scan was used. Look up the team again." });
+  for (const member of members) {
+    if (member.lateArrival) await createIncident({type:'late_arrival',teamId,message:`Late arrival at registration: member ${member.id}`,createdBy:req.session.accountId,createdRole:req.session.role});
   }
-
-  const wasLateRows = await sql`select late_arrival from registration_checkins where member_id = ${memberId}`;
-  const wasLate = wasLateRows[0]?.late_arrival || false;
-
-  let registeredRows;
-  try { registeredRows = await sql`
-    insert into registration_checkins
-      (member_id, team_id, github_id, govt_id_checked, bag_checked, kit_checked, medical_note, late_arrival, notes, checked_in_by, scan_id)
-    select
-      ${memberId}, ${teamId}, ${githubId || null}, ${Boolean(govtIdChecked)}, ${Boolean(bagChecked)},
-      ${Boolean(kitChecked)}, ${medicalNote || null}, ${Boolean(lateArrival)}, ${notes || null}, ${req.session.accountId}, ${scanId}
-    from teams t where t.id = ${teamId} and t.withdrawn = false
-      and not exists(select 1 from registration_checkins rc where rc.scan_id = ${scanId} and rc.member_id <> ${memberId})
-    on conflict (member_id) do nothing
-    returning member_id
-  `; } catch (error) {
-    if (error.code === "23505") return res.status(409).json({ error: "This scan has already been used. Scan the team QR again." });
-    throw error;
-  }
-  if (!registeredRows.length) return res.status(409).json({ error: "This participant is already registered, the scan was used, or the team has withdrawn. Scan again." });
-
-  if (Boolean(lateArrival) && !wasLate) {
-    await createIncident({
-      type: "late_arrival",
-      teamId,
-      message: `Late arrival at registration: member ${memberId}`,
-      createdBy: req.session.accountId,
-      createdRole: req.session.role,
-    });
-  }
-
-  await logAction(req.session.accountId, "regidesk.save", { memberId, teamId });
-  const [progress] = await sql`select (select count(*)::int from registration_checkins where team_id=${teamId}) as registered, (select count(*)::int from team_members where team_id=${teamId}) as total`;
-  res.status(200).json({ ok: true, progress });
+  await logAction(req.session.accountId, 'regidesk.save', {teamId,memberIds:registered.map(m=>m.member_id)});
+  return res.status(200).json({ok:true,memberIds:registered.map(m=>m.member_id),progress:results[2][0]});
 }
 
 return handler;

@@ -5,78 +5,26 @@ import { useCallback, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import RequireRole from "./RequireRole";
 import QrScanner from "./QrScanner";
-import { logout, regideskLookup, regideskLookupByCode, regideskSave } from "./api";
+import { logout, regideskLookup, regideskLookupByCode, regideskSaveMembers } from "./api";
 
-function MemberRow({ member, teamId, scanProof, onSaved }) {
-  const [govtIdChecked, setGovtIdChecked] = useState(member.govtIdChecked);
-  const [bagChecked, setBagChecked] = useState(member.bagChecked);
-  const [kitChecked, setKitChecked] = useState(member.kitChecked);
-  const [lateArrival, setLateArrival] = useState(member.lateArrival);
-  const [saving, setSaving] = useState(false);
-  const [saved, setSaved] = useState(false);
-  const [error, setError] = useState("");
-
-  const fields = { govtIdChecked, bagChecked, kitChecked, lateArrival };
-
-  async function save() {
-    setSaving(true);
-    setSaved(false);
-    try {
-      const receipt = await regideskSave(member.id, teamId, { ...fields, scanProof });
-      setSaved(true);
-      onSaved({...receipt,memberId:member.id});
-    } catch (error) { setError(error.message); } finally {
-      setSaving(false);
-    }
-  }
-
-  function check(setter) {
-    return (e) => {
-      setter(e.target.checked);
-      setSaved(false);
-    };
-  }
-
-  return (
-    <li className="portal-regiRow">
-      <div className="portal-regiRow__name">
-        {member.name}
-        {member.isLead && <em>Lead</em>}
-        {member.foodPreference && <span className="meal-diet">{member.foodPreference}</span>}
-      </div>
-
-      <div className="portal-regiRow__checks">
-        <label className="portal-regiRow__check">
-          <input type="checkbox" checked={govtIdChecked} onChange={check(setGovtIdChecked)} />
-          Govt ID
-        </label>
-        <label className="portal-regiRow__check">
-          <input type="checkbox" checked={bagChecked} onChange={check(setBagChecked)} />
-          Bag
-        </label>
-        <label className="portal-regiRow__check">
-          <input type="checkbox" checked={kitChecked} onChange={check(setKitChecked)} />
-          Kit (notebook, pen, folder)
-        </label>
-        <label className="portal-regiRow__check portal-regiRow__check--warn">
-          <input type="checkbox" checked={lateArrival} onChange={check(setLateArrival)} />
-          Late arrival
-        </label>
-      </div>
-
-      {error && <p role="alert" className="portal-auth__error">{error}</p>}
-      <button type="button" className="portal-logout portal-regiRow__save" onClick={save} disabled={saving}>
-        {saving ? "Saving…" : saved ? "Saved ✓" : "Register this scan"}
-      </button>
-    </li>
-  );
+function MemberRow({ member, fields, onChange, disabled }) {
+  return <li className="portal-regiRow">
+    <div className="portal-regiRow__name">{member.name}{member.isLead && <em>Lead</em>}</div>
+    <div className="portal-regiRow__checks">{[
+      ['govtIdChecked','Govt ID'],['bagChecked','Bag'],['kitChecked','Kit (notebook, pen, folder)'],['lateArrival','Late arrival']
+    ].map(([key,label])=><label key={key} className="portal-regiRow__check">
+      <input type="checkbox" disabled={disabled} checked={!!fields[key]} onChange={e=>onChange({...fields,[key]:e.target.checked})} />{label}
+    </label>)}</div>
+  </li>;
 }
 
 function RegiDeskHome({ session }) {
   const navigate = useNavigate();
   const [scanning, setScanning] = useState(true);
   const [result, setResult] = useState(null);
-  const [selectedMember, setSelectedMember] = useState(null);
+  const [selectedMembers, setSelectedMembers] = useState([]);
+  const [memberFields, setMemberFields] = useState({});
+  const [saving, setSaving] = useState(false);
   const [status, setStatus] = useState("");
   const [error, setError] = useState("");
   const [manualBusy, setManualBusy] = useState(false);
@@ -91,7 +39,8 @@ function RegiDeskHome({ session }) {
       try {
         const data = await regideskLookup(payload);
         setResult(data);
-        setSelectedMember(data.members.find(m => !m.registered)?.id || null);
+        setSelectedMembers([]);
+        setMemberFields({});
         setScanning(false);
       } catch (err) {
         setError(err.message);
@@ -110,7 +59,8 @@ function RegiDeskHome({ session }) {
     try {
       const data = await regideskLookupByCode(manualCode.trim());
       setResult(data);
-      setSelectedMember(data.members.find(m => !m.registered)?.id || null);
+      setSelectedMembers([]);
+      setMemberFields({});
       setScanning(false);
     } catch (err) {
       setError(err.message);
@@ -120,16 +70,24 @@ function RegiDeskHome({ session }) {
     }
   }
 
-  function onMemberSaved(receipt) {
-    notifyStaffWrite();
-    const { registered, total } = receipt.progress;
-    setStatus(`${result.team.teamCode}: ${registered} of ${total} registered. ${registered === total ? "Whole team registered." : "Scan the same team QR for the next participant."}`);
-    setResult(previous=>({...previous,scanProof:null,progress:receipt.progress,members:previous.members.map(member=>member.id===receipt.memberId?{...member,registered:true}:member)}));
-    setSelectedMember(null);
+  async function registerSelected() {
+    if (busyRef.current || !selectedMembers.length || !result.scanProof) return;
+    busyRef.current = true; setSaving(true); setError("");
+    try {
+      const members=result.members.filter(m=>selectedMembers.includes(m.id)).map(m=>({id:m.id,...(memberFields[m.id] || {govtIdChecked:m.govtIdChecked,bagChecked:m.bagChecked,kitChecked:m.kitChecked,lateArrival:m.lateArrival})}));
+      const receipt=await regideskSaveMembers(result.team.id,members,result.scanProof);
+      notifyStaffWrite();
+      const {registered,total}=receipt.progress;
+      setStatus(`${result.team.teamCode}: ${registered} of ${total} registered. ${registered===total?'Whole team registered.':'Look up the same team to register remaining participants.'}`);
+      setResult(previous=>({...previous,scanProof:null,progress:receipt.progress,members:previous.members.map(m=>receipt.memberIds.includes(m.id)?{...m,registered:true}:m)}));
+      setSelectedMembers([]); setMemberFields({});
+    } catch(err) { setError(err.message); }
+    finally { busyRef.current=false; setSaving(false); }
   }
 
   function reset() {
     setResult(null);
+    setSelectedMembers([]); setMemberFields({});
     setScanning(true);
   }
 
@@ -153,7 +111,7 @@ function RegiDeskHome({ session }) {
       <section className="portal-card">
         <h3>Check in a team</h3>
         <p className="portal-card__hint">
-          Scan the same team boarding pass once for each participant. Each scan registers one person after their ID and kit checks.
+          Scan a team boarding pass, select everyone present, complete their checks and register them together.
         </p>
 
         {status && <p className="portal-status" role="status">{status}</p>}
@@ -178,18 +136,19 @@ function RegiDeskHome({ session }) {
                 </div>
               </div>
               <p className="portal-status">{result.progress.registered} of {result.progress.total} registered</p>
-              <div className="regi-memberButtons" role="group" aria-label="Participants for this scan">{result.members.map(member=><button type="button" key={member.id} aria-pressed={selectedMember===member.id} disabled={member.registered || !result.scanProof} className={member.registered?'is-registered':''} onClick={()=>setSelectedMember(member.id)}>
-                {(member.registered || selectedMember===member.id) && <svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M21 16v-2l-8-5V3.5a1.5 1.5 0 0 0-3 0V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5l8 2.5Z" /></svg>}
-                <span>{member.name}<small>{member.registered?'Registered':selectedMember===member.id?'Selected for check-in':'Select participant'}</small></span>
+              <div className="regi-memberButtons" role="group" aria-label="Participants for this scan">{result.members.map(member=><button type="button" key={member.id} aria-pressed={selectedMembers.includes(member.id)} disabled={saving || member.registered || !result.scanProof} className={member.registered?'is-registered':''} onClick={()=>setSelectedMembers(ids=>ids.includes(member.id)?ids.filter(id=>id!==member.id):[...ids,member.id])}>
+                {(member.registered || selectedMembers.includes(member.id)) && <svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M21 16v-2l-8-5V3.5a1.5 1.5 0 0 0-3 0V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5l8 2.5Z" /></svg>}
+                <span>{member.name}<small>{member.registered?'Registered':selectedMembers.includes(member.id)?'Selected for check-in':'Select participant'}</small></span>
               </button>)}</div>
               {result.progress.registered < result.progress.total && result.scanProof ? <>
                 <ul className="portal-regiList portal-u-mt">
-                  {result.members.filter(member => member.id === selectedMember).map(member =>
-                    <MemberRow key={member.id} member={member} teamId={result.team.id} scanProof={result.scanProof} onSaved={onMemberSaved} />)}
+                  {result.members.filter(member => selectedMembers.includes(member.id)).map(member =>
+                    <MemberRow key={member.id} member={member} disabled={saving} fields={memberFields[member.id] || member} onChange={fields=>setMemberFields(previous=>({...previous,[member.id]:fields}))} />)}
                 </ul>
-              </> : <p className="portal-card__hint">{result.progress.registered===result.progress.total?"Whole team registered.":"Scan the team QR again for the next participant."}</p>}
-              <button type="button" className="portal-logout portal-u-mt" onClick={reset}>
-                Scan next participant / team
+                <button type="button" className="portal-logout portal-u-mt" disabled={saving || !selectedMembers.length} onClick={registerSelected}>{saving ? "Registering…" : `Register ${selectedMembers.length} selected participant${selectedMembers.length===1?'':'s'}`}</button>
+              </> : <p className="portal-card__hint">{result.progress.registered===result.progress.total?"Whole team registered.":"Look up the same team to register the remaining participants."}</p>}
+              <button type="button" className="portal-logout portal-u-mt" onClick={reset} disabled={saving}>
+                Scan another team / remaining participants
               </button>
             </div>
           )

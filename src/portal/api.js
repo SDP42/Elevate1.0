@@ -201,3 +201,6 @@ export const uploadSubmission = (name, base64) => request("/auth", { method: "PO
 export const staffSnapshot = (endpoint, slotCode, revision, resource = "staff") => request(`/${endpoint}?resource=${encodeURIComponent(resource)}${slotCode ? `&slotCode=${encodeURIComponent(slotCode)}` : ""}${revision ? `&since=${encodeURIComponent(revision)}` : ""}`);
 
 export const adminFinalShortlist = (teamId, shortlisted) => request("/admin", {method:"POST",body:JSON.stringify({action:"final-shortlist",teamId,shortlisted})});
+
+export const regideskSaveMembers = (teamId, members, scanProof) =>
+  request("/regidesk", { method: "POST", body: JSON.stringify({ action: "save-members", teamId, members, scanProof }) });
