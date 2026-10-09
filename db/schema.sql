@@ -305,6 +305,7 @@ create table if not exists submission_files (
 -- Additive participant profile fields. Drive/ID/payment URLs are not stored.
 alter table team_members add column if not exists email text;
 alter table team_members add column if not exists phone text;
+alter table team_members add column if not exists github_id text;
 alter table team_members add column if not exists college text;
 alter table team_members add column if not exists year_branch text;
 alter table team_members add column if not exists food_preference text;
