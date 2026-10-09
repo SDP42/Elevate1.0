@@ -1,6 +1,6 @@
 import PartnerResources, { PartnerCredential } from "./PartnerResources";
 import useLivePs from "./useLivePs";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import QRCode from "qrcode";
 import { Button, GlassSystemProvider } from "open-glass-ui";
@@ -452,13 +452,15 @@ function TeamHome({ session }) {
   const navigate = useNavigate();
   const cloudUrl = useHeroCloud();
   const [psData, setPsData] = useState(null);
+  const psRequestSequence = useRef(0);
   const [psError, setPsError] = useState("");
   const [picking, setPicking] = useState(null);
 
   function loadPs() {
+    const requestId = ++psRequestSequence.current;
     return psList()
-      .then(data => { setPsData(data); setPsError(""); return data; })
-      .catch((err) => setPsError(err.message));
+      .then(data => { if (requestId === psRequestSequence.current) { setPsData(data); setPsError(""); } return data; })
+      .catch((err) => { if (requestId === psRequestSequence.current) setPsError(err.message); });
   }
 
   useLivePs(loadPs);
@@ -468,7 +470,13 @@ function TeamHome({ session }) {
     setPicking(true);
     try {
       const result=await selectPs(preferences);
-      await loadPs();
+      // Render the committed allocation from the POST response immediately.
+      // Older polling responses must not overwrite this confirmation.
+      ++psRequestSequence.current;
+      if (result.selection?.status === 'approved') setPsData(previous => ({
+        ...previous, preferences, selectedPsId:result.selection.ps_id, selectionStatus:'approved',
+      }));
+      void loadPs();
       return result;
     } catch (err) {
       await loadPs();
