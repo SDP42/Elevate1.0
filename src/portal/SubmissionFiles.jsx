@@ -118,7 +118,7 @@ export function FilePreview({ file, localFile, teamId, loadedFile }) {
   </div>;
 }
 
-function CommonUpload({ onSaved }) {
+function CommonUpload({ onSaved, closed }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const input = useRef(null);
@@ -142,16 +142,16 @@ function CommonUpload({ onSaved }) {
         onSaved(result.file); completed++;
       }
     } catch (err) { setError(`${completed} document(s) saved. ${err.message || 'Upload failed.'} Choose the remaining files to retry.`); }
-    finally { setBusy(false); setProgress(''); input.current.value = ''; }
+    finally { setBusy(false); setProgress(''); if (input.current) input.current.value = ''; }
   }
   return <div className="submission-upload">
-    <label className="portal-field"><span>Upload documents · PDF, PPTX, MD, TXT · max 3 MB each</span><input ref={input} type="file" multiple accept=".pdf,.pptx,.md,.txt" disabled={busy} onChange={choose} /></label>
+    <label className="portal-field"><span>Upload documents · PDF, PPTX, MD, TXT · max 3 MB each</span><input ref={input} type="file" multiple accept=".pdf,.pptx,.md,.txt" disabled={busy || closed} onChange={choose} /></label>
     {busy && <p role="status">{progress}</p>}
     {error && <p role="alert" className="portal-auth__error">{error}</p>}
   </div>;
 }
 
-export default function SubmissionFiles({ teamId, editable = false, compact = false, onUploaded }) {
+export default function SubmissionFiles({ teamId, editable = false, closed = false, compact = false, onUploaded }) {
   const [files, setFiles] = useState([]);
   const [openedFile, setOpenedFile] = useState(null);
   const [error, setError] = useState('');
@@ -179,7 +179,7 @@ export default function SubmissionFiles({ teamId, editable = false, compact = fa
   </div>;
   return <div className="submission-files">
     {error && <p role="alert" className="portal-auth__error">{error}</p>}
-    {editable && <CommonUpload onSaved={file => { setFiles(fs => [file, ...fs]); onUploaded?.(file); }} />}
+    {editable && <CommonUpload closed={closed} onSaved={file => { setFiles(fs => [file, ...fs]); onUploaded?.(file); }} />}
     <ul className="submission-fileList">
       {files.map(file => <li className="submission-fileRow" key={file.id}>
         <span className="submission-fileRow__type" aria-hidden="true">{file.kind.toUpperCase()}</span>

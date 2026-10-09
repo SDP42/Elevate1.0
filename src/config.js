@@ -1,3 +1,4 @@
+import { SUBMISSION_CLOSES_AT } from '../shared/submission-schedule.js';
 /* Drop the Unstop registration URL in here when it is live — every CTA on
    the site reads from this one constant. While it is empty, the buttons
    fall back to a "opening soon" state instead of linking nowhere. */
@@ -35,7 +36,7 @@ export const EVENT_START = new Date("2026-10-10T09:00:00+05:30");
 // team dashboard can show a sharper, more urgent countdown to this moment
 // specifically, not just "gates open". Update this once the real cutoff
 // (near the end of the 24 hours) is confirmed.
-export const SUBMISSION_DEADLINE = new Date("2026-10-11T09:00:00+05:30");
+export const SUBMISSION_DEADLINE = new Date(SUBMISSION_CLOSES_AT);
 
 // static, venue-day essentials shown on the team dashboard — plain text
 // cards rather than another thing to click through at 3am. Update these

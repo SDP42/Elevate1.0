@@ -396,6 +396,7 @@ const FeedbackIcon = () => (
 );
 
 function ProjectSubmission({ team }) {
+  const closed = useCountdown(SUBMISSION_DEADLINE).done;
   const [url, setUrl] = useState(team?.submission_url || "");
   const [comments, setComments] = useState(team?.submission_note || "");
   const [busy, setBusy] = useState(false);
@@ -404,6 +405,7 @@ function ProjectSubmission({ team }) {
 
   async function save(e) {
     e.preventDefault();
+    if (Date.now() >= SUBMISSION_DEADLINE.getTime()) { setError("Submissions are closed."); return; }
     setBusy(true); setError(""); setSaved(false);
     try {
       await submitProject(url.trim(), comments.trim());
@@ -415,13 +417,14 @@ function ProjectSubmission({ team }) {
   return (
     <TeamCard className="portal-submission">
       <h3><SubmitIcon />Submission</h3>
-      <SubmissionFiles editable />
+      <p className="portal-card__hint" role="status">{closed ? "Submissions closed. Uploaded documents remain available to view." : "Closes Sunday, 11 October at 8:20 AM IST."}</p>
+      <SubmissionFiles editable closed={closed} />
       <form className="portal-auth__form" onSubmit={save}>
-        <label className="portal-field"><span>Project link</span><input type="url" value={url} placeholder="https://github.com/your-team/project" onChange={e => { setUrl(e.target.value); setSaved(false); }} /></label>
-        <label className="portal-field"><span>Comments</span><textarea className="portal-submission__comments" value={comments} rows={4} maxLength={10000} placeholder="Anything the judges should know" onChange={e => { setComments(e.target.value); setSaved(false); }} /></label>
+        <label className="portal-field"><span>Project link</span><input disabled={closed || busy} type="url" value={url} placeholder="https://github.com/your-team/project" onChange={e => { setUrl(e.target.value); setSaved(false); }} /></label>
+        <label className="portal-field"><span>Comments</span><textarea disabled={closed || busy} className="portal-submission__comments" value={comments} rows={4} maxLength={10000} placeholder="Anything the judges should know" onChange={e => { setComments(e.target.value); setSaved(false); }} /></label>
         {error && <p role="alert" className="portal-auth__error">{error}</p>}
         {saved && <p role="status" className="portal-submission__saved">Link and comments saved.</p>}
-        <Button variant="primary" type="submit" className="portal-auth__submit" disabled={busy}>{busy ? "Saving…" : "Save submission"}</Button>
+        <Button variant="primary" type="submit" className="portal-auth__submit" disabled={busy || closed}>{closed ? "Submissions closed" : busy ? "Saving…" : "Save submission"}</Button>
       </form>
     </TeamCard>
   );

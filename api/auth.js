@@ -1,3 +1,4 @@
+import { SUBMISSION_CLOSES_AT, SUBMISSION_CLOSED_MESSAGE, submissionsClosed } from '../shared/submission-schedule.js';
 import { partnerAccess } from "./_lib/partner-access.js";
 import { secureHandler } from "./_lib/http.js";
 import { submissionFiles as defaultSubmissionFiles } from "./_lib/submission-files.js";
@@ -65,6 +66,7 @@ async function submitProject(req, res) {
     return;
   }
 
+  if (submissionsClosed()) return res.status(403).json({ error: SUBMISSION_CLOSED_MESSAGE });
   const { submissionUrl = "", submissionNote = "" } = req.body || {};
   if (typeof submissionUrl !== "string" || typeof submissionNote !== "string" || submissionNote.length > 10000) return res.status(400).json({ error: "Invalid submission" });
   if (submissionUrl.trim()) {
@@ -75,13 +77,15 @@ async function submitProject(req, res) {
     if (!files.length) return res.status(400).json({ error: "Add a link or upload a file first" });
   }
 
-  await sql`
+  const saved = await sql`
     update teams set
       submission_url = ${submissionUrl.trim() || null},
       submission_note = ${submissionNote || null},
       submitted_at = now()
-    where id = ${session.teamId}
+    where id = ${session.teamId} and clock_timestamp() < ${SUBMISSION_CLOSES_AT}::timestamptz
+    returning id
   `;
+  if (!saved.length) return res.status(403).json({ error: SUBMISSION_CLOSED_MESSAGE });
 
   await logAction(session.accountId, "submission.save", { teamId: session.teamId });
   res.status(200).json({ ok: true });

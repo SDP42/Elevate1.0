@@ -1,3 +1,4 @@
+import { SUBMISSION_CLOSES_AT, SUBMISSION_CLOSED_MESSAGE, submissionsClosed } from '../../shared/submission-schedule.js';
 import JSZip from 'jszip';
 import { sql as defaultSql } from './db.js';
 import { readSession } from './auth.js';
@@ -27,6 +28,7 @@ return async function submissionFiles(req, res) {
     return res.status(200).json({ files });
   }
   if (session.role !== 'team') return res.status(403).json({ error: 'Only teams can upload' });
+  if (submissionsClosed()) return res.status(403).json({ error: SUBMISSION_CLOSED_MESSAGE });
   const { name, base64 } = req.body || {};
   if (typeof name !== 'string' || typeof base64 !== 'string') return res.status(400).json({ error: 'A file is required' });
   const kind = name.split('.').pop().toLowerCase();
@@ -55,8 +57,10 @@ return async function submissionFiles(req, res) {
   }
   const cleanName = name.replace(/[\x00-\x1f/\\]/g, '_').slice(0, 180);
   const [file] = await sql`insert into submission_files (team_id, kind, name, mime_type, size, content)
-    values (${teamId}, ${kind}, ${cleanName}, ${TYPES[kind]}, ${bytes.length}, decode(${base64}, 'base64'))
+    select ${teamId}, ${kind}, ${cleanName}, ${TYPES[kind]}, ${bytes.length}, decode(${base64}, 'base64')
+    where clock_timestamp() < ${SUBMISSION_CLOSES_AT}::timestamptz
     returning id, kind, name, mime_type, size, uploaded_at`;
+  if (!file) return res.status(403).json({ error: SUBMISSION_CLOSED_MESSAGE });
   await sql`update teams set submitted_at = now() where id = ${teamId}`;
   await logAction(session.accountId, 'submission.upload', { teamId, kind, size: bytes.length });
   return res.status(200).json({ file });
