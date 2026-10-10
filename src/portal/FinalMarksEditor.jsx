@@ -6,6 +6,7 @@ export default function FinalMarksEditor({ team, onSaved, stage = "mentoring1" }
   const label = {mentoring1:'Mentoring 1 score',judging1:'Judging Round 1 score',final:'Final round score'}[stage];
   const scoreField = {mentoring1:'mentoring1Score',judging1:'judgingRound1Score',final:'finalRoundScore'}[stage];
   const savedScore = team[scoreField] ?? (stage === 'mentoring1' ? team.score : null);
+  const criteria = team.mentoring1Criteria ?? team.localMentoringCriteria;
   const [editing, setEditing] = useState(false);
   const [score, setScore] = useState('');
   const [feedback1, setFeedback1] = useState('');
@@ -25,6 +26,9 @@ export default function FinalMarksEditor({ team, onSaved, stage = "mentoring1" }
     } catch (err) { setError(err.message); } finally { setBusy(false); }
   }
   return <div className="round2-scoreEditor">
+    {stage === 'mentoring1' && criteria && <dl style={{display:'grid', gridTemplateColumns:'repeat(2, minmax(0, 1fr))', gap:12, margin:'0 0 16px'}}>
+      {Object.entries(criteria).map(([criterion, value]) => <div key={criterion}><dt style={{fontSize:12, opacity:.8}}>{criterion}</dt><dd style={{margin:0}}>{value} / 5</dd></div>)}
+    </dl>}
     {!editing ? <><strong>{label}: {savedScore ?? 'Unscored'}</strong><button type="button" className="portal-logout" onClick={edit}>{stage === "mentoring1" ? "Edit mentoring score & feedback" : `Edit ${label.toLowerCase()}`}</button></> :
       <form onSubmit={save}>
         <label className="portal-field" htmlFor={`${id}-score`}><span>{label}</span><input id={`${id}-score`} type="number" min="0" max="100" step="0.01" required value={score} onChange={e=>setScore(e.target.value)} /></label>

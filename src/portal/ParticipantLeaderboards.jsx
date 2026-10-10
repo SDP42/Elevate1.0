@@ -16,7 +16,7 @@ export default function ParticipantLeaderboards({teamCode}){
  const published=scores?.leaderboard?.filter(r=>r.score!=null)||[];
  const rows=tokens?.teams||[],maximum=Math.max(1,...rows.map(r=>r.tokens));
  return <>
- <TeamLiquidGlass as="section" material="regular" className="portal-card participant-score-board"><h3>{scores?.frozen?'Final leaderboard':'Main leaderboard'}</h3>{published.length?<ol>{published.map(r=><li key={r.teamCode}><span>#{r.rank}</span><strong>{r.teamName}</strong><span>{r.teamCode}</span><b>{r.score}</b></li>)}</ol>:<p className="portal-card__hint">{scores?'Scores will appear when released by the organisers.':'Loading leaderboard…'}</p>}</TeamLiquidGlass>
+ <TeamLiquidGlass as="section" material="regular" className="portal-card participant-score-board"><h3>{scores?.scoreStage==='mentoring1'?'Mentoring 1 leaderboard':scores?.frozen?'Final leaderboard':'Main leaderboard'}</h3>{published.length?<ol>{published.map(r=><li key={r.teamCode}><span>#{r.rank}</span><strong>{r.teamName}</strong><span>{r.teamCode}</span><b>{r.score}</b></li>)}</ol>:<p className="portal-card__hint">{scores?'Scores will appear when released by the organisers.':'Loading leaderboard…'}</p>}</TeamLiquidGlass>
  <TeamLiquidGlass as="section" material="regular" className="portal-card participant-token-board">
  <div className="participant-token-board__head"><div><h3>AI token leaderboard</h3><p>Top 10 teams · Actual tokens consumed across the event</p></div><span className="participant-token-board__badge">22-minute refresh</span></div>
  <p className="portal-card__hint">Input, output and reasoning tokens combined. Usage is not a judging score. Updates every 22 minutes.</p>

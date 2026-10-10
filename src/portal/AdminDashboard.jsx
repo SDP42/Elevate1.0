@@ -765,6 +765,7 @@ export function AdminHome({ session, superAdmin = false }) {
   const [teams, setTeams] = useState(null);
   const [accounts, setAccounts] = useState(null);
   const [marksTeams, setMarksTeams] = useState(null);
+  const [localScorePreview, setLocalScorePreview] = useState(false);
   const [meals, setMeals] = useState(null);
   const [mealAnalysisSlot, setMealAnalysisSlot] = useState(null);
   const onMealAnalysisUpdate = useCallback(data => {
@@ -806,7 +807,7 @@ export function AdminHome({ session, superAdmin = false }) {
       try {
         const data = await (panel === "marks" ? coreTeams() : panel === "overview" ? psList() : adminTeams());
         if (!stopped) {
-          if (panel === "marks") setMarksTeams(data.teams);
+          if (panel === "marks") { setMarksTeams(data.teams); setLocalScorePreview(Boolean(data.localScorePreview)); }
           else if (panel === "overview") setProblemStatements(data.problemStatements);
           else setTeams(data.teams);
         }
@@ -1061,6 +1062,7 @@ export function AdminHome({ session, superAdmin = false }) {
 
       {panel === "marks" && (
       <section className="portal-card">
+        {localScorePreview && <p role="status" style={{padding:'1rem', border:'1px solid #c8a766', borderRadius:16, color:'#eee5d2', background:'rgba(20,18,14,.8)'}}>Local preview · Mentoring 1 scores imported for {marksTeams?.length || 0} teams. Edits save on this computer only. Live scores are unchanged.</p>}
         <div className="portal-card__headRow">
           <h3>Team marks &amp; feedback</h3>
           <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", flexWrap: "wrap" }}>

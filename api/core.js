@@ -49,7 +49,7 @@ async function listTeams(req, res) {
     select
       t.id, t.team_code, t.seat_no, t.shortlisted, t.withdrawn, t.final_round_shortlisted,
       a.display_name, a.username,
-      m.score, m.feedback, m.mentoring1_feedback, m.feedback_approved,
+      m.score, m.criteria, m.feedback, m.mentoring1_feedback, m.feedback_approved,
       (select score from marks where team_id=t.id and round_id=(select id from mentoring_rounds where round_no=3)) as judging_score,
       (select score from marks where team_id=t.id and round_id=(select id from mentoring_rounds where round_no=4)) as final_score,
       p.code as ps_code, p.title as ps_title, p.description as ps_description,
@@ -86,6 +86,7 @@ async function listTeams(req, res) {
       withdrawn: t.withdrawn,
       score: t.score === null ? null : Number(t.score),
       mentoring1Score: t.score == null ? null : Number(t.score),
+      mentoring1Criteria: t.criteria || null,
       judgingRound1Score: t.judging_score == null ? null : Number(t.judging_score),
       finalRoundScore: t.final_round_shortlisted && t.final_score != null ? Number(t.final_score) : null,
       finalRoundShortlisted: Boolean(t.final_round_shortlisted),
