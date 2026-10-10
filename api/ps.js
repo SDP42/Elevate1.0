@@ -16,7 +16,7 @@ async function handler(req, res) {
 async function list(req, res) {
   const canSeeAll = ["admin", "core", "superadmin"].includes(req.session.role);
   const schedule = psSelectionSchedule(now());
-  if (!canSeeAll && !schedule.selectionOpen) {
+  if (!canSeeAll && now() < Date.parse(schedule.opensAt)) {
     return res.status(200).json({ ...schedule, preferences: [], selectedPsId: null,
       selectionStatus: null, requestedAt: null, problemStatements: [], allocations: [] });
   }
@@ -85,7 +85,7 @@ async function select(req, res) {
   const teamId = req.session.teamId;
   const schedule = psSelectionSchedule(now());
   if (!schedule.selectionOpen) return res.status(403).json({ ...schedule,
-    error: "Problem statement selection opens on 10 October 2026 at 9:30 AM IST." });
+    error: schedule.selectionClosed ? "Problem statement selection closed at 10:00 AM IST." : "Problem statement selection has not opened yet." });
   const { preferences } = req.body || {};
   if (!teamId || !Array.isArray(preferences) || preferences.length !== 4 || new Set(preferences).size !== 4 || preferences.some(id => !Number.isSafeInteger(id) || id < 1)) {
     return res.status(400).json({ error: "Choose four distinct problem statements in preference order" });

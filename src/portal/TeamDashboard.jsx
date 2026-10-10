@@ -362,7 +362,7 @@ function ProblemStatement({ data, error, picking, onPick }) {
       <h4>{ps.title}</h4><p><span className="ps-domainCards__label">Domains</span>{ps.description}</p>
     </li>)}</ul>}
     {error && <p role="alert" className="portal-auth__error">{error}</p>}
-    {data?.selectionOpen !== true ? <p className="portal-status" role="status">{data ? 'Selection opens on Saturday, 10 October at 9:30 AM IST. The form will appear here automatically.' : 'Loading selection availability…'}</p> : locked ? <p className="portal-status" role="status">Allocated: {selected?`${selected.code} · ${selected.title}`:'Your confirmed problem statement'}</p> : statements.length<4 ? <p>Four problem statements need to be revealed before preferences can be submitted.</p> :
+    {data?.selectionOpen !== true && !locked ? <p className="portal-status" role="status">{data?.selectionClosed ? 'Problem statement selection closed at 10:00 AM IST.' : data ? 'Problem statement selection is opening shortly.' : 'Loading selection availability…'}</p> : locked ? <p className="portal-status" role="status">Allocated: {selected?`${selected.code} · ${selected.title}`:'Your confirmed problem statement'}</p> : statements.length<4 ? <p>Four problem statements need to be revealed before preferences can be submitted.</p> :
       <form onSubmit={submit} className="ps-preferenceForm"><div className="ps-preferenceGrid">{[0,1,2,3].map(index=><label className="portal-field" key={index}><span>Preference {index+1}</span><select aria-label={`Preference ${index+1}`} required value={choices[index] || ''} disabled={picking!==null} onChange={e=>{
       const value=e.target.value,next=[...choices],previous=next[index];
       const other=next.findIndex((choice,i)=>i!==index && value && choice===value);

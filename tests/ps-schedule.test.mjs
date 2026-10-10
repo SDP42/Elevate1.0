@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { randomBytes } from 'node:crypto';
-import { PS_SELECTION_OPENS_AT, psSelectionSchedule } from '../shared/ps-schedule.js';
+import { PS_SELECTION_OPENS_AT, PS_SELECTION_CLOSES_AT, psSelectionSchedule } from '../shared/ps-schedule.js';
 
 process.env.DATABASE_URL ||= 'postgresql://fixture:fixture@localhost/elevate_fixture';
 process.env.SESSION_SECRET ||= randomBytes(48).toString('hex');
@@ -61,3 +61,14 @@ test('submission reaches the atomic allocator at and after opening', async () =>
     assert.equal(transactions, 1);
   }
 });
+
+ test('10 AM IST cutoff blocks new allocations but keeps statements readable', async () => {
+ const close=Date.parse(PS_SELECTION_CLOSES_AT);
+ assert.equal(close,Date.parse('2026-10-10T10:00:00+05:30'));
+ assert.equal(psSelectionSchedule(close-1).selectionOpen,true);
+ assert.equal(psSelectionSchedule(close).selectionOpen,false);
+ const sql=async()=>[]; sql.transaction=()=>{throw new Error('Closed allocation reached DB');};
+ const handler=createPsHandler({sql,now:()=>close});
+ const write=response();await handler(request('POST'),write);assert.equal(write.code,403);
+ const read=response();await handler(request('GET'),read);assert.equal(read.code,200);assert.equal(read.body.selectionClosed,true);
+ });
