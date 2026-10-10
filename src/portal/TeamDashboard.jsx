@@ -1,3 +1,5 @@
+import DesktopAnnouncements from "./DesktopAnnouncements";
+import ParticipantLeaderboards from './ParticipantLeaderboards';
 import PartnerResources, { PartnerCredential } from "./PartnerResources";
 import useLivePs from "./useLivePs";
 import { useEffect, useRef, useState } from "react";
@@ -371,7 +373,6 @@ function ProblemStatement({ data, error, picking, onPick }) {
         <Button variant="primary" className="portal-auth__submit" type="submit" disabled={!complete || picking!==null}>{picking!==null?'Allocating…':'Submit preferences'}</Button>
       </form>}
     {message && <p role="status" className="portal-status">{message}</p>}
-    {!!data?.allocations?.length && <div className="portal-allocBoard"><span className="portal-allocBoard__label">Confirmed allocations</span><ul>{data.allocations.map(a=><li key={a.teamCode}><strong>{a.teamCode}</strong> → {a.psCode} · {a.psTitle}</li>)}</ul></div>}
   </TeamCard>;
 }
 
@@ -509,7 +510,7 @@ function TeamHome({ session }) {
 
       <PartnerResources team={session.team} teamName={session.displayName} />
       <ParticipantMealNotice teamName={session.displayName} />
-      <Announcements messages={session.announcements} />
+      <DesktopAnnouncements initialMessages={session.announcements} teamCode={session.team?.team_code} />
       <ShortlistBanner team={session.team} />
       {session.team && <ApprovalBanner data={psData} teamCode={session.team.team_code} />}
       <SubmissionCountdown />
@@ -527,6 +528,7 @@ function TeamHome({ session }) {
       <ProjectSubmission team={session.team} />
 
       <MentorFeedback team={session.team} />
+      <ParticipantLeaderboards teamCode={session.team?.team_code} />
 
 
       <HelpRequest team={session.team} teamName={session.displayName} />

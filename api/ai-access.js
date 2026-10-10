@@ -1,6 +1,14 @@
 import {requireRole} from './_lib/auth.js';import {sql} from './_lib/db.js';import {decryptKey} from './_lib/ai-gateway.js';
 export default requireRole(async(req,res)=>{
  if(req.method!=='GET')return res.status(405).json({error:'Method not allowed'});
+ if(req.session.role==='team' && new URL(req.url,'http://localhost').searchParams.get('resource')==='leaderboard'){
+ const rows=await sql`select t.team_code,a.display_name team_name,coalesce(sum(r.actual_tokens),0)::bigint as tokens
+ from teams t join accounts a on a.id=t.account_id join ai_team_access access on access.team_id=t.id
+ left join ai_requests r on r.team_id=t.id and r.status='completed' and r.created_at >= '2026-10-09T18:30:00Z'::timestamptz
+ where not t.withdrawn group by t.id,a.id having coalesce(sum(r.actual_tokens),0)>0
+ order by tokens desc,t.team_code limit 10`;
+ return res.status(200).json({teams:rows.map(r=>({...r,tokens:Number(r.tokens)})),scope:'event',updatedAt:new Date().toISOString()});
+ }
  if(req.session.role==='team'){
  const [r]=await sql`select a.key_cipher,a.daily_limit,a.enabled,coalesce((select sum(charged_tokens) from ai_requests where team_id=a.team_id and quota_day=(clock_timestamp() at time zone 'UTC')::date),0)::int used from ai_team_access a where team_id=${req.session.teamId}`;
  if(!r||!r.enabled)return res.status(503).json({error:'AI access is not enabled for your team.'});

@@ -46,15 +46,15 @@ async function list(req, res) {
     if(pref[0])preferences=[pref[0].preference1,pref[0].preference2,pref[0].preference3,pref[0].preference4];
   }
 
-  // Confirmed allocations are visible to logged-in teams and staff.
-  const allocations = await sql`
+  // Only staff receive the event-wide allocation board. Teams retain their own selection above.
+  const allocations = canSeeAll ? await sql`
     select t.team_code, p.code as ps_code, p.title as ps_title
     from team_ps_selection s
     join teams t on t.id = s.team_id
     join ps_list p on p.id = s.ps_id
     where s.status = 'approved'
     order by p.sort_order asc, t.id asc
-  `;
+  ` : [];
 
   res.status(200).json({
     ...psSelectionSchedule(now()),

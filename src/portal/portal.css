@@ -2559,3 +2559,27 @@ pre.submission-viewer__document { white-space: pre-wrap; }
 .team-ai-guide pre { max-width:100%; overflow-x:auto; padding:16px; background:#02040ab3; border:1px solid #d8bb7840; border-radius:12px; color:#f4efe6; line-height:1.6; }
 .team-partner-pills { grid-template-columns:repeat(4,minmax(0,1fr)); }
 @media(max-width:600px) { .team-partner-pills { grid-template-columns:repeat(2,minmax(0,1fr)); } }
+
+.participant-token-board__head { display:flex; align-items:center; justify-content:space-between; gap:1rem; flex-wrap:wrap; }
+.participant-token-board__head h3 { margin:0 0 .4rem; }
+.participant-token-board__head p { color:#c9c2b4; margin:0; font-size:.9rem; }
+.participant-token-board__badge { border:1px solid #d7b36c55; background:#d7b36c15; color:#f4dba6; border-radius:999px; padding:.4rem .8rem; font-size:.8rem; }
+.participant-token-chart { list-style:none; padding:0; margin:1.5rem 0; display:grid; gap:1rem; }
+.participant-token-chart li { display:flex; gap:.9rem; align-items:center; padding:.6rem .8rem; border:1px solid transparent; border-radius:12px; }
+.participant-token-chart li.is-current-team { background:#d7b36c0c; border-color:#d7b36c45; }
+.participant-token-chart__rank { color:#d7b36c; width:24px; flex-shrink:0; text-align:center; font-weight:700; }
+.participant-token-chart__entry { flex:1; min-width:0; }
+.participant-token-chart__label { display:flex; justify-content:space-between; align-items:center; gap:.7rem; margin-bottom:.6rem; }
+.participant-token-chart__label strong { display:block; color:#f7f2e9; overflow-wrap:anywhere; font-size:.95rem; }
+.participant-token-chart__label span { display:block; color:#a99e8b; font-size:.75rem; margin-top:.25rem; }
+.participant-token-chart__label b { color:#f4dba6; white-space:nowrap; font-variant-numeric:tabular-nums; font-size:.95rem; }
+.participant-token-chart__label small { font-size:.7rem; font-weight:400; }
+.participant-token-chart__track { height:10px; background:#ffffff0b; border:1px solid #ffffff10; border-radius:999px; overflow:hidden; }
+.participant-token-chart__track>div { height:100%; border-radius:999px; background:linear-gradient(90deg,#86662f,#cba65e,#f2d798); transition:width .6s ease; }
+.participant-token-chart__updated { color:#9c9282; font-size:.75rem; text-align:right; }
+.participant-score-board ol { list-style:none; padding:0; }
+.participant-score-board li { display:flex; flex-wrap:wrap; gap:.7rem; align-items:center; padding:.8rem 0; border-bottom:1px solid #ffffff15; }
+.participant-score-board li strong { flex:1; color:#f7f2e9; }
+@media(max-width:480px){ .participant-token-chart li { gap:.4rem; padding:.6rem .25rem; } .participant-token-chart__label small { display:none; } .participant-token-chart__label strong { font-size:.85rem; } }
+@media(prefers-reduced-motion:reduce){ .participant-token-chart__track>div { transition:none; } }
+.participant-notification-controls { display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:.8rem; color:#f4dba6; font-size:.9rem; }
