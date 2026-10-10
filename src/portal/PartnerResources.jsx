@@ -1,8 +1,10 @@
 import { useEffect, useRef, useState } from 'react';
 import { Button } from 'open-glass-ui';
 import TeamLiquidGlass from './TeamLiquidGlass';
+import AiAccessGuide from './AiAccessGuide';
 
 const resources = [
+  { id: 'arina', name: 'ARINA AI', logo: '/arina-ai-logo.png' },
   { id: 'voroa', name: 'Voroa', logo: '/voroa-logo.svg' },
   { id: 'n8n', name: 'n8n', logo: '/n8n-logo.svg' },
   { id: 'shipready', name: 'ShipReady', logo: '/shipready-logo.png' },
@@ -36,6 +38,7 @@ export default function PartnerResources({ team, teamName }) {
     {active && <dialog ref={dialog} className="team-partner-dialog" aria-labelledby="partner-dialog-title" onCancel={close} onClose={() => setActive(null)} onClick={event => { if (event.target === event.currentTarget) close(); }}>
       <TeamLiquidGlass material="regular" className="team-partner-dialog__panel">
         <header><div><span className="team-partner-dialog__brand"><img src={active.logo} alt="" /></span><h2 id="partner-dialog-title">{active.name} access</h2></div><button type="button" className="team-partner-dialog__close" aria-label="Close partner instructions" onClick={close}>×</button></header>
+        {active.id === 'arina' && <AiAccessGuide />}
         {active.id === 'voroa' && <>
           <ol><li>Go to <Link href="https://app.getvoroa.com">Voroa</Link>.</li><li>Choose <strong>Sign in with a code</strong> and enter the email ID you shared with the organisers.</li><li>Enter the six-digit code from your email. No password is needed.</li></ol>
           <p>Team leaders: check your standard Voroa welcome email. The “connect your repo” step is correct—connect GitHub, then deploy with a push.</p>
