@@ -10,8 +10,8 @@ const opening = Date.parse(PS_SELECTION_OPENS_AT);
 const response = () => ({ status(code) { this.code = code; return this; }, json(body) { this.body = body; return this; } });
 const request = method => ({ method, session: { role: 'team', teamId: 1 }, body: { preferences: [1,2,3,4] } });
 
-test('opening is exactly Saturday 10 October 2026 at 09:30 IST, inclusive', () => {
-  assert.equal(opening, Date.parse('2026-10-10T09:30:00+05:30'));
+test('organizer early opening on 10 October 2026 is inclusive', () => {
+  assert.equal(opening, Date.parse('2026-10-10T00:00:00+05:30'));
   assert.equal(psSelectionSchedule(opening - 1).selectionOpen, false);
   assert.equal(psSelectionSchedule(opening).selectionOpen, true);
   assert.equal(psSelectionSchedule(opening + 1).selectionOpen, true);

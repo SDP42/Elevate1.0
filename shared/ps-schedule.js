@@ -1,5 +1,6 @@
-// 10 October 2026, 09:30 IST. The server clock is authoritative.
-export const PS_SELECTION_OPENS_AT = '2026-10-10T04:00:00.000Z';
+// Organizer opened selection early on 10 October 2026.
+// The server clock remains authoritative.
+export const PS_SELECTION_OPENS_AT = '2026-10-09T18:30:00.000Z';
 
 export function psSelectionSchedule(now = Date.now()) {
   return {
