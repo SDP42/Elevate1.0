@@ -1,3 +1,4 @@
+import AiUsageMonitor from './AiUsageMonitor';
 import { adminFinalShortlist } from "./api";
 import GlassSelect from "./GlassSelect";
 import FinalMarksEditor from "./FinalMarksEditor";
@@ -911,7 +912,7 @@ export function AdminHome({ session, superAdmin = false }) {
 
       {superAdmin && <SuperAdminOversight />}
 
-      {panel === "overview" && <Overview />}
+      {panel === "overview" && <><Overview /><AiUsageMonitor /></>}
 
       {panel === "teams" && (
       <section className="portal-card">
