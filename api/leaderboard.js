@@ -20,7 +20,7 @@ async function handler(req, res) {
       on m.team_id = t.id
       and m.round_id = (select id from mentoring_rounds where round_no = ${roundNo})
       and (${canSeeUnreleased} or exists (select 1 from marks published where published.team_id=t.id and published.round_id=(select id from mentoring_rounds where round_no=2) and published.feedback_approved=true))
-    where t.withdrawn = false and t.shortlisted = true and (not ${frozen} or t.final_round_shortlisted)
+    where t.withdrawn = false and (${roundNo} = 2 or t.shortlisted = true) and (not ${frozen} or t.final_round_shortlisted)
     order by m.score desc nulls last, t.team_code asc
   `;
 
