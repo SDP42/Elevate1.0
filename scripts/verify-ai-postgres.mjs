@@ -59,7 +59,7 @@ try {
  assert.equal(minute.filter(Boolean).length,2,'Project minute token reservations cannot overspend');
  await run("truncate ai_requests;update ai_team_access set daily_limit=6000000 where team_id=2;insert into ai_requests(id,team_id,project_id,model,reserved_tokens,charged_tokens,created_at) values('00000000-0000-0000-0000-000000000001',2,1,'fixture',4999500,4999500,clock_timestamp()-interval '2 minutes')");
  assert.equal(await reserveAiRequest(sql,{team_id:2},'fixture',1000),null,'Project daily limit is enforced');
- process.env.SESSION_SECRET='isolated-test-only';assert.equal(decryptKey(encryptKey('fixture-key')),'fixture-key');
+ process.env.DATABASE_URL='postgresql://fixture:isolated-test-only@localhost/fixture';assert.equal(decryptKey(encryptKey('fixture-key')),'fixture-key');
  assert.throws(()=>validateAiBody({model:'unknown'}));assert.throws(()=>validateAiBody({model:'gpt-5-mini',messages:[{role:'user',content:'test'}],stream:true}));
  assert.throws(()=>validateAiBody({model:'gpt-5-mini',messages:[{role:'user',content:'test'}],max_completion_tokens:99999}));
  console.log('PASS: concurrent team/day, project/day, team/minute and project/minute limits; input validation; encrypted credential round trip. Isolated local PostgreSQL only.');

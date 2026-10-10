@@ -1,7 +1,8 @@
 import { createHash,createCipheriv,createDecipheriv,randomBytes,randomUUID } from 'node:crypto';
 export const AI_DAILY_LIMIT=800000;
 export const AI_MODELS={'gpt-5.6-luna':'max_completion_tokens','deepseek-v4-pro':'max_tokens','gpt-5-mini':'max_completion_tokens'};
-const encryptionKey=()=>createHash('sha256').update('elevate-ai-v1:'+process.env.SESSION_SECRET).digest();
+// Database password is shared by local/production, unlike session signing keys.
+const encryptionKey=()=>{const password=new URL(process.env.DATABASE_URL||process.env.POSTGRES_URL).password;if(!password)throw new Error('AI credential encryption is not configured');return createHash('sha256').update('elevate-ai-v2:'+password).digest();};
 export const hashKey=key=>createHash('sha256').update(key).digest('hex');
 export function encryptKey(value){const iv=randomBytes(12),c=createCipheriv('aes-256-gcm',encryptionKey(),iv);const data=Buffer.concat([c.update(value,'utf8'),c.final()]);return Buffer.concat([iv,c.getAuthTag(),data]).toString('base64');}
 export function decryptKey(value){const b=Buffer.from(value,'base64'),c=createDecipheriv('aes-256-gcm',encryptionKey(),b.subarray(0,12));c.setAuthTag(b.subarray(12,28));return Buffer.concat([c.update(b.subarray(28)),c.final()]).toString('utf8');}

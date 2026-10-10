@@ -1,6 +1,6 @@
 # Participant AI gateway
 
-Apply `db/ai-gateway.sql` explicitly to the database before deployment. Tables contain AES-256-GCM encrypted project/team keys; hashes authenticate team Bearer tokens. Encryption derives from SESSION_SECRET, which must match across local and production. Rotating it requires re-encrypting these credentials.
+Apply `db/ai-gateway.sql` explicitly to the database before deployment. Tables contain AES-256-GCM encrypted project/team keys; hashes authenticate team Bearer tokens. Encryption derives from the database password shared by local and production. Rotating the database password requires re-encrypting these credentials. Session signing secrets may differ.
 
 32 teams are mapped in code order: projects 1–2 have 6 teams each; projects 3–6 have 5 each. Each team gets 800,000 tokens/day, resetting at 00:00 UTC (05:30 IST). Project daily limit 5M, project minute limit 50K tokens/300 requests, team rate limit 10 requests/minute. Participants retrieve only their own key from `/api/ai-access` after login; admins retrieve secret-free usage and recent request metadata.
 
