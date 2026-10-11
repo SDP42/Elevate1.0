@@ -402,6 +402,7 @@ const FeedbackIcon = () => (
 function ProjectSubmission({ team }) {
   const closed = useCountdown(SUBMISSION_DEADLINE).done;
   const [url, setUrl] = useState(team?.submission_url || "");
+  const [additionalLinks, setAdditionalLinks] = useState((team?.submission_links || []).join('\n'));
   const [comments, setComments] = useState(team?.submission_note || "");
   const [busy, setBusy] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -412,7 +413,7 @@ function ProjectSubmission({ team }) {
     if (Date.now() >= SUBMISSION_DEADLINE.getTime()) { setError("Submissions are closed."); return; }
     setBusy(true); setError(""); setSaved(false);
     try {
-      await submitProject(url.trim(), comments.trim());
+      await submitProject(url.trim(), comments.trim(), additionalLinks.split(/\r?\n/).map(link=>link.trim()).filter(Boolean));
       setSaved(true);
     } catch (err) { setError(err.message); }
     finally { setBusy(false); }
@@ -425,9 +426,10 @@ function ProjectSubmission({ team }) {
       <SubmissionFiles editable closed={closed} />
       <form className="portal-auth__form" onSubmit={save}>
         <label className="portal-field"><span>Project link</span><input disabled={closed || busy} type="url" value={url} placeholder="https://github.com/your-team/project" onChange={e => { setUrl(e.target.value); setSaved(false); }} /></label>
+        <label className="portal-field"><span>Additional links</span><textarea className="portal-submission__comments" disabled={closed || busy} rows={3} maxLength={40979} value={additionalLinks} placeholder={'https://your-demo.com\nhttps://your-presentation.com'} onChange={e=>{setAdditionalLinks(e.target.value);setSaved(false);}} /><small className="portal-card__hint">One link per line.</small></label>
         <label className="portal-field"><span>Comments</span><textarea disabled={closed || busy} className="portal-submission__comments" value={comments} rows={4} maxLength={10000} placeholder="Anything the judges should know" onChange={e => { setComments(e.target.value); setSaved(false); }} /></label>
         {error && <p role="alert" className="portal-auth__error">{error}</p>}
-        {saved && <p role="status" className="portal-submission__saved">Link and comments saved.</p>}
+        {saved && <p role="status" className="portal-submission__saved">Submission saved.</p>}
         <Button variant="primary" type="submit" className="portal-auth__submit" disabled={busy || closed}>{closed ? "Submissions closed" : busy ? "Saving…" : "Save submission"}</Button>
       </form>
     </TeamCard>

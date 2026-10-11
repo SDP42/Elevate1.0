@@ -67,12 +67,19 @@ async function submitProject(req, res) {
   }
 
   if (submissionsClosed()) return res.status(403).json({ error: SUBMISSION_CLOSED_MESSAGE });
-  const { submissionUrl = "", submissionNote = "" } = req.body || {};
+  const { submissionUrl = "", submissionNote = "", submissionLinks } = req.body || {};
   if (typeof submissionUrl !== "string" || typeof submissionNote !== "string" || submissionNote.length > 10000) return res.status(400).json({ error: "Invalid submission" });
+  if (submissionLinks !== undefined && (!Array.isArray(submissionLinks) || submissionLinks.length > 20 || submissionLinks.some(link => typeof link !== "string" || link.length > 2048))) {
+    return res.status(400).json({error: "Add up to 20 additional links, each no longer than 2,048 characters."});
+  }
+  const links = submissionLinks === undefined ? null : [...new Set(submissionLinks.map(link => link.trim()).filter(Boolean))];
+  if (links?.some(link => {try {return !['https:', 'http:'].includes(new URL(link).protocol);} catch {return true;}})) {
+    return res.status(400).json({error: "Use a valid https:// or http:// URL for each additional link."});
+  }
   if (submissionUrl.trim()) {
     try { if (!["https:", "http:"].includes(new URL(submissionUrl.trim()).protocol)) throw new Error(); }
     catch { return res.status(400).json({ error: "Use a valid https:// or http:// link" }); }
-  } else {
+  } else if (!links?.length) {
     const files = await sql`select id from submission_files where team_id = ${session.teamId} limit 1`;
     if (!files.length) return res.status(400).json({ error: "Add a link or upload a file first" });
   }
@@ -80,6 +87,7 @@ async function submitProject(req, res) {
   const saved = await sql`
     update teams set
       submission_url = ${submissionUrl.trim() || null},
+      submission_links = coalesce(${links === null ? null : JSON.stringify(links)}::jsonb, submission_links),
       submission_note = ${submissionNote || null},
       submitted_at = now()
     where id = ${session.teamId} and clock_timestamp() < ${SUBMISSION_CLOSES_AT}::timestamptz
@@ -193,7 +201,7 @@ async function me(req, res) {
   if (session.role === "team" && session.teamId) {
     const teamRows = await sql`
       select id, team_code, seat_no, qr_token, shortlisted, final_round_shortlisted,
-        submission_url, submission_note, submitted_at
+        submission_url, submission_links, submission_note, submitted_at
       from teams
       where id = ${session.teamId}
     `;

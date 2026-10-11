@@ -41,6 +41,7 @@ alter table teams alter column qr_token drop not null;
 alter table teams add column if not exists dietary text;
 alter table teams add column if not exists shortlisted boolean not null default false;
 alter table teams add column if not exists submission_url text;
+alter table teams add column if not exists submission_links jsonb not null default '[]'::jsonb;
 alter table teams add column if not exists submission_note text;
 alter table teams add column if not exists submitted_at timestamptz;
 -- a team that drops out overnight — excluded from the leaderboard and its

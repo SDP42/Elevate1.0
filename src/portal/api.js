@@ -35,8 +35,8 @@ export const logout = () => request("/auth", { method: "POST", body: JSON.string
 
 export const me = () => request("/auth");
 
-export const submitProject = (submissionUrl, submissionNote) =>
-  request("/auth", { method: "POST", body: JSON.stringify({ action: "submit", submissionUrl, submissionNote }) });
+export const submitProject = (submissionUrl, submissionNote, submissionLinks) =>
+  request("/auth", { method: "POST", body: JSON.stringify({ action: "submit", submissionUrl, submissionNote, submissionLinks }) });
 
 export const requestHelp = (message) =>
   request("/auth", { method: "POST", body: JSON.stringify({ action: "help", message }) });

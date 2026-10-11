@@ -963,6 +963,7 @@ export function AdminHome({ session, superAdmin = false }) {
                   <th>Username</th>
                   {[1, 2, 3, 4].map(position => <th key={position}>Member {position}</th>)}
                   <th>GitHub / project link</th>
+                  <th>Additional links</th>
                   <th>Uploaded documents</th>
                   <th>Meals claimed</th>
                   <th>QR Pass</th>
@@ -982,6 +983,7 @@ export function AdminHome({ session, superAdmin = false }) {
                     <td>{t.username}</td>
                     {[0, 1, 2, 3].map(index => <td key={index} className="portal-teamMember">{t.members[index]?.name || "—"}{t.members[index]?.isLead && <span className="portal-table__sub">Team leader</span>}</td>)}
                     <td className="portal-table__note">{t.submissionUrl ? <a className="portal-projectLink" href={t.submissionUrl} target="_blank" rel="noopener noreferrer">{t.submissionUrl}<span aria-hidden="true"> ↗</span></a> : "—"}</td>
+                    <td className="portal-table__note">{t.submissionLinks?.length ? <div className="portal-additionalLinks">{t.submissionLinks.map((link,index)=><a key={link} className="portal-projectLink" href={link} target="_blank" rel="noopener noreferrer" title={link}>{index+1}. {link}<span aria-hidden="true"> ↗</span></a>)}</div> : "—"}</td>
                     <td><SubmissionFiles teamId={t.id} compact /></td>
                     <td>{t.mealsClaimed ?? 0}</td>
                     <td>

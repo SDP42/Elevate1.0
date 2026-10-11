@@ -140,7 +140,7 @@ async function setWithdrawn(req, res) {
 async function getTeams(req, res) {
   const teams = await sql`
     select t.id, t.team_code, t.seat_no, t.dietary, t.shortlisted, t.withdrawn,
-      t.submission_url, t.submission_note, t.submitted_at, t.qr_token,
+      t.submission_url, t.submission_links, t.submission_note, t.submitted_at, t.qr_token,
       a.id as account_id, a.display_name, a.username,
       (select count(*)::int from meal_logs ml where ml.team_id = t.id) as meals_claimed
     from teams t
@@ -169,6 +169,7 @@ async function getTeams(req, res) {
       shortlisted: t.shortlisted,
       withdrawn: t.withdrawn,
       submissionUrl: t.submission_url,
+      submissionLinks: t.submission_links || [],
       submissionNote: t.submission_note,
       submittedAt: t.submitted_at,
       qrToken: t.qr_token,

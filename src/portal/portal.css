@@ -2373,6 +2373,8 @@ pre.submission-viewer__document { white-space: pre-wrap; }
 .portal-teamMember { min-width: 140px; }
 .portal-teamMember .portal-table__sub { display: block; margin-top: 5px; color: var(--gold); }
 .portal-projectLink { display: inline-block; max-width: 260px; overflow-wrap: anywhere; line-height: 1.5; color: var(--gold); }
+.portal-additionalLinks { display: grid; gap: 8px; max-width: 260px; }
+.portal-additionalLinks .portal-projectLink { white-space: normal; min-width: 0; }
 .submission-compact { width: 230px; max-width: 230px; min-width: 0; }
 .submission-documentButtons { list-style: none; padding: 0; margin: 0; display: grid; gap: 9px; }
 .submission-documentButtons li { min-width: 0; }
