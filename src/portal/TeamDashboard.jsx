@@ -422,7 +422,7 @@ function ProjectSubmission({ team }) {
   return (
     <TeamCard className="portal-submission">
       <h3><SubmitIcon />Submission</h3>
-      <p className="portal-card__hint" role="status">{closed ? "Submissions closed. Uploaded documents remain available to view." : "Closes Sunday, 11 October at 8:20 AM IST."}</p>
+      <p className="portal-card__hint" role="status">{closed ? "Submissions closed. Uploaded documents remain available to view." : "Closes Sunday, 11 October at 8:30 AM IST."}</p>
       <SubmissionFiles editable closed={closed} />
       <form className="portal-auth__form" onSubmit={save}>
         <label className="portal-field"><span>Project link</span><input disabled={closed || busy} type="url" value={url} placeholder="https://github.com/your-team/project" onChange={e => { setUrl(e.target.value); setSaved(false); }} /></label>
