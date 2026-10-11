@@ -207,6 +207,30 @@
   display: none;
 }
 
+.sl-card--final {
+  --final-glow: 1;
+}
+
+.sl-card--final .sl-card__edge {
+  background: #c9a86a;
+  box-shadow:
+    0 0 22px rgba(201, 168, 106, calc(var(--final-glow) * 0.7)),
+    0 0 62px rgba(201, 168, 106, calc(var(--final-glow) * 0.45));
+}
+
+.sl-card--final .sl-card__glass {
+  border-color: #e2c68e;
+}
+
+.sl-card--final .sl-board__title {
+  font-size: min(clamp(1.15rem, 3.8vw, 2.1rem), 4.6vh);
+  color: #e2c68e;
+}
+
+.sl-card--final .sl-plane {
+  color: #e2c68e;
+}
+
 .sl-card__sheen {
   inset: 0 0 auto 0;
   height: 40%;

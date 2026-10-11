@@ -17,6 +17,26 @@ const pad = (n) => String(n).padStart(2, "0");
 /* One board per ten shortlisted teams — each
    becomes a glass card that stacks over the last as you scroll. */
 const BOARDS = [
+  {
+    key: "final-round-shortlist",
+    title: "Final round shortlist",
+    sub: "10 teams selected for the final round",
+    teams: [
+      { name: "Coders99" },
+      { name: "Gada Electronics" },
+      { name: "Axiom 3" },
+      { name: "AsteriX" },
+      { name: "DEVta" },
+      { name: "Paragons" },
+      { name: "GitGoneWild" },
+      { name: "Visionaries" },
+      { name: "Tensors" },
+      { name: "Codessey" },
+    ],
+    label: pad,
+    rgb: GOLD,
+    highlighted: true,
+  },
   ...chunk(SHORTLISTED, BOARD_SIZE).map((teams, i) => ({
     key: `shortlisted-${i}`,
     title: "Shortlisted",
@@ -41,7 +61,7 @@ function Board({ board }) {
   const { rgb } = board;
   return (
     <div
-      className="sl-card"
+      className={`sl-card${board.highlighted ? " sl-card--final" : ""}`}
       style={{
         "--a8": `rgba(${rgb}, 0.8)`,
         "--a6": `rgba(${rgb}, 0.6)`,
@@ -106,6 +126,19 @@ export default function Shortlisted() {
 
           items.forEach((item, i) => {
             const card = item.querySelector(".sl-card");
+
+            if (card.classList.contains("sl-card--final") && !still) {
+              gsap.fromTo(card, { "--final-glow": 0.25 }, {
+                "--final-glow": 1,
+                ease: "none",
+                scrollTrigger: {
+                  trigger: item,
+                  start: "top bottom",
+                  end: "top center",
+                  scrub: 0.7,
+                },
+              });
+            }
 
             // each card shrinks slightly as the ones after it slide over it
             if (stack && !still) {
