@@ -57,4 +57,4 @@ async function handler(req, res) {
 
 return handler;
 }
-export default requireRole(createLeaderboardHandler());
+export default requireRole(createLeaderboardHandler(), ["admin", "superadmin", "core"]);

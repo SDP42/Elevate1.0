@@ -1,5 +1,4 @@
 import DesktopAnnouncements from "./DesktopAnnouncements";
-import ParticipantLeaderboards from './ParticipantLeaderboards';
 import PartnerResources, { PartnerCredential } from "./PartnerResources";
 import useLivePs from "./useLivePs";
 import { useEffect, useRef, useState } from "react";
@@ -436,15 +435,13 @@ function ProjectSubmission({ team }) {
 }
 
 function MentorFeedback({ team }) {
-  if (!team || team.mentoring1Score == null) return null;
+  if (!team || (!team.mentoring1Feedback && !team.mentoring2Feedback)) return null;
   return (
     <TeamCard>
       <h3>
         <FeedbackIcon />
         Mentor feedback
       </h3>
-      <p className="round2-total">Mentoring 1 score: <strong>{team.mentoring1Score}</strong></p>{team.judgingRound1Score != null && <p className="round2-total">Judging Round 1 score: <strong>{team.judgingRound1Score}</strong></p>}{team.final_round_shortlisted && team.finalRoundScore != null && <p className="round2-total">Final round score: <strong>{team.finalRoundScore}</strong></p>}
-      {(team.mentoring1Criteria || team.localMentoringCriteria) && <dl style={{display:'grid', gridTemplateColumns:'repeat(2, minmax(0, 1fr))', gap:12}}>{Object.entries(team.mentoring1Criteria || team.localMentoringCriteria).map(([criterion,value]) => <div key={criterion}><dt>{criterion}</dt><dd style={{margin:0}}>{value} / 5</dd></div>)}</dl>}
       <div className="round2-savedFeedback"><span>Mentoring 1 feedback</span><p className="portal-feedbackNote">{team.mentoring1Feedback || "No feedback entered."}</p><span>Mentoring 2 feedback</span><p className="portal-feedbackNote">{team.mentoring2Feedback || "No feedback entered."}</p></div>
     </TeamCard>
   );
@@ -529,7 +526,6 @@ function TeamHome({ session }) {
       <ProjectSubmission team={session.team} />
 
       <MentorFeedback team={session.team} />
-      <ParticipantLeaderboards teamCode={session.team?.team_code} />
 
 
       <HelpRequest team={session.team} teamName={session.displayName} />
