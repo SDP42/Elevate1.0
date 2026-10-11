@@ -145,7 +145,8 @@ function CommonUpload({ onSaved, closed }) {
     finally { setBusy(false); setProgress(''); if (input.current) input.current.value = ''; }
   }
   return <div className="submission-upload">
-    <label className="portal-field"><span>Upload documents · PDF, PPTX, MD, TXT · max 3 MB each</span><input ref={input} type="file" multiple accept=".pdf,.pptx,.md,.txt" disabled={busy || closed} onChange={choose} /></label>
+    <label className="portal-field"><span>Upload documents (optional) · PDF, PPTX, MD, TXT · max 3 MB each</span><input ref={input} type="file" multiple accept=".pdf,.pptx,.md,.txt" disabled={busy || closed} onChange={choose} /></label>
+    <p className="portal-card__hint">You can submit project links without uploading a document.</p>
     {busy && <p role="status">{progress}</p>}
     {error && <p role="alert" className="portal-auth__error">{error}</p>}
   </div>;
