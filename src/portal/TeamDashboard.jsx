@@ -1,4 +1,5 @@
 import DesktopAnnouncements from "./DesktopAnnouncements";
+import AiUsageMonitor from "./AiUsageMonitor";
 import PartnerResources, { PartnerCredential } from "./PartnerResources";
 import useLivePs from "./useLivePs";
 import { useEffect, useRef, useState } from "react";
@@ -528,6 +529,7 @@ function TeamHome({ session }) {
       <ProjectSubmission team={session.team} />
 
       <MentorFeedback team={session.team} />
+      <AiUsageMonitor />
 
 
       <HelpRequest team={session.team} teamName={session.displayName} />

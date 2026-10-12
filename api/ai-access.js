@@ -1,15 +1,21 @@
-import {requireRole} from './_lib/auth.js';import {sql} from './_lib/db.js';import {decryptKey} from './_lib/ai-gateway.js';
+import {requireRole} from './_lib/auth.js';
+import {sql} from './_lib/db.js';
+// Historical usage only. No credentials are returned or tracked.
 export default requireRole(async(req,res)=>{
  if(req.method!=='GET')return res.status(405).json({error:'Method not allowed'});
- if(req.session.role==='team' && new URL(req.url,'http://localhost').searchParams.get('resource')==='leaderboard'){
- return res.status(403).json({error:'Participant leaderboards are not available.'});
- }
- if(req.session.role==='team'){
- const [r]=await sql`select a.key_cipher,a.daily_limit,a.enabled,coalesce((select sum(charged_tokens) from ai_requests where team_id=a.team_id and quota_day=(clock_timestamp() at time zone 'UTC')::date),0)::int used from ai_team_access a where team_id=${req.session.teamId}`;
- if(!r||!r.enabled)return res.status(503).json({error:'AI access is not enabled for your team.'});
- return res.status(200).json({key:decryptKey(r.key_cipher),dailyLimit:r.daily_limit,used:r.used,remaining:Math.max(0,r.daily_limit-r.used),endpoint:'/api/ai'});
- }
- const rows=await sql`select t.team_code,ac.display_name team_name,a.project_id,a.daily_limit,a.enabled,count(r.id)::int requests,coalesce(sum(r.charged_tokens),0)::int tokens,count(r.id) filter(where r.status in ('uncertain','reserved'))::int unresolved,count(r.id) filter(where r.http_status>=400)::int errors from ai_team_access a join teams t on t.id=a.team_id join accounts ac on ac.id=t.account_id left join ai_requests r on r.team_id=t.id and r.quota_day=(clock_timestamp() at time zone 'UTC')::date group by t.id,ac.id,a.team_id order by t.team_code`;
- const recent=await sql`select r.id,t.team_code,r.model,r.status,r.http_status,r.actual_tokens,r.charged_tokens,r.latency_ms,r.created_at from ai_requests r join teams t on t.id=r.team_id order by r.created_at desc limit 50`;
- return res.status(200).json({teams:rows,recent,reset:'05:30 AM IST'});
+ const teams=await sql`select t.team_code,ac.display_name team_name,
+ coalesce(sum(r.actual_tokens) filter(where r.quota_day='2026-10-10'::date),0)::bigint session1,
+ coalesce(sum(r.actual_tokens) filter(where r.quota_day='2026-10-11'::date),0)::bigint session2,
+ coalesce(sum(r.actual_tokens),0)::bigint tokens,
+ count(r.id) filter(where r.http_status>=400 or r.status in ('upstream_error','uncertain'))::int errors,
+ coalesce(sum(r.actual_tokens) filter(where r.model='gpt-5.6-luna'),0)::bigint luna_tokens,
+ coalesce(sum(r.actual_tokens) filter(where r.model='deepseek-v4-pro'),0)::bigint deepseek_tokens,
+ coalesce(sum(r.actual_tokens) filter(where r.model='gpt-5-mini'),0)::bigint mini_tokens,
+ count(r.id) filter(where r.model='gpt-5.6-luna' and (r.http_status>=400 or r.status in ('upstream_error','uncertain')))::int luna_errors,
+ count(r.id) filter(where r.model='deepseek-v4-pro' and (r.http_status>=400 or r.status in ('upstream_error','uncertain')))::int deepseek_errors,
+ count(r.id) filter(where r.model='gpt-5-mini' and (r.http_status>=400 or r.status in ('upstream_error','uncertain')))::int mini_errors
+ from teams t join accounts ac on ac.id=t.account_id
+ left join ai_requests r on r.team_id=t.id and r.quota_day in ('2026-10-10'::date,'2026-10-11'::date)
+ where not t.withdrawn group by t.id,ac.id order by tokens desc,t.team_code`;
+ return res.status(200).json({teams,monitoring:false});
 },['team','admin']);
