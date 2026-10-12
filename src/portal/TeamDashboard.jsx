@@ -1,5 +1,6 @@
 import DesktopAnnouncements from "./DesktopAnnouncements";
 import AiUsageMonitor from "./AiUsageMonitor";
+import ObliqOpportunity from "./ObliqOpportunity";
 import PartnerResources, { PartnerCredential } from "./PartnerResources";
 import useLivePs from "./useLivePs";
 import { useEffect, useRef, useState } from "react";
@@ -510,6 +511,7 @@ function TeamHome({ session }) {
       </TeamLiquidGlass>
 
       <PartnerResources team={session.team} teamName={session.displayName} />
+      <ObliqOpportunity team={session.team} />
       <ParticipantMealNotice teamName={session.displayName} />
       <DesktopAnnouncements initialMessages={session.announcements} teamCode={session.team?.team_code} />
       <ShortlistBanner team={session.team} />

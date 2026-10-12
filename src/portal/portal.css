@@ -2560,6 +2560,14 @@ pre.submission-viewer__document { white-space: pre-wrap; }
 .team-ai-guide code { font-size:.8rem; overflow-wrap:anywhere; }
 .team-ai-guide pre { max-width:100%; overflow-x:auto; padding:16px; background:#02040ab3; border:1px solid #d8bb7840; border-radius:12px; color:#f4efe6; line-height:1.6; }
 .team-partner-pills { grid-template-columns:repeat(4,minmax(0,1fr)); }
+.team-obliq-capsule { width:100%; margin:0 0 1rem; border-color:#d8bb7899; }
+.team-obliq-capsule .ogui-button__label { flex-direction:row; flex-wrap:wrap; padding:.25rem; }
+.team-obliq-capsule__text { color:#f4dba6; font-size:clamp(.95rem,3vw,1.1rem); font-weight:600; }
+.team-obliq-dialog::backdrop { background:#02040ae0; backdrop-filter:blur(14px); -webkit-backdrop-filter:blur(14px); }
+.team-obliq-acknowledgement { display:flex; align-items:flex-start; gap:.9rem; padding:1rem; margin:1.25rem 0; border:1px solid #d8bb7860; border-radius:16px; background:#0006; color:#ebe6db; line-height:1.65; font-size:.95rem; cursor:pointer; }
+.team-obliq-acknowledgement input { width:22px; height:22px; flex-shrink:0; margin-top:.25rem; accent-color:#d8bb78; cursor:pointer; }
+.team-obliq-acknowledgement:has(input:checked) { border-color:#d8bb78; box-shadow:0 0 20px #d8bb781a; }
+.team-obliq-acknowledgement input:focus-visible { outline:2px solid #f4dba6; outline-offset:4px; }
 @media(max-width:600px) { .team-partner-pills { grid-template-columns:repeat(2,minmax(0,1fr)); } }
 
 .participant-token-board__head { display:flex; align-items:center; justify-content:space-between; gap:1rem; flex-wrap:wrap; }
