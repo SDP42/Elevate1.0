@@ -45,7 +45,7 @@ export default function PartnerResources({ team, teamName }) {
           <div className="team-partner-callout"><strong>Resources for the whole team</strong><p>2 vCPU / 4 GB is shared across all your services, not available separately per service. Plan heavier video or vision work accordingly.</p><p>CPU only; no GPU. Model API calls such as OpenAI and Gemini work normally from the platform.</p></div>
         </>}
         {active.id === 'n8n' && <>
-          <p>Redeem this voucher once per participant.</p><div className="team-partner-code"><span>Voucher code</span><code>2026-COMMUNITY-HACKATHON-INDIA-0A215575</code></div>
+          <p>Redeem this voucher once per participant. Choose the <strong>Pro plan</strong> when claiming your voucher.</p><div className="team-partner-code"><span>Voucher code</span><code>2026-COMMUNITY-HACKATHON-INDIA-0A215575</code></div>
           <p><Link href="https://n8n.notion.site/voucher-code">Voucher redemption instructions</Link>. The voucher expires one week after the event.</p>
           <ul className="team-partner-links"><li><Link href="https://docs.n8n.io/">Documentation</Link></li><li><Link href="https://community.n8n.io/tags/c/tutorials/28/course-beginner">Beginner course</Link></li><li><Link href="https://community.n8n.io/c/tutorials/28">Tutorials</Link></li><li><Link href="https://n8n.io/workflows/">Template library</Link></li><li><Link href="https://discord.com/invite/n8n">Discord community</Link></li><li><Link href="https://community.n8n.io/tags/c/tutorials/english/29/course-advanced">Advanced course</Link></li></ul>
         </>}
